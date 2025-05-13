@@ -1,6 +1,6 @@
 //
 //  Empty.swift
-//  MixpanelDemo
+//  OursPrivacyDemo
 //
 //  Created by ZIHE JIA on 4/30/21.
 //

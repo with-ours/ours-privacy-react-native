@@ -2,17 +2,17 @@
 
 module.exports = {
   dependencies: {
-    'mixpanel-react-native': {
+    'oursprivacy-react-native': {
       platforms: {
         android: {
-          "sourceDir": "./node_modules/mixpanel-react-native/android",
-          "folder": "./node_modules/mixpanel-react-native",
-          "packageImportPath": "import com.mixpanel.reactnative.MixpanelReactNativePackage;",
-          "packageInstance": "new MixpanelReactNativePackage()"
+          "sourceDir": "./android",
+          "folder": "./",
+          "packageImportPath": "import com.oursprivacy.reactnative.OursPrivacyReactNativePackage;",
+          "packageInstance": "new OursPrivacyReactNativePackage()"
         },
-        ios: {
-          project: './node_modules/mixpanel-react-native/ios/MixpanelReactNative.xcodeproj',
-        }
+        // ios: {
+        //  project: '../ios/OursPrivacyReactNative.xcodeproj',
+        // }
       }
     }
   }

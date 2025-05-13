@@ -1,10 +1,10 @@
 import React from 'react';
 import {Button, SafeAreaView} from 'react-native';
-import {Mixpanel} from 'mixpanel-react-native';
+import {OursPrivacy} from 'oursprivacy-react-native';
 
 const trackAutomaticEvents = true;
-const mixpanel = new Mixpanel('Your Project Token', trackAutomaticEvents);
-mixpanel.init();
+const oursprivacy = new OursPrivacy('Your Project Token', trackAutomaticEvents);
+oursprivacy.init();
 
 // *************************************
 // Example for Function Component
@@ -15,7 +15,7 @@ const SampleApp = () => {
     <SafeAreaView>
       <Button
         title="Select Premium Plan"
-        onPress={() => mixpanel.track('Plan Selected', {Plan: 'Premium'})}
+        onPress={() => oursprivacy.track('Plan Selected', {Plan: 'Premium'})}
       />
     </SafeAreaView>
   );
@@ -33,7 +33,7 @@ export default SampleApp;
 //       <SafeAreaView>
 //         <Button
 //           title="Select Premium Plan"
-//           onPress={() => mixpanel.track("Plan Selected", {"Plan": "Premium"})}
+//           onPress={() => oursprivacy.track("Plan Selected", {"Plan": "Premium"})}
 //         />
 //       </SafeAreaView>
 //     );

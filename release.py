@@ -3,7 +3,7 @@ import argparse
 import subprocess
 
 
-parser = argparse.ArgumentParser(description='Release Mixpanel React Native SDK')
+parser = argparse.ArgumentParser(description='Release OursPrivacy React Native SDK')
 parser.add_argument('--old', help='version for the release', action="store")
 parser.add_argument('--new', help='version for the release', action="store")
 args = parser.parse_args()
@@ -11,10 +11,10 @@ args = parser.parse_args()
 def bump_version():
     replace_version('package.json', "\"version\": \"" + args.old + "\"", "\"version\": \"" + args.new + "\"")
     subprocess.call('rm -fr node_modules', shell=True)
-    subprocess.call('cd Samples/MixpanelDemo;rm -fr node_modules;rm -fr android/app/build;rm -fr ios/Pods', shell=True)
-    subprocess.call('cd Samples/SimpleMixpanel;rm -fr node_modules;rm -fr android/app/build;rm -fr ios/Pods', shell=True)
-    subprocess.call('cd Samples/ContextAPIMixpanel;rm -fr node_modules;rm -fr android/app/build;rm -fr ios/Pods', shell=True)
-    subprocess.call('cd Samples/MixpanelExpo;rm -fr node_modules', shell=True)
+    subprocess.call('cd Samples/OursPrivacyDemo;rm -fr node_modules;rm -fr android/app/build;rm -fr ios/Pods', shell=True)
+    subprocess.call('cd Samples/SimpleOursPrivacy;rm -fr node_modules;rm -fr android/app/build;rm -fr ios/Pods', shell=True)
+    subprocess.call('cd Samples/ContextAPIOursPrivacy;rm -fr node_modules;rm -fr android/app/build;rm -fr ios/Pods', shell=True)
+    subprocess.call('cd Samples/OursPrivacyExpo;rm -fr node_modules', shell=True)
     subprocess.call('git add package.json', shell=True)
     subprocess.call('git add __tests__/index.test.js', shell=True)
 

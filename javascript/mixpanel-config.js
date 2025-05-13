@@ -2,23 +2,23 @@ import {
   defaultBatchSize,
   defaultFlushInterval,
   defaultServerURL,
-} from "./mixpanel-constants";
+} from "./oursprivacy-constants";
 
-import {MixpanelLogger} from "./mixpanel-logger";
+import {OursPrivacyLogger} from "./oursprivacy-logger";
 
-export class MixpanelConfig {
+export class OursPrivacyConfig {
   static instance;
 
   static getInstance() {
-    if (!MixpanelConfig.instance) {
-      MixpanelConfig.instance = new MixpanelConfig();
+    if (!OursPrivacyConfig.instance) {
+      OursPrivacyConfig.instance = new OursPrivacyConfig();
     }
-    return MixpanelConfig.instance;
+    return OursPrivacyConfig.instance;
   }
 
   constructor() {
-    if (MixpanelConfig.instance) {
-      throw new Error(`Use MixpanelConfig.getInstance()`);
+    if (OursPrivacyConfig.instance) {
+      throw new Error(`Use OursPrivacyConfig.getInstance()`);
     }
     this._config = {};
   }
@@ -29,9 +29,9 @@ export class MixpanelConfig {
       loggingEnabled,
     };
     if (loggingEnabled) {
-      console.info(`Mixpanel Logging Enabled`);
+      console.info(`OursPrivacy Logging Enabled`);
     } else {
-      console.info(`Mixpanel Logging Disabled`);
+      console.info(`OursPrivacy Logging Disabled`);
     }
   }
 
@@ -44,7 +44,7 @@ export class MixpanelConfig {
       ...this._config[token],
       serverURL,
     };
-    MixpanelLogger.log(token, `Set serverURL: ${serverURL}`);
+    OursPrivacyLogger.log(token, `Set serverURL: ${serverURL}`);
   }
 
   getServerURL(token) {
@@ -58,7 +58,7 @@ export class MixpanelConfig {
       ...this._config[token],
       useIpAddressForGeolocation,
     };
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Set useIpAddressForGeolocation: ${useIpAddressForGeolocation}`
     );
@@ -76,7 +76,7 @@ export class MixpanelConfig {
       ...this._config[token],
       batchSize,
     };
-    MixpanelLogger.log(token, `Set flush batch size: ${batchSize}`);
+    OursPrivacyLogger.log(token, `Set flush batch size: ${batchSize}`);
   }
 
   getFlushBatchSize(token) {
@@ -90,7 +90,7 @@ export class MixpanelConfig {
       ...this._config[token],
       flushInterval,
     };
-    MixpanelLogger.log(token, `Set flush interval: ${flushInterval}`);
+    OursPrivacyLogger.log(token, `Set flush interval: ${flushInterval}`);
   }
 
   getFlushInterval(token) {

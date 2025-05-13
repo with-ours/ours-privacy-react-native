@@ -35,12 +35,12 @@ android_library(
 
 android_build_config(
     name = "build_config",
-    package = "com.contextapimixpanel",
+    package = "com.contextapioursprivacy",
 )
 
 android_resource(
     name = "res",
-    package = "com.contextapimixpanel",
+    package = "com.contextapioursprivacy",
     res = "src/main/res",
 )
 

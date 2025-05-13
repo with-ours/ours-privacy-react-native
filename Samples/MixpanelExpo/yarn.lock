@@ -5015,9 +5015,9 @@ minizlib@^2.1.1:
     minipass "^3.0.0"
     yallist "^4.0.0"
 
-"mixpanel-react-native@github:mixpanel/mixpanel-react-native#master":
+"oursprivacy-react-native@github:oursprivacy/oursprivacy-react-native#master":
   version "3.0.3"
-  resolved "https://codeload.github.com/mixpanel/mixpanel-react-native/tar.gz/f59bc674ea085f333ba374927280f427d89e7a1c"
+  resolved "https://codeload.github.com/oursprivacy/oursprivacy-react-native/tar.gz/f59bc674ea085f333ba374927280f427d89e7a1c"
   dependencies:
     "@react-native-async-storage/async-storage" "^1.21.0"
     uuid "3.3.2"

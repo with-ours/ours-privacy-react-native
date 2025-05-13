@@ -1,6 +1,6 @@
 import * as ReactNative from "react-native";
 
-jest.mock("mixpanel-react-native/javascript/mixpanel-storage", () => {
+jest.mock("oursprivacy-react-native/javascript/oursprivacy-storage", () => {
   return {
     AsyncStorageAdapter: jest.fn().mockImplementation(() => ({
       getItem: jest.fn().mockResolvedValue(null),
@@ -35,7 +35,7 @@ jest.doMock("react-native", () => {
       // Mock a native module
       NativeModules: {
         ...ReactNative.NativeModules,
-        MixpanelReactNative: {
+        OursPrivacyReactNative: {
           initialize: jest.fn(),
           setServerURL: jest.fn(),
           setLoggingEnabled: jest.fn(),

@@ -1,7 +1,7 @@
-import { MixpanelType } from "mixpanel-react-native/javascript/mixpanel-constants";
+import { OursPrivacyType } from "oursprivacy-react-native/javascript/oursprivacy-constants";
 
-jest.mock("mixpanel-react-native/javascript/mixpanel-persistent", () => ({
-  MixpanelPersistent: {
+jest.mock("oursprivacy-react-native/javascript/oursprivacy-persistent", () => ({
+  OursPrivacyPersistent: {
     getInstance: jest.fn().mockReturnValue({
       loadQueue: jest.fn().mockResolvedValue([]),
       saveQueue: jest.fn(),
@@ -9,35 +9,35 @@ jest.mock("mixpanel-react-native/javascript/mixpanel-persistent", () => ({
   },
 }));
 
-describe("MixpanelQueueManager", () => {
-  let MixpanelQueueManager;
-  let mixpanelPersistent;
+describe("OursPrivacyQueueManager", () => {
+  let OursPrivacyQueueManager;
+  let oursprivacyPersistent;
   let token = "testToken";
-  let type = MixpanelType.EVENTS;
+  let type = OursPrivacyType.EVENTS;
 
   beforeEach(() => {
     jest.isolateModules(async () => {
-      MixpanelQueueManager = require("mixpanel-react-native/javascript/mixpanel-queue")
-        .MixpanelQueueManager;
-      const MixpanelPersistent = require("mixpanel-react-native/javascript/mixpanel-persistent")
-        .MixpanelPersistent;
-      mixpanelPersistent = MixpanelPersistent.getInstance();
-      await MixpanelQueueManager.clearQueue(token, type);
+      OursPrivacyQueueManager = require("oursprivacy-react-native/javascript/oursprivacy-queue")
+        .OursPrivacyQueueManager;
+      const OursPrivacyPersistent = require("oursprivacy-react-native/javascript/oursprivacy-persistent")
+        .OursPrivacyPersistent;
+      oursprivacyPersistent = OursPrivacyPersistent.getInstance();
+      await OursPrivacyQueueManager.clearQueue(token, type);
     });
   });
 
   it("initializes the queue correctly", async () => {
-    await MixpanelQueueManager.initialize(token, type);
-    expect(MixpanelQueueManager.getQueue(token, type)).toEqual([]);
+    await OursPrivacyQueueManager.initialize(token, type);
+    expect(OursPrivacyQueueManager.getQueue(token, type)).toEqual([]);
   });
 
   it("enqueue adds data to the queue and updates storage", async () => {
     const data = { test: "data" };
 
-    await MixpanelQueueManager.initialize(token, type);
-    await MixpanelQueueManager.enqueue(token, type, data);
+    await OursPrivacyQueueManager.initialize(token, type);
+    await OursPrivacyQueueManager.enqueue(token, type, data);
 
-    expect(mixpanelPersistent.saveQueue).toHaveBeenCalledWith(
+    expect(oursprivacyPersistent.saveQueue).toHaveBeenCalledWith(
       token,
       type,
       expect.any(Array)
@@ -45,21 +45,21 @@ describe("MixpanelQueueManager", () => {
   });
 
   it("splices the queue correctly", async () => {
-    await MixpanelQueueManager.enqueue(token, type, { data: "sample1" });
-    await MixpanelQueueManager.enqueue(token, type, { data: "sample2" });
+    await OursPrivacyQueueManager.enqueue(token, type, { data: "sample1" });
+    await OursPrivacyQueueManager.enqueue(token, type, { data: "sample2" });
 
-    await MixpanelQueueManager.spliceQueue(token, type, 0, 1);
+    await OursPrivacyQueueManager.spliceQueue(token, type, 0, 1);
 
-    const queue = MixpanelQueueManager.getQueue(token, type);
+    const queue = OursPrivacyQueueManager.getQueue(token, type);
     expect(queue.length).toBe(1);
     expect(queue).toEqual([{ data: "sample2" }]);
   });
 
   it("clears the queue correctly", async () => {
-    await MixpanelQueueManager.enqueue(token, type, { data: "sample" });
-    await MixpanelQueueManager.clearQueue(token, type);
+    await OursPrivacyQueueManager.enqueue(token, type, { data: "sample" });
+    await OursPrivacyQueueManager.clearQueue(token, type);
 
-    const queue = MixpanelQueueManager.getQueue(token, type);
+    const queue = OursPrivacyQueueManager.getQueue(token, type);
     expect(queue).toEqual([]);
   });
 });

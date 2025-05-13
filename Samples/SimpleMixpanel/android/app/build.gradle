@@ -74,9 +74,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.simplemixpanel"
+    namespace "com.simpleoursprivacy"
     defaultConfig {
-        applicationId "com.simplemixpanel"
+        applicationId "com.simpleoursprivacy"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

@@ -1,23 +1,23 @@
 import React from 'react';
 import {Text, TouchableOpacity, StyleSheet, View, ScrollView} from 'react-native';
-import {MixpanelInstance} from '../Analytics';
+import {OursPrivacyInstance} from '../Analytics';
 
 export default class GDPRScreen extends React.Component {
 
     constructor(props) {
         super(props);
-        this.mixpanel = MixpanelInstance;
+        this.oursprivacy = OursPrivacyInstance;
     }
 
     /**
       Identify the user uniquely by providing the user distinctId.
      */
     optIn = () => {
-        this.mixpanel.optInTracking(this.mixpanel.getDistinctId());
+        this.oursprivacy.optInTracking(this.oursprivacy.getDistinctId());
     }
 
     optOut = () => {
-        this.mixpanel.optOutTracking();
+        this.oursprivacy.optOutTracking();
     }
 
     render() {

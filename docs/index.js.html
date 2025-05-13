@@ -19,19 +19,19 @@
 
     <h1 class="page-title">Source: index.js</h1>
 
-    
 
 
 
-    
+
+
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>"use strict";
 
 import {Platform, NativeModules} from "react-native";
 import packageJson from "./package.json";
-const {MixpanelReactNative} = NativeModules;
-import MixpanelMain from "mixpanel-react-native/javascript/mixpanel-main"
+const {OursPrivacyReactNative} = NativeModules;
+import OursPrivacyMain from "oursprivacy-react-native/javascript/oursprivacy-main"
 
 const DevicePlatform = {
   Unknown: "Unknown",
@@ -62,9 +62,9 @@ const PARAMS = {
 const DEFAULT_OPT_OUT = false;
 
 /**
- * The primary class for integrating Mixpanel with your app.
+ * The primary class for integrating OursPrivacy with your app.
  */
-export class Mixpanel {
+export class OursPrivacy {
   constructor(token, trackAutomaticEvents, useNative = true, storage) {
     if (!StringHelper.isValid(token)) {
       StringHelper.raiseError(PARAMS.TOKEN);
@@ -75,32 +75,32 @@ export class Mixpanel {
     this.token = token;
     this.trackAutomaticEvents = trackAutomaticEvents;
 
-    if (useNative &amp;&amp; MixpanelReactNative) {
-      this.mixpanelImpl = MixpanelReactNative;
+    if (useNative &amp;&amp; OursPrivacyReactNative) {
+      this.oursprivacyImpl = OursPrivacyReactNative;
       return;
     } else if (useNative) {
       console.warn(
-        "MixpanelReactNative is not available; using JavaScript mode. If you prefer not to use the JavaScript mode, please follow the guide in the GitHub repository: https://github.com/mixpanel/mixpanel-react-native."
+        "OursPrivacyReactNative is not available; using JavaScript mode. If you prefer not to use the JavaScript mode, please follow the guide in the GitHub repository: https://github.com/oursprivacy/oursprivacy-react-native."
       );
     }
 
-    this.mixpanelImpl = new MixpanelMain(token, trackAutomaticEvents, storage);
+    this.oursprivacyImpl = new OursPrivacyMain(token, trackAutomaticEvents, storage);
   }
 
   /**
-   * Initializes Mixpanel
+   * Initializes OursPrivacy
    *
-   * @param {boolean} optOutTrackingDefault Optional Whether or not Mixpanel can start tracking by default. See optOutTracking()
+   * @param {boolean} optOutTrackingDefault Optional Whether or not OursPrivacy can start tracking by default. See optOutTracking()
    * @param {object} superProperties  Optional A Map containing the key value pairs of the super properties to register
-   * @param {string} serverURL Optional Set the base URL used for Mixpanel API requests. See setServerURL()
+   * @param {string} serverURL Optional Set the base URL used for OursPrivacy API requests. See setServerURL()
    *
    */
   async init(
     optOutTrackingDefault = DEFAULT_OPT_OUT,
     superProperties = {},
-    serverURL = "https://api.mixpanel.com"
+    serverURL = "https://api.oursprivacy.com"
   ) {
-    await this.mixpanelImpl.initialize(
+    await this.oursprivacyImpl.initialize(
       this.token,
       this.trackAutomaticEvents,
       optOutTrackingDefault,
@@ -110,19 +110,19 @@ export class Mixpanel {
   }
 
   /**
-   * @deprecated since version 1.3.0. To initialize Mixpanel, please use the instance method `init` instead. See the example below:
+   * @deprecated since version 1.3.0. To initialize OursPrivacy, please use the instance method `init` instead. See the example below:
    *
    * &lt;pre>&lt;code>
    * const trackAutomaticEvents = true;
-   * const mixpanel = new Mixpanel('your project token', trackAutomaticEvents);
-   * mixpanel.init();
+   * const oursprivacy = new OursPrivacy('your project token', trackAutomaticEvents);
+   * oursprivacy.init();
    * &lt;/code>&lt;/pre>
    *
-   * Initializes Mixpanel and return an instance of Mixpanel the given project token.
+   * Initializes OursPrivacy and return an instance of OursPrivacy the given project token.
    *
    * @param {string} token your project token.
    * @param {boolean} trackAutomaticEvents Whether or not to automatically track common mobile events
-   * @param {boolean} Optional Whether or not Mixpanel can start tracking by default. See optOutTracking()
+   * @param {boolean} Optional Whether or not OursPrivacy can start tracking by default. See optOutTracking()
    *
    */
   static async init(
@@ -130,30 +130,30 @@ export class Mixpanel {
     trackAutomaticEvents,
     optOutTrackingDefault = DEFAULT_OPT_OUT
   ) {
-    await MixpanelReactNative.initialize(
+    await OursPrivacyReactNative.initialize(
       token,
       trackAutomaticEvents,
       optOutTrackingDefault,
       Helper.getMetaData(),
-      "https://api.mixpanel.com"
+      "https://api.oursprivacy.com"
     );
-    return new Mixpanel(token, trackAutomaticEvents);
+    return new OursPrivacy(token, trackAutomaticEvents);
   }
 
   /**
-   * Set the base URL used for Mixpanel API requests.
-   * Useful if you need to proxy Mixpanel requests. Defaults to https://api.mixpanel.com.
-   * To route data to Mixpanel's EU servers, set to https://api-eu.mixpanel.com
+   * Set the base URL used for OursPrivacy API requests.
+   * Useful if you need to proxy OursPrivacy requests. Defaults to https://api.oursprivacy.com.
+   * To route data to OursPrivacy's EU servers, set to https://api-eu.oursprivacy.com
    *
-   * @param {string} serverURL the base URL used for Mixpanel API requests
+   * @param {string} serverURL the base URL used for OursPrivacy API requests
    *
    */
   setServerURL(serverURL) {
-    this.mixpanelImpl.setServerURL(this.token, serverURL);
+    this.oursprivacyImpl.setServerURL(this.token, serverURL);
   }
 
   /**
-   * This allows enabling or disabling of all Mixpanel logs at run time.
+   * This allows enabling or disabling of all OursPrivacy logs at run time.
    * All logging is disabled by default. Usually, this is only required if
    * you are running into issues with the SDK that you want to debug
    *
@@ -161,11 +161,11 @@ export class Mixpanel {
    *
    */
   setLoggingEnabled(loggingEnabled) {
-    this.mixpanelImpl.setLoggingEnabled(this.token, loggingEnabled);
+    this.oursprivacyImpl.setLoggingEnabled(this.token, loggingEnabled);
   }
 
   /**
-   * This allows enabling or disabling whether or not Mixpanel flushes events
+   * This allows enabling or disabling whether or not OursPrivacy flushes events
    * when the app enters the background on iOS. This is set to true by default.
    *
    * @param {boolean} flushOnBackground whether to enable logging
@@ -173,10 +173,10 @@ export class Mixpanel {
    */
   setFlushOnBackground(flushOnBackground) {
     if (Platform.OS === "ios") {
-      MixpanelReactNative.setFlushOnBackground(this.token, flushOnBackground);
+      OursPrivacyReactNative.setFlushOnBackground(this.token, flushOnBackground);
     } else {
       console.warn(
-        "Mixpanel setFlushOnBackground was called and ignored because this method only works on iOS."
+        "OursPrivacy setFlushOnBackground was called and ignored because this method only works on iOS."
       );
     }
   }
@@ -184,21 +184,21 @@ export class Mixpanel {
   /**
    * This controls whether to automatically send the client IP Address as part of event tracking.
    * With an IP address, geo-location is possible down to neighborhoods within a city,
-   * although the Mixpanel Dashboard will just show you city level location specificity.
+   * although the OursPrivacy Dashboard will just show you city level location specificity.
    *
    * @param {boolean} useIpAddressForGeolocation whether to automatically send the client IP Address.
    * Defaults to true.
    *
    */
   setUseIpAddressForGeolocation(useIpAddressForGeolocation) {
-    this.mixpanelImpl.setUseIpAddressForGeolocation(
+    this.oursprivacyImpl.setUseIpAddressForGeolocation(
       this.token,
       useIpAddressForGeolocation
     );
   }
 
   /**
-   * Set the number of events sent in a single network request to the Mixpanel server.
+   * Set the number of events sent in a single network request to the OursPrivacy server.
    * By configuring this value, you can optimize network usage and manage the frequency of communication between the client and the server. The maximum size is 50; any value over 50 will default to 50.
    *
    * @param {integer} flushBatchSize whether to automatically send the client IP Address.
@@ -206,7 +206,7 @@ export class Mixpanel {
    *
    */
   setFlushBatchSize(flushBatchSize) {
-    this.mixpanelImpl.setFlushBatchSize(this.token, flushBatchSize);
+    this.oursprivacyImpl.setFlushBatchSize(this.token, flushBatchSize);
   }
 
   /**
@@ -215,28 +215,28 @@ export class Mixpanel {
    * @return {Promise&lt;boolean>} true if user has opted out from tracking. Defaults to false.
    */
   hasOptedOutTracking() {
-    return this.mixpanelImpl.hasOptedOutTracking(this.token);
+    return this.oursprivacyImpl.hasOptedOutTracking(this.token);
   }
 
   /**
    * Use this method to opt-in an already opted-out user from tracking. People updates and track
-   * calls will be sent to Mixpanel after using this method.
+   * calls will be sent to OursPrivacy after using this method.
    * This method will internally track an opt-in event to your project.
    *
    */
   optInTracking() {
-    this.mixpanelImpl.optInTracking(this.token);
+    this.oursprivacyImpl.optInTracking(this.token);
   }
 
   /**
    * Use this method to opt-out a user from tracking. Events and people updates that haven't been
    * flushed yet will be deleted. Use flush() before calling this method if you want
-   * to send all the queues to Mixpanel before.
+   * to send all the queues to OursPrivacy before.
    *
    * This method will also remove any user-related information from the device.
    */
   optOutTracking() {
-    this.mixpanelImpl.optOutTracking(this.token);
+    this.oursprivacyImpl.optOutTracking(this.token);
   }
 
   /**
@@ -245,14 +245,14 @@ export class Mixpanel {
    *
    * &lt;p>Calls to track() made before corresponding calls to identify
    * will use an anonymous locally generated distinct id, which means it is best to call identify
-   * early to ensure that your Mixpanel funnels and retention analytics can continue to track the
+   * early to ensure that your OursPrivacy funnels and retention analytics can continue to track the
    * user throughout their lifetime. We recommend calling identify when the user authenticates.
    *
    * &lt;p>Once identify is called, the local distinct id persists across restarts of
    * your application.
    *
    * @param {string} distinctId a string uniquely identifying this user. Events sent to
-   *     Mixpanel using the same disinct_id will be considered associated with the
+   *     OursPrivacy using the same disinct_id will be considered associated with the
    *     same visitor/customer for retention and funnel reporting, so be sure that the given
    *     value is globally unique for each individual user you intend to track.
    * @returns {Promise} A promise that resolves when the identify is successful.
@@ -265,7 +265,7 @@ export class Mixpanel {
         StringHelper.raiseError(PARAMS.DISTINCT_ID);
         reject(new Error("Invalid distinctId"));
       }
-      this.mixpanelImpl
+      this.oursprivacyImpl
         .identify(this.token, distinctId)
         .then(() => {
           resolve();
@@ -277,7 +277,7 @@ export class Mixpanel {
   }
 
   /**
-   * @deprecated The alias method creates an alias which Mixpanel will use to remap one id to another.
+   * @deprecated The alias method creates an alias which OursPrivacy will use to remap one id to another.
    * Multiple aliases can point to the same identifier.
    *
    *  `mixpane.alias("New ID", mixpane.distinctId)`
@@ -296,14 +296,14 @@ export class Mixpanel {
     if (!StringHelper.isValid(distinctId)) {
       StringHelper.raiseError(PARAMS.DISTINCT_ID);
     }
-    this.mixpanelImpl.alias(this.token, alias, distinctId);
+    this.oursprivacyImpl.alias(this.token, alias, distinctId);
   }
 
   /**
    * Track an event.
    *
-   * &lt;p>Every call to track eventually results in a data point sent to Mixpanel. These data points
-   * are what are measured, counted, and broken down to create your Mixpanel reports. Events
+   * &lt;p>Every call to track eventually results in a data point sent to OursPrivacy. These data points
+   * are what are measured, counted, and broken down to create your OursPrivacy reports. Events
    * have a string name, and an optional set of name/value pairs that describe the properties of
    * that event.
    *
@@ -318,24 +318,24 @@ export class Mixpanel {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.mixpanelImpl.track(this.token, eventName, {
+    this.oursprivacyImpl.track(this.token, eventName, {
       ...Helper.getMetaData(),
       ...properties,
     });
   }
 
   /**
-   * Returns a Mixpanel People object that can be used to set and increment
+   * Returns a OursPrivacy People object that can be used to set and increment
    * People Analytics properties.
    *
    * @return {People} an instance of People that you can use to update
-   *     records in Mixpanel People Analytics
+   *     records in OursPrivacy People Analytics
    */
   getPeople() {
     if (this.people) {
       return this.people;
     } else {
-      this.people = new People(this.token, this.mixpanelImpl);
+      this.people = new People(this.token, this.oursprivacyImpl);
       return this.people;
     }
   }
@@ -343,8 +343,8 @@ export class Mixpanel {
   /**
    * Track an event with specific groups.
    *
-   * &lt;p>Every call to track eventually results in a data point sent to Mixpanel. These data points
-   * are what are measured, counted, and broken down to create your Mixpanel reports. Events
+   * &lt;p>Every call to track eventually results in a data point sent to OursPrivacy. These data points
+   * are what are measured, counted, and broken down to create your OursPrivacy reports. Events
    * have a string name, and an optional set of name/value pairs that describe the properties of
    * that event. Group key/value pairs are upserted into the property map before tracking.
    *
@@ -361,7 +361,7 @@ export class Mixpanel {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.mixpanelImpl.trackWithGroups(
+    this.oursprivacyImpl.trackWithGroups(
       this.token,
       eventName,
       {
@@ -382,27 +382,27 @@ export class Mixpanel {
     if (!StringHelper.isValid(groupKey)) {
       StringHelper.raiseError(PARAMS.GROUP_KEY);
     }
-    this.mixpanelImpl.setGroup(this.token, groupKey, groupID);
+    this.oursprivacyImpl.setGroup(this.token, groupKey, groupID);
   }
 
   /**
-   * Returns a MixpanelGroup object that can be used to set and increment
+   * Returns a OursPrivacyGroup object that can be used to set and increment
    * Group Analytics properties.
    *
    * @param {string} groupKey String identifying the type of group (must be already in use as a group key)
    * @param {object} groupID Object identifying the specific group
-   * @return an instance of MixpanelGroup that you can use to update
-   *     records in Mixpanel Group Analytics
+   * @return an instance of OursPrivacyGroup that you can use to update
+   *     records in OursPrivacy Group Analytics
    */
   getGroup(groupKey, groupID) {
     if (this.group) {
       return this.group;
     } else {
-      this.group = new MixpanelGroup(
+      this.group = new OursPrivacyGroup(
         this.token,
         groupKey,
         groupID,
-        this.mixpanelImpl
+        this.oursprivacyImpl
       );
       return this.group;
     }
@@ -418,7 +418,7 @@ export class Mixpanel {
     if (!StringHelper.isValid(groupKey)) {
       StringHelper.raiseError(PARAMS.GROUP_KEY);
     }
-    this.mixpanelImpl.addGroup(this.token, groupKey, groupID);
+    this.oursprivacyImpl.addGroup(this.token, groupKey, groupID);
   }
 
   /**
@@ -431,7 +431,7 @@ export class Mixpanel {
     if (!StringHelper.isValid(groupKey)) {
       StringHelper.raiseError(PARAMS.GROUP_KEY);
     }
-    this.mixpanelImpl.removeGroup(this.token, groupKey, groupID);
+    this.oursprivacyImpl.removeGroup(this.token, groupKey, groupID);
   }
 
   /**
@@ -446,13 +446,13 @@ export class Mixpanel {
     if (!StringHelper.isValid(groupKey)) {
       StringHelper.raiseError(PARAMS.GROUP_KEY);
     }
-    this.mixpanelImpl.deleteGroup(this.token, groupKey, groupID);
+    this.oursprivacyImpl.deleteGroup(this.token, groupKey, groupID);
   }
 
   /**
    * Register properties that will be sent with every subsequent call to track().
    *
-   * &lt;p>SuperProperties are a collection of properties that will be sent with every event to Mixpanel,
+   * &lt;p>SuperProperties are a collection of properties that will be sent with every event to OursPrivacy,
    * and persist beyond the lifetime of your application.
    *
    * &lt;p>Setting a superProperty with registerSuperProperties will store a new superProperty,
@@ -468,7 +468,7 @@ export class Mixpanel {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.mixpanelImpl.registerSuperProperties(this.token, properties || {});
+    this.oursprivacyImpl.registerSuperProperties(this.token, properties || {});
   }
 
   /**
@@ -483,7 +483,7 @@ export class Mixpanel {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.mixpanelImpl.registerSuperPropertiesOnce(this.token, properties || {});
+    this.oursprivacyImpl.registerSuperPropertiesOnce(this.token, properties || {});
   }
 
   /**
@@ -499,31 +499,31 @@ export class Mixpanel {
     if (!StringHelper.isValid(propertyName)) {
       StringHelper.raiseError(PARAMS.PROPERTY_NAME);
     }
-    this.mixpanelImpl.unregisterSuperProperty(this.token, propertyName);
+    this.oursprivacyImpl.unregisterSuperProperty(this.token, propertyName);
   }
 
   /**
    * Returns a json object of the user's current super properties
    *
-   *&lt;p>SuperProperties are a collection of properties that will be sent with every event to Mixpanel,
+   *&lt;p>SuperProperties are a collection of properties that will be sent with every event to OursPrivacy,
    * and persist beyond the lifetime of your application.
    *
-   * @return {Promise&lt;object>} Super properties for this Mixpanel instance.
+   * @return {Promise&lt;object>} Super properties for this OursPrivacy instance.
    */
   getSuperProperties() {
-    return this.mixpanelImpl.getSuperProperties(this.token);
+    return this.oursprivacyImpl.getSuperProperties(this.token);
   }
 
   /**
    * Erase all currently registered superProperties.
    *
-   * &lt;p>Future tracking calls to Mixpanel will not contain the specific
+   * &lt;p>Future tracking calls to OursPrivacy will not contain the specific
    * superProperties registered before the clearSuperProperties method was called.
    *
    * &lt;p>To remove a single superProperty, use unregisterSuperProperty()
    */
   clearSuperProperties() {
-    this.mixpanelImpl.clearSuperProperties(this.token);
+    this.oursprivacyImpl.clearSuperProperties(this.token);
   }
 
   /**
@@ -537,7 +537,7 @@ export class Mixpanel {
     if (!StringHelper.isValid(eventName)) {
       StringHelper.raiseError(PARAMS.EVENT_NAME);
     }
-    this.mixpanelImpl.timeEvent(this.token, eventName);
+    this.oursprivacyImpl.timeEvent(this.token, eventName);
   }
 
   /**
@@ -551,7 +551,7 @@ export class Mixpanel {
     if (!StringHelper.isValid(eventName)) {
       StringHelper.raiseError(PARAMS.EVENT_NAME);
     }
-    return this.mixpanelImpl.eventElapsedTime(this.token, eventName);
+    return this.oursprivacyImpl.eventElapsedTime(this.token, eventName);
   }
 
   /**
@@ -559,7 +559,7 @@ export class Mixpanel {
       Useful for clearing data when a user logs out.
      */
   reset() {
-    this.mixpanelImpl.reset(this.token);
+    this.oursprivacyImpl.reset(this.token);
   }
 
   /**
@@ -569,15 +569,15 @@ export class Mixpanel {
    * example of usage:
    * &lt;pre>
    * &lt;code>
-   * const distinctId = await mixpanel.getDistinctId();
+   * const distinctId = await oursprivacy.getDistinctId();
    * &lt;/code>
    * &lt;/pre>
    *
-   * @return {Promise&lt;string>} A Promise to the distinct id associated with Mixpanel event and People Analytics
+   * @return {Promise&lt;string>} A Promise to the distinct id associated with OursPrivacy event and People Analytics
    *
    */
   getDistinctId() {
-    return this.mixpanelImpl.getDistinctId(this.token);
+    return this.oursprivacyImpl.getDistinctId(this.token);
   }
 
   /**
@@ -587,7 +587,7 @@ export class Mixpanel {
    * example of usage:
    * &lt;pre>
    * &lt;code>
-   * const deviceId = await mixpanel.getDeviceId();
+   * const deviceId = await oursprivacy.getDeviceId();
    * &lt;/code>
    * &lt;/pre>
    *
@@ -595,28 +595,28 @@ export class Mixpanel {
    *
    */
   getDeviceId() {
-    return this.mixpanelImpl.getDeviceId(this.token);
+    return this.oursprivacyImpl.getDeviceId(this.token);
   }
 
   /**
-   * Push all queued Mixpanel events and People Analytics changes to Mixpanel servers.
+   * Push all queued OursPrivacy events and People Analytics changes to OursPrivacy servers.
    *
    * &lt;p>Events and People messages are pushed gradually throughout
    * the lifetime of your application. This means that to ensure that all messages
-   * are sent to Mixpanel when your application is shut down, you will
-   * need to call flush() to let the Mixpanel library know it should
+   * are sent to OursPrivacy when your application is shut down, you will
+   * need to call flush() to let the OursPrivacy library know it should
    * send all remaining messages to the server.
    */
   flush() {
-    this.mixpanelImpl.flush(this.token);
+    this.oursprivacyImpl.flush(this.token);
   }
 }
 
 /**
- * Core class for using Mixpanel People Analytics features.
+ * Core class for using OursPrivacy People Analytics features.
  *
  * &lt;p>The People object is used to update properties in a user's People Analytics record,
- * and to manage the receipt of push notifications sent via Mixpanel Engage.
+ * and to manage the receipt of push notifications sent via OursPrivacy Engage.
  * For this reason, it's important to call identify(String) on the People
  * object before you work with it. Once you call identify, the user identity will
  * persist across stops and starts of your application, until you make another
@@ -624,21 +624,21 @@ export class Mixpanel {
  *
  */
 export class People {
-  constructor(token, mixpanelImpl) {
+  constructor(token, oursprivacyImpl) {
     if (!StringHelper.isValid(token)) {
       StringHelper.raiseError(PARAMS.TOKEN);
     }
     this.token = token;
-    this.mixpanelImpl = mixpanelImpl;
+    this.oursprivacyImpl = oursprivacyImpl;
   }
 
   /**
    * Sets a single property with the given name and value for this user.
-   * The given name and value will be assigned to the user in Mixpanel People Analytics,
+   * The given name and value will be assigned to the user in OursPrivacy People Analytics,
    * possibly overwriting an existing property with the same name.
    *
-   * @param {string} prop The name of the Mixpanel property. This must be a String, for example "Zip Code"
-   * @param {object} to The value of the Mixpanel property. For "Zip Code", this value might be the String "90210"
+   * @param {string} prop The name of the OursPrivacy property. This must be a String, for example "Zip Code"
+   * @param {object} to The value of the OursPrivacy property. For "Zip Code", this value might be the String "90210"
    */
   set(prop, to) {
     let properties = {};
@@ -650,14 +650,14 @@ export class People {
       }
       properties[prop] = to;
     }
-    this.mixpanelImpl.set(this.token, properties);
+    this.oursprivacyImpl.set(this.token, properties);
   }
 
   /**
    * Works just like set(), except it will not overwrite existing property values. This is useful for properties like "First login date".
    *
-   * @param {string} prop The name of the Mixpanel property. This must be a String, for example "Zip Code"
-   * @param {object} to The value of the Mixpanel property. For "Zip Code", this value might be the String "90210"
+   * @param {string} prop The name of the OursPrivacy property. This must be a String, for example "Zip Code"
+   * @param {object} to The value of the OursPrivacy property. For "Zip Code", this value might be the String "90210"
    */
   setOnce(prop, to) {
     let properties = {};
@@ -670,7 +670,7 @@ export class People {
       }
       properties[prop] = to;
     }
-    this.mixpanelImpl.setOnce(this.token, properties);
+    this.oursprivacyImpl.setOnce(this.token, properties);
   }
 
   /**
@@ -708,7 +708,7 @@ export class People {
 
       add[prop] = by;
     }
-    this.mixpanelImpl.increment(this.token, add);
+    this.oursprivacyImpl.increment(this.token, add);
   }
 
   /**
@@ -727,9 +727,9 @@ export class People {
     }
 
     if (DevicePlatform.iOS === Helper.getDevicePlatform()) {
-      this.mixpanelImpl.append(this.token, appendProp);
+      this.oursprivacyImpl.append(this.token, appendProp);
     } else {
-      this.mixpanelImpl.append(this.token, name, value);
+      this.oursprivacyImpl.append(this.token, name, value);
     }
   }
 
@@ -749,10 +749,10 @@ export class People {
     value = Array.isArray(value) ? value : [value];
 
     if (DevicePlatform.iOS === Helper.getDevicePlatform()) {
-      this.mixpanelImpl.union(this.token, {[name]: value});
-      this.mixpanelImpl.union(this.token, {[name]: value});
+      this.oursprivacyImpl.union(this.token, {[name]: value});
+      this.oursprivacyImpl.union(this.token, {[name]: value});
     } else {
-      this.mixpanelImpl.union(this.token, name, value);
+      this.oursprivacyImpl.union(this.token, name, value);
     }
   }
 
@@ -772,9 +772,9 @@ export class People {
     }
 
     if (DevicePlatform.iOS === Helper.getDevicePlatform()) {
-      this.mixpanelImpl.remove(this.token, removeProp);
+      this.oursprivacyImpl.remove(this.token, removeProp);
     } else {
-      this.mixpanelImpl.remove(this.token, name, value);
+      this.oursprivacyImpl.remove(this.token, name, value);
     }
   }
 
@@ -786,7 +786,7 @@ export class People {
     if (!StringHelper.isValid(name)) {
       StringHelper.raiseError(PARAMS.PROPERTY_NAME);
     }
-    this.mixpanelImpl.unset(this.token, name);
+    this.oursprivacyImpl.unset(this.token, name);
   }
 
   /**
@@ -803,14 +803,14 @@ export class People {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.mixpanelImpl.trackCharge(this.token, charge, properties || {});
+    this.oursprivacyImpl.trackCharge(this.token, charge, properties || {});
   }
 
   /**
    * Permanently clear the whole transaction history for the identified people profile.
    */
   clearCharges() {
-    this.mixpanelImpl.clearCharges(this.token);
+    this.oursprivacyImpl.clearCharges(this.token);
   }
 
   /**
@@ -820,32 +820,32 @@ export class People {
    * to People Analytics using the same distinct id will create and store new values.
    */
   deleteUser() {
-    this.mixpanelImpl.deleteUser(this.token);
+    this.oursprivacyImpl.deleteUser(this.token);
   }
 }
 
 /**
- * Core class for using Mixpanel Group Analytics features.
+ * Core class for using OursPrivacy Group Analytics features.
  *
- * &lt;p>The MixpanelGroup object is used to update properties in a group's Group Analytics record.
+ * &lt;p>The OursPrivacyGroup object is used to update properties in a group's Group Analytics record.
  */
-export class MixpanelGroup {
-  constructor(token, groupKey, groupID, mixpanelImpl) {
+export class OursPrivacyGroup {
+  constructor(token, groupKey, groupID, oursprivacyImpl) {
     if (!StringHelper.isValid(token)) {
       StringHelper.raiseError(PARAMS.TOKEN);
     }
     this.token = token;
     this.groupKey = groupKey;
     this.groupID = groupID;
-    this.mixpanelImpl = mixpanelImpl;
+    this.oursprivacyImpl = oursprivacyImpl;
   }
 
   /**
    * Sets a single property with the given name and value for this group.
-   * The given name and value will be assigned to the user in Mixpanel Group Analytics,
+   * The given name and value will be assigned to the user in OursPrivacy Group Analytics,
    * possibly overwriting an existing property with the same name.
    *
-   * @param {string} prop The name of the Mixpanel property. This must be a String, for example "Zip Code"
+   * @param {string} prop The name of the OursPrivacy property. This must be a String, for example "Zip Code"
    * @param {string} to The value to set on the given property name. For "Zip Code", this value might be the String "90210"
    */
   set(prop, to) {
@@ -858,7 +858,7 @@ export class MixpanelGroup {
       }
       properties[prop] = to;
     }
-    this.mixpanelImpl.groupSetProperties(
+    this.oursprivacyImpl.groupSetProperties(
       this.token,
       this.groupKey,
       this.groupID,
@@ -869,7 +869,7 @@ export class MixpanelGroup {
   /**
    * Works just like groupSet() except it will not overwrite existing property values. This is useful for properties like "First login date".
    *
-   * @param {string} prop The name of the Mixpanel property. This must be a String, for example "Zip Code"
+   * @param {string} prop The name of the OursPrivacy property. This must be a String, for example "Zip Code"
    * @param {string} to The value to set on the given property name. For "Zip Code", this value might be the String "90210"
    */
   setOnce(prop, to) {
@@ -882,7 +882,7 @@ export class MixpanelGroup {
       }
       properties[prop] = to;
     }
-    this.mixpanelImpl.groupSetPropertyOnce(
+    this.oursprivacyImpl.groupSetPropertyOnce(
       this.token,
       this.groupKey,
       this.groupID,
@@ -899,7 +899,7 @@ export class MixpanelGroup {
     if (!StringHelper.isValid(prop)) {
       StringHelper.raiseError(PARAMS.PROPERTY_NAME);
     }
-    this.mixpanelImpl.groupUnsetProperty(
+    this.oursprivacyImpl.groupUnsetProperty(
       this.token,
       this.groupKey,
       this.groupID,
@@ -920,7 +920,7 @@ export class MixpanelGroup {
       StringHelper.raiseError(PARAMS.PROPERTY_NAME);
     }
 
-    this.mixpanelImpl.groupRemovePropertyValue(
+    this.oursprivacyImpl.groupRemovePropertyValue(
       this.token,
       this.groupKey,
       this.groupID,
@@ -942,7 +942,7 @@ export class MixpanelGroup {
       StringHelper.raiseError(PARAMS.PROPERTY_NAME);
     }
     value = Array.isArray(value) ? value : [value];
-    this.mixpanelImpl.groupUnionProperty(
+    this.oursprivacyImpl.groupUnionProperty(
       this.token,
       this.groupKey,
       this.groupID,
@@ -1032,7 +1032,7 @@ class ObjectHelper {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Mixpanel.html">Mixpanel</a></li><li><a href="MixpanelGroup.html">MixpanelGroup</a></li><li><a href="People.html">People</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="OursPrivacy.html">OursPrivacy</a></li><li><a href="OursPrivacyGroup.html">OursPrivacyGroup</a></li><li><a href="People.html">People</a></li></ul>
 </nav>
 
 <br class="clear">

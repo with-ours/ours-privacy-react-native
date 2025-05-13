@@ -1,13 +1,13 @@
-import {MixpanelLogger} from "mixpanel-react-native/javascript/mixpanel-logger";
+import {OursPrivacyLogger} from "oursprivacy-react-native/javascript/oursprivacy-logger";
 
-export class MixpanelHttpError extends Error {
+export class OursPrivacyHttpError extends Error {
   constructor(message, errorCode) {
     super(message);
     this.code = errorCode;
   }
 }
 
-export const MixpanelNetwork = (() => {
+export const OursPrivacyNetwork = (() => {
   const sendRequest = async ({
     token,
     endpoint,
@@ -18,7 +18,7 @@ export const MixpanelNetwork = (() => {
   }) => {
     retryCount = retryCount || 0;
     const url = `${serverURL}${endpoint}?ip=${+useIPAddressForGeoLocation}`;
-    MixpanelLogger.log(token, `Sending request to: ${url}`);
+    OursPrivacyLogger.log(token, `Sending request to: ${url}`);
 
     try {
       const response = await fetch(url, {
@@ -31,7 +31,7 @@ export const MixpanelNetwork = (() => {
 
       const responseBody = await response.json();
       if (response.status !== 200) {
-        throw new MixpanelHttpError(
+        throw new OursPrivacyHttpError(
           `HTTP error! status: ${response.status}`,
           response.status
         );
@@ -40,27 +40,27 @@ export const MixpanelNetwork = (() => {
       const message =
         responseBody === 0
           ? `${url} api rejected some items`
-          : `Mixpanel batch sent successfully, endpoint: ${endpoint}, data: ${JSON.stringify(
+          : `OursPrivacy batch sent successfully, endpoint: ${endpoint}, data: ${JSON.stringify(
               data
             )}`;
 
-      MixpanelLogger.log(token, message);
+      OursPrivacyLogger.log(token, message);
     } catch (error) {
       if (error.code === 400) {
         // This indicates that the data was invalid and we should not retry
-        throw new MixpanelHttpError(
+        throw new OursPrivacyHttpError(
           `HTTP error! status: ${error.code}`,
           error.code
         );
       }
-      MixpanelLogger.warn(
+      OursPrivacyLogger.warn(
         token,
         `API request to ${url} has failed with reason: ${error.message}`
       );
       const maxRetries = 5;
       const backoff = Math.min(2 ** retryCount * 2000, 60000); // Exponential backoff
       if (retryCount < maxRetries) {
-        MixpanelLogger.log(token, `Retrying in ${backoff / 1000} seconds...`);
+        OursPrivacyLogger.log(token, `Retrying in ${backoff / 1000} seconds...`);
         await new Promise((resolve) => setTimeout(resolve, backoff));
         return sendRequest({
           token,
@@ -71,8 +71,8 @@ export const MixpanelNetwork = (() => {
           retryCount: retryCount + 1,
         });
       } else {
-        MixpanelLogger.warn(token, `Max retries reached. Giving up.`);
-        throw new MixpanelHttpError(
+        OursPrivacyLogger.warn(token, `Max retries reached. Giving up.`);
+        throw new OursPrivacyHttpError(
           `HTTP error! status: ${error.code}`,
           error.code
         );

@@ -8,52 +8,52 @@ import {
   SafeAreaView,
 } from "react-native";
 
-import {Mixpanel} from "mixpanel-react-native";
+import {OursPrivacy} from "oursprivacy-react-native";
 
 const App = () => {
   const trackAutomaticEvents = false;
   const useNative = false;
-  const mixpanel = new Mixpanel(
+  const oursprivacy = new OursPrivacy(
     "YOUR_MIXPANEL_TOKEN",
     trackAutomaticEvents,
     useNative
   );
-  mixpanel.init();
-  mixpanel.setLoggingEnabled(true);
+  oursprivacy.init();
+  oursprivacy.setLoggingEnabled(true);
 
-  const group = mixpanel.getGroup("company_id", 111);
+  const group = oursprivacy.getGroup("company_id", 111);
   const track = async () => {
-    await mixpanel.track("Track Event!");
+    await oursprivacy.track("Track Event!");
   };
 
   const identify = async () => {
-    await mixpanel.identify("testDistinctId");
+    await oursprivacy.identify("testDistinctId");
   };
 
   const timeEvent = () => {
     const eventName = "Timed Event";
-    mixpanel.timeEvent(eventName);
+    oursprivacy.timeEvent(eventName);
     setTimeout(async () => {
-      await mixpanel.track(eventName);
+      await oursprivacy.track(eventName);
     }, 2000);
   };
 
   const createAlias = async () => {
-    const distinctId = await mixpanel.getDistinctId();
+    const distinctId = await oursprivacy.getDistinctId();
     alert(distinctId);
-    await mixpanel.alias("New Alias", distinctId);
+    await oursprivacy.alias("New Alias", distinctId);
   };
 
   const trackWProperties = async () => {
     const properties = {"Cool Property": "Property Value"};
-    await mixpanel.track("Track event with property", properties);
+    await oursprivacy.track("Track event with property", properties);
   };
 
   /**
       registerSuperProperties will store a new superProperty and possibly overwriting any existing superProperty with the same name.
     */
   const registerSuperProperties = () => {
-    mixpanel.registerSuperProperties({
+    oursprivacy.registerSuperProperties({
       "super property": "super property value",
       "super property1": "super property value1",
     });
@@ -62,45 +62,45 @@ const App = () => {
       Erase all currently registered superProperties.
     */
   const clearSuperProperties = () => {
-    mixpanel.clearSuperProperties();
+    oursprivacy.clearSuperProperties();
   };
 
   const unregisterSuperProperty = () => {
-    mixpanel.unregisterSuperProperty("super property");
+    oursprivacy.unregisterSuperProperty("super property");
   };
   /**
       Returns a json object of the user's current super properties.
     */
   const getSuperProperties = () => {
-    mixpanel.getSuperProperties().then((t) => {
+    oursprivacy.getSuperProperties().then((t) => {
       alert(JSON.stringify(t));
     });
   };
 
   const registerSuperPropertiesOnce = () => {
-    mixpanel.registerSuperPropertiesOnce({
+    oursprivacy.registerSuperPropertiesOnce({
       "super property": "super property value1",
     });
   };
 
   const flush = () => {
-    mixpanel.flush();
+    oursprivacy.flush();
   };
 
   const optIn = () => {
-    mixpanel.optInTracking(mixpanel.getDistinctId());
+    oursprivacy.optInTracking(oursprivacy.getDistinctId());
   };
 
   const optOut = () => {
-    mixpanel.optOutTracking();
+    oursprivacy.optOutTracking();
   };
 
   const reset = () => {
-    mixpanel.reset();
+    oursprivacy.reset();
   };
 
   const setProperty = () => {
-    mixpanel.getPeople().set({
+    oursprivacy.getPeople().set({
       a: 1,
       b: 2.3,
       c: ["4", 5],
@@ -108,64 +108,64 @@ const App = () => {
   };
 
   const setOneProperty = () => {
-    mixpanel.getPeople().set("d", "yo");
+    oursprivacy.getPeople().set("d", "yo");
   };
 
   const setOnePropertyOnce = () => {
-    mixpanel.getPeople().setOnce("c", "just once");
+    oursprivacy.getPeople().setOnce("c", "just once");
   };
 
   const unsetProperties = () => {
-    mixpanel.getPeople().unset("a");
+    oursprivacy.getPeople().unset("a");
   };
 
   const incrementProperty = () => {
-    mixpanel.getPeople().increment("a", 2.2);
+    oursprivacy.getPeople().increment("a", 2.2);
   };
 
   const removePropertyValue = () => {
-    mixpanel.getPeople().remove("c", 5);
+    oursprivacy.getPeople().remove("c", 5);
   };
 
   const appendProperties = () => {
-    mixpanel.getPeople().append("a", "Hello");
+    oursprivacy.getPeople().append("a", "Hello");
   };
 
   const unionProperties = () => {
-    mixpanel.getPeople().union("a", ["goodbye", "hi"]);
+    oursprivacy.getPeople().union("a", ["goodbye", "hi"]);
   };
 
   const trackChargeWithoutProperties = () => {
-    mixpanel.getPeople().trackCharge(22.8);
+    oursprivacy.getPeople().trackCharge(22.8);
   };
 
   const trackCharge = () => {
-    mixpanel.getPeople().trackCharge(12.8, {sandwich: 1});
+    oursprivacy.getPeople().trackCharge(12.8, {sandwich: 1});
   };
 
   const clearCharges = () => {
-    mixpanel.getPeople().clearCharges();
+    oursprivacy.getPeople().clearCharges();
   };
 
   const deleteUser = () => {
-    mixpanel.getPeople().deleteUser();
+    oursprivacy.getPeople().deleteUser();
   };
 
   // -----------------  Group API -----------------
   const addGroup = () => {
-    mixpanel.addGroup("company_id", 111);
+    oursprivacy.addGroup("company_id", 111);
   };
 
   const deleteGroup = () => {
-    mixpanel.deleteGroup("company_id", 111);
+    oursprivacy.deleteGroup("company_id", 111);
   };
 
   const setGroup = () => {
-    mixpanel.setGroup("company_id", 3233);
+    oursprivacy.setGroup("company_id", 3233);
   };
 
   const removeGroup = () => {
-    mixpanel.removeGroup("company_id", 3233);
+    oursprivacy.removeGroup("company_id", 3233);
   };
 
   const setGroupProperty = () => {
@@ -190,7 +190,7 @@ const App = () => {
   };
 
   const trackWithGroups = () => {
-    mixpanel.trackWithGroups(
+    oursprivacy.trackWithGroups(
       "tracked with groups",
       {a: 1, b: 2.3},
       {company_id: 111}

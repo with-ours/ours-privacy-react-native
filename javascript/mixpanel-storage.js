@@ -1,4 +1,4 @@
-import {MixpanelLogger} from "mixpanel-react-native/javascript/mixpanel-logger";
+import {OursPrivacyLogger} from "oursprivacy-react-native/javascript/oursprivacy-logger";
 
 export class AsyncStorageAdapter {
   constructor(storage) {
@@ -7,9 +7,9 @@ export class AsyncStorageAdapter {
         this.storage = require("@react-native-async-storage/async-storage");
       } catch {
         console.error(
-          "[@RNC/AsyncStorage]: NativeModule: AsyncStorage is null. Please run 'npm install @react-native-async-storage/async-storage' or follow the Mixpanel guide to set up your own Storage class."
+          "[@RNC/AsyncStorage]: NativeModule: AsyncStorage is null. Please run 'npm install @react-native-async-storage/async-storage' or follow the OursPrivacy guide to set up your own Storage class."
         );
-        console.error("[Mixpanel] Falling back to in-memory storage");
+        console.error("[OursPrivacy] Falling back to in-memory storage");
         this.storage = new InMemoryStorage();
       }
     } else {
@@ -21,7 +21,7 @@ export class AsyncStorageAdapter {
     try {
       return await this.storage.getItem(key);
     } catch {
-      MixpanelLogger.error("error getting item from storage");
+      OursPrivacyLogger.error("error getting item from storage");
       return null;
     }
   }
@@ -30,7 +30,7 @@ export class AsyncStorageAdapter {
     try {
       await this.storage.setItem(key, value);
     } catch {
-      MixpanelLogger.error("error setting item in storage");
+      OursPrivacyLogger.error("error setting item in storage");
     }
   }
 
@@ -38,7 +38,7 @@ export class AsyncStorageAdapter {
     try {
       await this.storage.removeItem(key);
     } catch {
-      MixpanelLogger.error("error removing item from storage");
+      OursPrivacyLogger.error("error removing item from storage");
     }
   }
 }

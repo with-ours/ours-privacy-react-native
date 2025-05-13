@@ -1,13 +1,13 @@
 import React from 'react';
 import {Text, TouchableOpacity, StyleSheet, View, ScrollView} from 'react-native';
-import {MixpanelInstance} from '../Analytics';
+import {OursPrivacyInstance} from '../Analytics';
 
 export default class GroupScreen extends React.Component {
 
     constructor(props) {
         super(props);
-        this.mixpanel = MixpanelInstance;
-        this.group = this.mixpanel.getGroup("company_id", 12345);
+        this.oursprivacy = OursPrivacyInstance;
+        this.group = this.oursprivacy.getGroup("company_id", 12345);
     }
 
     setProperty = () => {
@@ -31,27 +31,27 @@ export default class GroupScreen extends React.Component {
     }
 
     deleteGroup = () => {
-        this.mixpanel.deleteGroup("company_id", 12345);
+        this.oursprivacy.deleteGroup("company_id", 12345);
     }
-  
+
     setGroup = () => {
-        this.mixpanel.setGroup("company_id", 12345);
+        this.oursprivacy.setGroup("company_id", 12345);
     }
 
     addGroup = () => {
-        this.mixpanel.addGroup("company_id", 111);
+        this.oursprivacy.addGroup("company_id", 111);
     }
 
     removeGroup = () => {
-        this.mixpanel.removeGroup("company_id", 323);
+        this.oursprivacy.removeGroup("company_id", 323);
     }
 
     trackWithGroups = () => {
-        this.mixpanel.trackWithGroups("tracked with groups", {"a": 1, "b": 2.3}, {"company_id": "Mixpanel"});
+        this.oursprivacy.trackWithGroups("tracked with groups", {"a": 1, "b": 2.3}, {"company_id": "OursPrivacy"});
     }
 
     flush = () => {
-        this.mixpanel.flush();
+        this.oursprivacy.flush();
     }
 
     render() {

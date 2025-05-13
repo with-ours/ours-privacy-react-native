@@ -7,11 +7,11 @@
 #define TIMEOUT_SECONDS 600
 #define TEXT_TO_LOOK_FOR @"Welcome to React"
 
-@interface SimpleMixpanelTests : XCTestCase
+@interface SimpleOursPrivacyTests : XCTestCase
 
 @end
 
-@implementation SimpleMixpanelTests
+@implementation SimpleOursPrivacyTests
 
 - (BOOL)findSubviewInView:(UIView *)view matching:(BOOL (^)(UIView *view))test
 {

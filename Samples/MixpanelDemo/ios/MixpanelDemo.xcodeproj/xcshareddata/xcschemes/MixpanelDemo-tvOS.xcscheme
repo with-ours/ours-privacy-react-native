@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2D02E47A1E0B4A5D006451C7"
-               BuildableName = "MixpanelDemo-tvOS.app"
-               BlueprintName = "MixpanelDemo-tvOS"
-               ReferencedContainer = "container:MixpanelDemo.xcodeproj">
+               BuildableName = "OursPrivacyDemo-tvOS.app"
+               BlueprintName = "OursPrivacyDemo-tvOS"
+               ReferencedContainer = "container:OursPrivacyDemo.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2D02E48F1E0B4A5D006451C7"
-               BuildableName = "MixpanelDemo-tvOSTests.xctest"
-               BlueprintName = "MixpanelDemo-tvOSTests"
-               ReferencedContainer = "container:MixpanelDemo.xcodeproj">
+               BuildableName = "OursPrivacyDemo-tvOSTests.xctest"
+               BlueprintName = "OursPrivacyDemo-tvOSTests"
+               ReferencedContainer = "container:OursPrivacyDemo.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2D02E47A1E0B4A5D006451C7"
-            BuildableName = "MixpanelDemo-tvOS.app"
-            BlueprintName = "MixpanelDemo-tvOS"
-            ReferencedContainer = "container:MixpanelDemo.xcodeproj">
+            BuildableName = "OursPrivacyDemo-tvOS.app"
+            BlueprintName = "OursPrivacyDemo-tvOS"
+            ReferencedContainer = "container:OursPrivacyDemo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2D02E47A1E0B4A5D006451C7"
-            BuildableName = "MixpanelDemo-tvOS.app"
-            BlueprintName = "MixpanelDemo-tvOS"
-            ReferencedContainer = "container:MixpanelDemo.xcodeproj">
+            BuildableName = "OursPrivacyDemo-tvOS.app"
+            BlueprintName = "OursPrivacyDemo-tvOS"
+            ReferencedContainer = "container:OursPrivacyDemo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

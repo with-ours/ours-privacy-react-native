@@ -1,15 +1,15 @@
-import {Mixpanel} from 'mixpanel-react-native';
-import {token as MixpanelToken, trackAutomaticEvents} from './app.json';
+import {OursPrivacy} from 'oursprivacy-react-native';
+import {token as OursPrivacyToken, trackAutomaticEvents} from './app.json';
 
 
-export class MixpanelManager {
-    static sharedInstance = MixpanelManager.sharedInstance || new MixpanelManager();
+export class OursPrivacyManager {
+    static sharedInstance = OursPrivacyManager.sharedInstance || new OursPrivacyManager();
 
     constructor() {
-        this.mixpanel = new Mixpanel(MixpanelToken, trackAutomaticEvents);
-        this.mixpanel.init();
-        this.mixpanel.setLoggingEnabled(true);
+        this.oursprivacy = new OursPrivacy(OursPrivacyToken, trackAutomaticEvents);
+        this.oursprivacy.init();
+        this.oursprivacy.setLoggingEnabled(true);
     }
 }
 
-export const MixpanelInstance = MixpanelManager.sharedInstance.mixpanel;
+export const OursPrivacyInstance = OursPrivacyManager.sharedInstance.oursprivacy;

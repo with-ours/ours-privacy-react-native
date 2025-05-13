@@ -1,4 +1,4 @@
-export const MixpanelType = {
+export const OursPrivacyType = {
   EVENTS: "/track/",
   USER: "/engage/",
   GROUPS: "/groups/",
@@ -17,6 +17,6 @@ export const getTimeEventsKey = (token) => `MIXPANEL_${token}_TIME_EVENTS`;
 export const getAppHasOpenedBeforeKey = (token) =>
   `MIXPANEL_${token}_APP_HAS_OPENED_BEFORE`;
 
-export const defaultServerURL = `https://api.mixpanel.com`;
+export const defaultServerURL = `https://api.oursprivacy.com`;
 export const defaultBatchSize = 50;
 export const defaultFlushInterval = 10 * 1000; // 10s

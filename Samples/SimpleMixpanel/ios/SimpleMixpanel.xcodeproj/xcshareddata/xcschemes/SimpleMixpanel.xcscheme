@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "SimpleMixpanel.app"
-               BlueprintName = "SimpleMixpanel"
-               ReferencedContainer = "container:SimpleMixpanel.xcodeproj">
+               BuildableName = "SimpleOursPrivacy.app"
+               BlueprintName = "SimpleOursPrivacy"
+               ReferencedContainer = "container:SimpleOursPrivacy.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "SimpleMixpanelTests.xctest"
-               BlueprintName = "SimpleMixpanelTests"
-               ReferencedContainer = "container:SimpleMixpanel.xcodeproj">
+               BuildableName = "SimpleOursPrivacyTests.xctest"
+               BlueprintName = "SimpleOursPrivacyTests"
+               ReferencedContainer = "container:SimpleOursPrivacy.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "SimpleMixpanel.app"
-            BlueprintName = "SimpleMixpanel"
-            ReferencedContainer = "container:SimpleMixpanel.xcodeproj">
+            BuildableName = "SimpleOursPrivacy.app"
+            BlueprintName = "SimpleOursPrivacy"
+            ReferencedContainer = "container:SimpleOursPrivacy.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "SimpleMixpanel.app"
-            BlueprintName = "SimpleMixpanel"
-            ReferencedContainer = "container:SimpleMixpanel.xcodeproj">
+            BuildableName = "SimpleOursPrivacy.app"
+            BlueprintName = "SimpleOursPrivacy"
+            ReferencedContainer = "container:SimpleOursPrivacy.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

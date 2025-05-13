@@ -9,7 +9,7 @@ import Group from './screens/GroupScreen';
 
 
 const Router = createStackNavigator({
-    MixpanelDemo:
+    OursPrivacyDemo:
     {
         screen: Home,
     },

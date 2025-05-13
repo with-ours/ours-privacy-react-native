@@ -1,15 +1,15 @@
 import React from 'react';
 import { SafeAreaView } from "react-native";
-import { MixpanelProvider }  from './Analytics';
+import { OursPrivacyProvider }  from './Analytics';
 import { SampleScreen } from './Screens/SampleScreen';
 
 
 const App = () => {
   return (
     <SafeAreaView>
-      <MixpanelProvider>
+      <OursPrivacyProvider>
         <SampleScreen />
-      </MixpanelProvider>
+      </OursPrivacyProvider>
     </SafeAreaView>
   )
 }

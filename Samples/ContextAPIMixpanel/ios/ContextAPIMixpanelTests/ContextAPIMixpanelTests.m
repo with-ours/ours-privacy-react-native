@@ -7,11 +7,11 @@
 #define TIMEOUT_SECONDS 600
 #define TEXT_TO_LOOK_FOR @"Welcome to React"
 
-@interface ContextAPIMixpanelTests : XCTestCase
+@interface ContextAPIOursPrivacyTests : XCTestCase
 
 @end
 
-@implementation ContextAPIMixpanelTests
+@implementation ContextAPIOursPrivacyTests
 
 - (BOOL)findSubviewInView:(UIView *)view matching:(BOOL(^)(UIView *view))test
 {

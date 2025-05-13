@@ -1,4 +1,4 @@
-import {MixpanelType} from "mixpanel-react-native/javascript/mixpanel-constants";
+import {OursPrivacyType} from "oursprivacy-react-native/javascript/oursprivacy-constants";
 
 export class SessionMetadata {
   constructor(trackingQueue) {
@@ -22,13 +22,13 @@ export class SessionMetadata {
         $mp_event_id: SessionMetadata.randomId(),
         $mp_session_id: this.sessionID,
         $mp_session_seq_id:
-          type === MixpanelType.EVENTS
+          type === OursPrivacyType.EVENTS
             ? this.eventsCounter
             : this.peopleCounter,
         $mp_session_start_sec: this.sessionStartEpoch,
       },
     };
-    if (type === MixpanelType.EVENTS) {
+    if (type === OursPrivacyType.EVENTS) {
       this.eventsCounter += 1;
     } else {
       this.peopleCounter += 1;

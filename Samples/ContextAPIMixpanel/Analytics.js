@@ -1,19 +1,19 @@
 import React from 'react';
-import { Mixpanel } from 'mixpanel-react-native';
+import { OursPrivacy } from 'oursprivacy-react-native';
 
-const MixpanelContext = React.createContext();
+const OursPrivacyContext = React.createContext();
 
-export const useMixpanel = () => React.useContext(MixpanelContext);
+export const useOursPrivacy = () => React.useContext(OursPrivacyContext);
 
-export const MixpanelProvider = ({children}) => {
-  const [mixpanel, setMixpanel] = React.useState(null);
+export const OursPrivacyProvider = ({children}) => {
+  const [oursprivacy, setOursPrivacy] = React.useState(null);
 
   React.useEffect(() => {
     const trackAutomaticEvents = true;
-    const mixpanelInstance = new Mixpanel(`Your Project Token`, trackAutomaticEvents);
-    mixpanelInstance.init();
-    setMixpanel(mixpanelInstance);
+    const oursprivacyInstance = new OursPrivacy(`Your Project Token`, trackAutomaticEvents);
+    oursprivacyInstance.init();
+    setOursPrivacy(oursprivacyInstance);
   }, []);
 
-  return <MixpanelContext.Provider value={mixpanel}>{children}</MixpanelContext.Provider>;
+  return <OursPrivacyContext.Provider value={oursprivacy}>{children}</OursPrivacyContext.Provider>;
 };

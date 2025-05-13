@@ -1,45 +1,45 @@
 import React from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, ScrollView} from 'react-native';
 
-import {MixpanelInstance} from '../Analytics';
+import {OursPrivacyInstance} from '../Analytics';
 
 
 class EventScreen extends React.Component {
 
     constructor(props) {
         super(props);
-        this.mixpanel = MixpanelInstance;
+        this.oursprivacy = OursPrivacyInstance;
     }
 
     /**
       Use for Track an event.
     */
     track = () => {
-        this.mixpanel.track("Track Event!");
+        this.oursprivacy.track("Track Event!");
     }
 
     identify = () => {
-        this.mixpanel.identify("testDistinctId");
+        this.oursprivacy.identify("testDistinctId");
     }
 
     timeEvent = () => {
         const eventName = "Timed Event";
-        this.mixpanel.timeEvent(eventName);
+        this.oursprivacy.timeEvent(eventName);
         setTimeout(() => {
-          this.mixpanel.track(eventName);
+          this.oursprivacy.track(eventName);
         }, 2000);
     }
 
     trackWProperties = () => {
         const properties = {"Cool Property": "Property Value"};
-        this.mixpanel.track("Track event with property", properties);
+        this.oursprivacy.track("Track event with property", properties);
     }
 
     /**
       registerSuperProperties will store a new superProperty and possibly overwriting any existing superProperty with the same name.
     */
     registerSuperProperties = () => {
-        this.mixpanel.registerSuperProperties({
+        this.oursprivacy.registerSuperProperties({
             "super property": "super property value",
             "super property1": "super property value1",
         });
@@ -48,27 +48,27 @@ class EventScreen extends React.Component {
       Erase all currently registered superProperties.
     */
     clearSuperProperties = () => {
-        this.mixpanel.clearSuperProperties();
+        this.oursprivacy.clearSuperProperties();
     }
 
     unregisterSuperProperty = () => {
-        this.mixpanel.unregisterSuperProperty("super property");
+        this.oursprivacy.unregisterSuperProperty("super property");
     }
     /**
       Returns a json object of the user's current super properties.
     */
     getSuperProperties = () => {
-        this.mixpanel.getSuperProperties().then(t => {
+        this.oursprivacy.getSuperProperties().then(t => {
             alert(JSON.stringify(t));
         });
     }
 
     registerSuperPropertiesOnce = () => {
-        this.mixpanel.registerSuperPropertiesOnce({"super property": "super property value1"}, );
+        this.oursprivacy.registerSuperPropertiesOnce({"super property": "super property value1"}, );
     }
 
     flush = () => {
-      this.mixpanel.flush();
+      this.oursprivacy.flush();
     }
 
     render() {

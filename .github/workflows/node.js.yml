@@ -48,7 +48,7 @@ jobs:
       - run: npm install -g react-native-cli
       - run: npm i react-native-gradle-plugin
       - name: Test Integration - Install dependencies
-        working-directory: ./Samples/SimpleMixpanel
+        working-directory: ./Samples/SimpleOursPrivacy
         run: yarn install
       - name: Setup Android
         uses: reactivecircus/android-emulator-runner@v2.32.0
@@ -56,7 +56,7 @@ jobs:
           api-level: 34
           profile: Nexus 5X
           arch: x86_64
-          working-directory: ./Samples/SimpleMixpanel/android
+          working-directory: ./Samples/SimpleOursPrivacy/android
           script: ./gradlew
       - name: Test Android
         uses: reactivecircus/android-emulator-runner@v2.32.0
@@ -64,7 +64,7 @@ jobs:
           api-level: 34
           profile: Nexus 5X
           arch: x86_64
-          working-directory: ./Samples/SimpleMixpanel
+          working-directory: ./Samples/SimpleOursPrivacy
           script: react-native run-android
 
   test_ios:
@@ -83,11 +83,11 @@ jobs:
       - run: npm install
       - run: npm install -g react-native-cli
       - name: Test Integration - Install dependencies
-        working-directory: ./Samples/SimpleMixpanel
+        working-directory: ./Samples/SimpleOursPrivacy
         run: npm install
       - name: Setup iOS
-        working-directory: ./Samples/SimpleMixpanel/ios
+        working-directory: ./Samples/SimpleOursPrivacy/ios
         run: pod install --repo-update
       - name: Test iOS
-        working-directory: ./Samples/SimpleMixpanel
+        working-directory: ./Samples/SimpleOursPrivacy
         run: react-native run-ios

@@ -1,24 +1,24 @@
 import React from 'react';
 import {Text, TouchableOpacity, StyleSheet, View, ScrollView} from 'react-native';
-import {MixpanelInstance} from '../Analytics';
+import {OursPrivacyInstance} from '../Analytics';
 
 export default class ProfileScreen extends React.Component {
 
     constructor(props) {
         super(props);
-        this.mixpanel = MixpanelInstance;
+        this.oursprivacy = OursPrivacyInstance;
     }
-    
+
     createAlias = () => {
-        this.mixpanel.alias("New Alias", "testDistinctId");
+        this.oursprivacy.alias("New Alias", "testDistinctId");
     }
 
     reset = () => {
-        this.mixpanel.reset();
+        this.oursprivacy.reset();
     }
 
     setProperty = () => {
-        this.mixpanel.getPeople().set({
+        this.oursprivacy.getPeople().set({
           "a": 1,
           "b": 2.3,
           "c": ["4", 5],
@@ -26,54 +26,54 @@ export default class ProfileScreen extends React.Component {
     }
 
     setOneProperty = () => {
-        this.mixpanel.getPeople().set("d", "yo");
+        this.oursprivacy.getPeople().set("d", "yo");
     }
 
     setOnePropertyOnce = () => {
-        this.mixpanel.getPeople().setOnce("c", "just once");
+        this.oursprivacy.getPeople().setOnce("c", "just once");
     }
 
     unsetProperties = () => {
-        this.mixpanel.getPeople().unset("a");
+        this.oursprivacy.getPeople().unset("a");
     }
 
     incrementProperty = () => {
-        this.mixpanel.getPeople().increment("a", 1.2);
+        this.oursprivacy.getPeople().increment("a", 1.2);
     }
-    
+
     removePropertyValue = () => {
-        this.mixpanel.getPeople().remove("c", 5);
+        this.oursprivacy.getPeople().remove("c", 5);
     }
 
     appendProperties = () => {
-        this.mixpanel.getPeople().append("e", "Hello");
+        this.oursprivacy.getPeople().append("e", "Hello");
     }
 
     unionProperties = () => {
-        this.mixpanel.getPeople().union("a", ["goodbye", "hi"]);
+        this.oursprivacy.getPeople().union("a", ["goodbye", "hi"]);
     }
 
     trackChargeWithoutProperties = () => {
-        this.mixpanel.getPeople().trackCharge(22.8);
+        this.oursprivacy.getPeople().trackCharge(22.8);
     }
 
     trackCharge = () => {
-        this.mixpanel.getPeople().trackCharge(12.8, {"sandwich": 1});
+        this.oursprivacy.getPeople().trackCharge(12.8, {"sandwich": 1});
     }
 
     clearCharges = () => {
-        this.mixpanel.getPeople().clearCharges();
+        this.oursprivacy.getPeople().clearCharges();
     }
 
     deleteUser = () => {
-        this.mixpanel.getPeople().deleteUser();
+        this.oursprivacy.getPeople().deleteUser();
     }
 
     /**
-      Push all queued Mixpanel events and People Analytics changes to Mixpanel servers.
+      Push all queued OursPrivacy events and People Analytics changes to OursPrivacy servers.
     */
     flush = () => {
-        this.mixpanel.flush();
+        this.oursprivacy.flush();
     }
 
     render() {

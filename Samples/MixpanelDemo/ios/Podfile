@@ -3,21 +3,21 @@ require_relative '../node_modules/@react-native-community/cli-platform-ios/nativ
 
 platform :ios, '11.0'
 
-target 'MixpanelDemo' do
+target 'OursPrivacyDemo' do
   config = use_native_modules!
 
   use_react_native!(:path => config["reactNativePath"])
 
-  target 'MixpanelDemoTests' do
+  target 'OursPrivacyDemoTests' do
     inherit! :complete
     # Pods for testing
   end
 end
 
-target 'MixpanelDemo-tvOS' do
-  # Pods for MixpanelDemo-tvOS
+target 'OursPrivacyDemo-tvOS' do
+  # Pods for OursPrivacyDemo-tvOS
 
-  target 'MixpanelDemo-tvOSTests' do
+  target 'OursPrivacyDemo-tvOSTests' do
     inherit! :search_paths
     # Pods for testing
   end

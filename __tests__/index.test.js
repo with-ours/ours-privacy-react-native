@@ -1,21 +1,21 @@
-import {Mixpanel} from "mixpanel-react-native";
+import {OursPrivacy} from "oursprivacy-react-native";
 import {NativeModules} from "react-native";
 
-test(`it calls MixpanelReactNative initialize`, async () => {
-  const mixpanel = await Mixpanel.init("token", true);
-  expect(NativeModules.MixpanelReactNative.initialize).toBeCalledWith(
+test(`it calls OursPrivacyReactNative initialize`, async () => {
+  const oursprivacy = await OursPrivacy.init("token", true);
+  expect(NativeModules.OursPrivacyReactNative.initialize).toBeCalledWith(
     "token",
     true,
     false,
     {$lib_version: expect.any(String), mp_lib: "react-native"},
-    "https://api.mixpanel.com"
+    "https://api.oursprivacy.com"
   );
 });
 
-test(`it calls MixpanelReactNative initialize with optOut and superProperties`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init(true, {super: "property"});
-  expect(NativeModules.MixpanelReactNative.initialize).toBeCalledWith(
+test(`it calls OursPrivacyReactNative initialize with optOut and superProperties`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init(true, {super: "property"});
+  expect(NativeModules.OursPrivacyReactNative.initialize).toBeCalledWith(
     "token",
     true,
     true,
@@ -24,103 +24,103 @@ test(`it calls MixpanelReactNative initialize with optOut and superProperties`, 
       mp_lib: "react-native",
       super: "property",
     },
-    "https://api.mixpanel.com"
+    "https://api.oursprivacy.com"
   );
 });
 
-test(`it calls MixpanelReactNative setServerURL`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.setServerURL("https://api-eu.mixpanel.com");
-  expect(NativeModules.MixpanelReactNative.setServerURL).toBeCalledWith(
+test(`it calls OursPrivacyReactNative setServerURL`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.setServerURL("https://api-eu.oursprivacy.com");
+  expect(NativeModules.OursPrivacyReactNative.setServerURL).toBeCalledWith(
     "token",
-    "https://api-eu.mixpanel.com"
+    "https://api-eu.oursprivacy.com"
   );
 });
 
-test(`it calls MixpanelReactNative setLoggingEnabled`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.setLoggingEnabled(true);
-  expect(NativeModules.MixpanelReactNative.setLoggingEnabled).toBeCalledWith(
+test(`it calls OursPrivacyReactNative setLoggingEnabled`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.setLoggingEnabled(true);
+  expect(NativeModules.OursPrivacyReactNative.setLoggingEnabled).toBeCalledWith(
     "token",
     true
   );
 });
 
-test(`it calls MixpanelReactNative setUseIpAddressForGeolocation`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.setUseIpAddressForGeolocation(true);
+test(`it calls OursPrivacyReactNative setUseIpAddressForGeolocation`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.setUseIpAddressForGeolocation(true);
   expect(
-    NativeModules.MixpanelReactNative.setUseIpAddressForGeolocation
+    NativeModules.OursPrivacyReactNative.setUseIpAddressForGeolocation
   ).toBeCalledWith("token", true);
 });
 
-test(`it calls MixpanelReactNative setFlushBatchSize`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.setFlushBatchSize(20);
-  expect(NativeModules.MixpanelReactNative.setFlushBatchSize).toBeCalledWith(
+test(`it calls OursPrivacyReactNative setFlushBatchSize`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.setFlushBatchSize(20);
+  expect(NativeModules.OursPrivacyReactNative.setFlushBatchSize).toBeCalledWith(
     "token",
     20
   );
 });
 
-test(`it calls MixpanelReactNative hasOptedOutTracking`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.hasOptedOutTracking();
-  expect(NativeModules.MixpanelReactNative.hasOptedOutTracking).toBeCalledWith(
+test(`it calls OursPrivacyReactNative hasOptedOutTracking`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.hasOptedOutTracking();
+  expect(NativeModules.OursPrivacyReactNative.hasOptedOutTracking).toBeCalledWith(
     "token"
   );
 });
 
-test(`it calls MixpanelReactNative optInTracking`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.optInTracking();
-  expect(NativeModules.MixpanelReactNative.optInTracking).toBeCalledWith(
+test(`it calls OursPrivacyReactNative optInTracking`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.optInTracking();
+  expect(NativeModules.OursPrivacyReactNative.optInTracking).toBeCalledWith(
     "token"
   );
 });
 
-test(`it calls MixpanelReactNative optOutTracking`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.optOutTracking();
-  expect(NativeModules.MixpanelReactNative.optOutTracking).toBeCalledWith(
+test(`it calls OursPrivacyReactNative optOutTracking`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.optOutTracking();
+  expect(NativeModules.OursPrivacyReactNative.optOutTracking).toBeCalledWith(
     "token"
   );
 });
 
-test(`it calls MixpanelReactNative identify`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.identify("distinct_id");
-  expect(NativeModules.MixpanelReactNative.identify).toBeCalledWith(
+test(`it calls OursPrivacyReactNative identify`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.identify("distinct_id");
+  expect(NativeModules.OursPrivacyReactNative.identify).toBeCalledWith(
     "token",
     "distinct_id"
   );
 });
 
-test(`it calls MixpanelReactNative alias`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.alias("alias", "distinct_id");
-  expect(NativeModules.MixpanelReactNative.alias).toBeCalledWith(
+test(`it calls OursPrivacyReactNative alias`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.alias("alias", "distinct_id");
+  expect(NativeModules.OursPrivacyReactNative.alias).toBeCalledWith(
     "token",
     "alias",
     "distinct_id"
   );
 });
 
-test(`it calls MixpanelReactNative track`, async () => {
-  const mixpanel = await Mixpanel.init("token", true);
-  mixpanel.track("event name", {
+test(`it calls OursPrivacyReactNative track`, async () => {
+  const oursprivacy = await OursPrivacy.init("token", true);
+  oursprivacy.track("event name", {
     "Cool Property": "Property Value",
   });
-  expect(NativeModules.MixpanelReactNative.track).toBeCalledWith(
+  expect(NativeModules.OursPrivacyReactNative.track).toBeCalledWith(
     "token",
     "event name",
     {
@@ -131,298 +131,298 @@ test(`it calls MixpanelReactNative track`, async () => {
   );
 });
 
-test(`it calls MixpanelReactNative trackWithGroups`, async () => {
-  const mixpanel = await Mixpanel.init("token", true);
-  mixpanel.trackWithGroups(
+test(`it calls OursPrivacyReactNative trackWithGroups`, async () => {
+  const oursprivacy = await OursPrivacy.init("token", true);
+  oursprivacy.trackWithGroups(
     "tracked with groups",
     {a: 1, b: 2.3},
-    {company_id: "Mixpanel"}
+    {company_id: "OursPrivacy"}
   );
-  expect(NativeModules.MixpanelReactNative.trackWithGroups).toBeCalledWith(
+  expect(NativeModules.OursPrivacyReactNative.trackWithGroups).toBeCalledWith(
     "token",
     "tracked with groups",
     {a: 1, b: 2.3, $lib_version: expect.any(String), mp_lib: "react-native"},
-    {company_id: "Mixpanel"}
+    {company_id: "OursPrivacy"}
   );
 });
 
-test(`it calls MixpanelReactNative setGroup`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.setGroup("company_id", 12345);
-  expect(NativeModules.MixpanelReactNative.setGroup).toBeCalledWith(
+test(`it calls OursPrivacyReactNative setGroup`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.setGroup("company_id", 12345);
+  expect(NativeModules.OursPrivacyReactNative.setGroup).toBeCalledWith(
     "token",
     "company_id",
     12345
   );
 });
 
-test(`it calls MixpanelReactNative addGroup`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.addGroup("company_id", 12345);
-  expect(NativeModules.MixpanelReactNative.addGroup).toBeCalledWith(
+test(`it calls OursPrivacyReactNative addGroup`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.addGroup("company_id", 12345);
+  expect(NativeModules.OursPrivacyReactNative.addGroup).toBeCalledWith(
     "token",
     "company_id",
     12345
   );
 });
 
-test(`it calls MixpanelReactNative removeGroup`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.removeGroup("company_id", 12345);
-  expect(NativeModules.MixpanelReactNative.removeGroup).toBeCalledWith(
+test(`it calls OursPrivacyReactNative removeGroup`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.removeGroup("company_id", 12345);
+  expect(NativeModules.OursPrivacyReactNative.removeGroup).toBeCalledWith(
     "token",
     "company_id",
     12345
   );
 });
 
-test(`it calls MixpanelReactNative deleteGroup`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.deleteGroup("company_id", 12345);
-  expect(NativeModules.MixpanelReactNative.deleteGroup).toBeCalledWith(
+test(`it calls OursPrivacyReactNative deleteGroup`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.deleteGroup("company_id", 12345);
+  expect(NativeModules.OursPrivacyReactNative.deleteGroup).toBeCalledWith(
     "token",
     "company_id",
     12345
   );
 });
 
-test(`it calls MixpanelReactNative registerSuperProperties`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.registerSuperProperties({
+test(`it calls OursPrivacyReactNative registerSuperProperties`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.registerSuperProperties({
     "super property": "super property value",
     "super property1": "super property value1",
   });
   expect(
-    NativeModules.MixpanelReactNative.registerSuperProperties
+    NativeModules.OursPrivacyReactNative.registerSuperProperties
   ).toBeCalledWith("token", {
     "super property": "super property value",
     "super property1": "super property value1",
   });
 });
 
-test(`it calls MixpanelReactNative registerSuperPropertiesOnce`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.registerSuperPropertiesOnce({
+test(`it calls OursPrivacyReactNative registerSuperPropertiesOnce`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.registerSuperPropertiesOnce({
     "super property": "super property value",
     "super property1": "super property value1",
   });
   expect(
-    NativeModules.MixpanelReactNative.registerSuperProperties
+    NativeModules.OursPrivacyReactNative.registerSuperProperties
   ).toBeCalledWith("token", {
     "super property": "super property value",
     "super property1": "super property value1",
   });
 });
 
-test(`it calls MixpanelReactNative unregisterSuperProperty`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.unregisterSuperProperty("super property");
+test(`it calls OursPrivacyReactNative unregisterSuperProperty`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.unregisterSuperProperty("super property");
   expect(
-    NativeModules.MixpanelReactNative.unregisterSuperProperty
+    NativeModules.OursPrivacyReactNative.unregisterSuperProperty
   ).toBeCalledWith("token", "super property");
 });
 
-test(`it calls MixpanelReactNative getSuperProperties`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getSuperProperties();
-  expect(NativeModules.MixpanelReactNative.getSuperProperties).toBeCalledWith(
+test(`it calls OursPrivacyReactNative getSuperProperties`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getSuperProperties();
+  expect(NativeModules.OursPrivacyReactNative.getSuperProperties).toBeCalledWith(
     "token"
   );
 });
 
-test(`it calls MixpanelReactNative clearSuperProperties`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.clearSuperProperties();
-  expect(NativeModules.MixpanelReactNative.clearSuperProperties).toBeCalledWith(
+test(`it calls OursPrivacyReactNative clearSuperProperties`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.clearSuperProperties();
+  expect(NativeModules.OursPrivacyReactNative.clearSuperProperties).toBeCalledWith(
     "token"
   );
 });
 
-test(`it calls MixpanelReactNative timeEvent`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.timeEvent("Timed Event");
-  expect(NativeModules.MixpanelReactNative.timeEvent).toBeCalledWith(
+test(`it calls OursPrivacyReactNative timeEvent`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.timeEvent("Timed Event");
+  expect(NativeModules.OursPrivacyReactNative.timeEvent).toBeCalledWith(
     "token",
     "Timed Event"
   );
 });
 
-test(`it calls MixpanelReactNative eventElapsedTime`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.eventElapsedTime("Timed Event");
-  expect(NativeModules.MixpanelReactNative.eventElapsedTime).toBeCalledWith(
+test(`it calls OursPrivacyReactNative eventElapsedTime`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.eventElapsedTime("Timed Event");
+  expect(NativeModules.OursPrivacyReactNative.eventElapsedTime).toBeCalledWith(
     "token",
     "Timed Event"
   );
 });
 
-test(`it calls MixpanelReactNative reset`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.reset();
-  expect(NativeModules.MixpanelReactNative.reset).toBeCalledWith("token");
+test(`it calls OursPrivacyReactNative reset`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.reset();
+  expect(NativeModules.OursPrivacyReactNative.reset).toBeCalledWith("token");
 });
 
-test(`it calls MixpanelReactNative getDistinctId`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getDistinctId();
-  expect(NativeModules.MixpanelReactNative.getDistinctId).toBeCalledWith(
+test(`it calls OursPrivacyReactNative getDistinctId`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getDistinctId();
+  expect(NativeModules.OursPrivacyReactNative.getDistinctId).toBeCalledWith(
     "token"
   );
 });
 
-test(`it calls MixpanelReactNative profile set`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getPeople().set({
+test(`it calls OursPrivacyReactNative profile set`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getPeople().set({
     a: 1,
     b: 2.3,
     c: ["4", 5],
   });
-  expect(NativeModules.MixpanelReactNative.set).toBeCalledWith("token", {
-    a: 1,
-    b: 2.3,
-    c: ["4", 5],
-  });
-  // set one property
-  mixpanel.getPeople().set("a", 1);
-  expect(NativeModules.MixpanelReactNative.set).toBeCalledWith("token", {a: 1});
-});
-
-test(`it calls MixpanelReactNative profile setOnce`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getPeople().setOnce({
-    a: 1,
-    b: 2.3,
-    c: ["4", 5],
-  });
-  expect(NativeModules.MixpanelReactNative.setOnce).toBeCalledWith("token", {
+  expect(NativeModules.OursPrivacyReactNative.set).toBeCalledWith("token", {
     a: 1,
     b: 2.3,
     c: ["4", 5],
   });
   // set one property
-  mixpanel.getPeople().setOnce("a", 1);
-  expect(NativeModules.MixpanelReactNative.setOnce).toBeCalledWith("token", {
+  oursprivacy.getPeople().set("a", 1);
+  expect(NativeModules.OursPrivacyReactNative.set).toBeCalledWith("token", {a: 1});
+});
+
+test(`it calls OursPrivacyReactNative profile setOnce`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getPeople().setOnce({
+    a: 1,
+    b: 2.3,
+    c: ["4", 5],
+  });
+  expect(NativeModules.OursPrivacyReactNative.setOnce).toBeCalledWith("token", {
+    a: 1,
+    b: 2.3,
+    c: ["4", 5],
+  });
+  // set one property
+  oursprivacy.getPeople().setOnce("a", 1);
+  expect(NativeModules.OursPrivacyReactNative.setOnce).toBeCalledWith("token", {
     a: 1,
   });
 });
 
-test(`it calls MixpanelReactNative profile increment`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getPeople().increment({
+test(`it calls OursPrivacyReactNative profile increment`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getPeople().increment({
     a: 1,
     b: 2.3,
   });
-  expect(NativeModules.MixpanelReactNative.increment).toBeCalledWith("token", {
+  expect(NativeModules.OursPrivacyReactNative.increment).toBeCalledWith("token", {
     a: 1,
     b: 2.3,
   });
   // set one property
-  mixpanel.getPeople().increment("a", 1);
-  expect(NativeModules.MixpanelReactNative.increment).toBeCalledWith("token", {
+  oursprivacy.getPeople().increment("a", 1);
+  expect(NativeModules.OursPrivacyReactNative.increment).toBeCalledWith("token", {
     a: 1,
   });
 });
 
-test(`it calls MixpanelReactNative profile append`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getPeople().append("a", "1");
-  expect(NativeModules.MixpanelReactNative.append).toBeCalledWith("token", {
+test(`it calls OursPrivacyReactNative profile append`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getPeople().append("a", "1");
+  expect(NativeModules.OursPrivacyReactNative.append).toBeCalledWith("token", {
     a: "1",
   });
 });
 
-test(`it calls MixpanelReactNative profile union`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getPeople().union("a1", "1");
-  expect(NativeModules.MixpanelReactNative.union).toBeCalledWith("token", {
+test(`it calls OursPrivacyReactNative profile union`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getPeople().union("a1", "1");
+  expect(NativeModules.OursPrivacyReactNative.union).toBeCalledWith("token", {
     a1: ["1"],
   });
 });
 
-test(`it calls MixpanelReactNative profile remove`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getPeople().remove("a", "1");
-  expect(NativeModules.MixpanelReactNative.remove).toBeCalledWith("token", {
+test(`it calls OursPrivacyReactNative profile remove`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getPeople().remove("a", "1");
+  expect(NativeModules.OursPrivacyReactNative.remove).toBeCalledWith("token", {
     a: "1",
   });
 });
 
-test(`it calls MixpanelReactNative profile unset`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getPeople().unset("a");
-  expect(NativeModules.MixpanelReactNative.unset).toBeCalledWith("token", "a");
+test(`it calls OursPrivacyReactNative profile unset`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getPeople().unset("a");
+  expect(NativeModules.OursPrivacyReactNative.unset).toBeCalledWith("token", "a");
 });
 
-test(`it calls MixpanelReactNative profile trackCharge`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getPeople().trackCharge(22.8);
-  expect(NativeModules.MixpanelReactNative.trackCharge).toBeCalledWith(
+test(`it calls OursPrivacyReactNative profile trackCharge`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getPeople().trackCharge(22.8);
+  expect(NativeModules.OursPrivacyReactNative.trackCharge).toBeCalledWith(
     "token",
     22.8,
     {}
   );
 });
 
-test(`it calls MixpanelReactNative profile clearCharges`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getPeople().clearCharges();
-  expect(NativeModules.MixpanelReactNative.clearCharges).toBeCalledWith(
+test(`it calls OursPrivacyReactNative profile clearCharges`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getPeople().clearCharges();
+  expect(NativeModules.OursPrivacyReactNative.clearCharges).toBeCalledWith(
     "token"
   );
 });
 
-test(`it calls MixpanelReactNative profile deleteUser`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getPeople().deleteUser();
-  expect(NativeModules.MixpanelReactNative.deleteUser).toBeCalledWith("token");
+test(`it calls OursPrivacyReactNative profile deleteUser`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getPeople().deleteUser();
+  expect(NativeModules.OursPrivacyReactNative.deleteUser).toBeCalledWith("token");
 });
 
-test(`it calls MixpanelReactNative group set properties`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getGroup("company_id", 12345).set("prop_key", "prop_value");
+test(`it calls OursPrivacyReactNative group set properties`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getGroup("company_id", 12345).set("prop_key", "prop_value");
   expect(
-    NativeModules.MixpanelReactNative.groupSetProperties
+    NativeModules.OursPrivacyReactNative.groupSetProperties
   ).toBeCalledWith("token", "company_id", 12345, {prop_key: "prop_value"});
 });
 
-test(`it calls MixpanelReactNative group set property once`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getGroup("company_id", 12345).setOnce("prop_key", "prop_value");
+test(`it calls OursPrivacyReactNative group set property once`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getGroup("company_id", 12345).setOnce("prop_key", "prop_value");
   expect(
-    NativeModules.MixpanelReactNative.groupSetPropertyOnce
+    NativeModules.OursPrivacyReactNative.groupSetPropertyOnce
   ).toBeCalledWith("token", "company_id", 12345, {prop_key: "prop_value"});
 });
 
-test(`it calls MixpanelReactNative group unset property`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getGroup("company_id", 12345).unset("prop_key");
-  expect(NativeModules.MixpanelReactNative.groupUnsetProperty).toBeCalledWith(
+test(`it calls OursPrivacyReactNative group unset property`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getGroup("company_id", 12345).unset("prop_key");
+  expect(NativeModules.OursPrivacyReactNative.groupUnsetProperty).toBeCalledWith(
     "token",
     "company_id",
     12345,
@@ -430,20 +430,20 @@ test(`it calls MixpanelReactNative group unset property`, async () => {
   );
 });
 
-test(`it calls MixpanelReactNative group remove property`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getGroup("company_id", 12345).remove("prop_key", "334");
+test(`it calls OursPrivacyReactNative group remove property`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getGroup("company_id", 12345).remove("prop_key", "334");
   expect(
-    NativeModules.MixpanelReactNative.groupRemovePropertyValue
+    NativeModules.OursPrivacyReactNative.groupRemovePropertyValue
   ).toBeCalledWith("token", "company_id", 12345, "prop_key", "334");
 });
 
-test(`it calls MixpanelReactNative group union property`, async () => {
-  const mixpanel = new Mixpanel("token", true);
-  mixpanel.init();
-  mixpanel.getGroup("company_id", 12345).union("prop_key", "334");
+test(`it calls OursPrivacyReactNative group union property`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.init();
+  oursprivacy.getGroup("company_id", 12345).union("prop_key", "334");
   expect(
-    NativeModules.MixpanelReactNative.groupRemovePropertyValue
+    NativeModules.OursPrivacyReactNative.groupRemovePropertyValue
   ).toBeCalledWith("token", "company_id", 12345, "prop_key", "334");
 });

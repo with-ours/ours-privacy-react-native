@@ -1,4 +1,4 @@
-import { MixpanelNetwork } from "mixpanel-react-native/javascript/mixpanel-network";
+import { OursPrivacyNetwork } from "oursprivacy-react-native/javascript/oursprivacy-network";
 import fetchMock from "jest-fetch-mock";
 
 fetchMock.enableMocks();
@@ -13,17 +13,17 @@ afterEach(() => {
   fetchMock.resetMocks();
 });
 
-describe("MixpanelNetwork", () => {
+describe("OursPrivacyNetwork", () => {
   const mockToken = "test-token";
   const mockEndpoint = "/track";
-  const mockServerURL = "https://api.mixpanel.com";
+  const mockServerURL = "https://api.oursprivacy.com";
   const mockData = { event: "testEvent" };
   const useIPAddressForGeoLocation = true;
 
   it("sends a successful request", async () => {
     fetchMock.mockResponseOnce(JSON.stringify({}), { status: 200 });
 
-    await MixpanelNetwork.sendRequest({
+    await OursPrivacyNetwork.sendRequest({
       token: mockToken,
       endpoint: mockEndpoint,
       data: mockData,
@@ -43,7 +43,7 @@ describe("MixpanelNetwork", () => {
       [JSON.stringify({}), { status: 200 }]
     );
 
-    await MixpanelNetwork.sendRequest({
+    await OursPrivacyNetwork.sendRequest({
       token: mockToken,
       endpoint: mockEndpoint,
       data: mockData,
@@ -58,7 +58,7 @@ describe("MixpanelNetwork", () => {
     fetchMock.mockResponseOnce(JSON.stringify({}), { status: 400 });
 
     await expect(
-      MixpanelNetwork.sendRequest({
+      OursPrivacyNetwork.sendRequest({
         token: mockToken,
         endpoint: mockEndpoint,
         data: mockData,

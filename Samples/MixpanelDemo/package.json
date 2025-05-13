@@ -1,5 +1,5 @@
 {
-  "name": "MixpanelDemo",
+  "name": "OursPrivacyDemo",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "mixpanel-react-native": "file:../..",
+    "oursprivacy-react-native": "file:../..",
     "react": "17.0.1",
     "react-native": "0.64.4",
     "react-native-gesture-handler": "^1.8.0",

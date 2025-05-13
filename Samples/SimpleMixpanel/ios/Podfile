@@ -14,7 +14,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'SimpleMixpanel' do
+target 'SimpleOursPrivacy' do
   config = use_native_modules!
 
   use_react_native!(
@@ -23,7 +23,7 @@ target 'SimpleMixpanel' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  target 'SimpleMixpanelTests' do
+  target 'SimpleOursPrivacyTests' do
     inherit! :complete
     # Pods for testing
   end

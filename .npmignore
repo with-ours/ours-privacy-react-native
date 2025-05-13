@@ -25,7 +25,7 @@ DerivedData
 *.ipa
 *.xcuserstate
 ios/project.xcworkspace
-      
+
 # Android
 android/build/
 android/app/build/
@@ -44,4 +44,4 @@ buck-out/
 *.keystore
 
 # DemoApp
-/MixpanelDemo
+/OursPrivacyDemo

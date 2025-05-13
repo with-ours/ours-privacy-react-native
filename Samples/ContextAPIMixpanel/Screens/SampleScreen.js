@@ -1,15 +1,15 @@
 import React from 'react';
 import { Button, SafeAreaView } from "react-native";
-import { useMixpanel } from '../Analytics';
+import { useOursPrivacy } from '../Analytics';
 
 export const SampleScreen = () => {
-  const mixpanel = useMixpanel();
+  const oursprivacy = useOursPrivacy();
   return (
     <SafeAreaView>
       <Button
         title="Select Premium Plan"
         onPress={() => {
-          mixpanel.track("Plan Selected", {"Plan": "Premium"});
+          oursprivacy.track("Plan Selected", {"Plan": "Premium"});
         }}
       />
     </SafeAreaView>

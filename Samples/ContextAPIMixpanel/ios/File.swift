@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  ContextAPIMixpanel
+//  ContextAPIOursPrivacy
 //
 //  Created by ZIHE JIA on 7/28/21.
 //

@@ -1,35 +1,35 @@
-import {MixpanelConfig} from "mixpanel-react-native/javascript/mixpanel-config";
+import {OursPrivacyConfig} from "oursprivacy-react-native/javascript/oursprivacy-config";
 
-export class MixpanelLogger {
+export class OursPrivacyLogger {
   static _shouldLog(token) {
-    return MixpanelConfig.getInstance().getLoggingEnabled(token);
+    return OursPrivacyConfig.getInstance().getLoggingEnabled(token);
   }
 
   static _prependPrefix(args) {
-    return ["[Mixpanel]", ...args];
+    return ["[OursPrivacy]", ...args];
   }
 
   static log(token, ...args) {
-    if (MixpanelLogger._shouldLog(token)) {
-      console.log(...MixpanelLogger._prependPrefix(args));
+    if (OursPrivacyLogger._shouldLog(token)) {
+      console.log(...OursPrivacyLogger._prependPrefix(args));
     }
   }
 
   static info(token, ...args) {
-    if (MixpanelLogger._shouldLog(token)) {
-      console.info(...MixpanelLogger._prependPrefix(args));
+    if (OursPrivacyLogger._shouldLog(token)) {
+      console.info(...OursPrivacyLogger._prependPrefix(args));
     }
   }
 
   static warn(token, ...args) {
-    if (MixpanelLogger._shouldLog(token)) {
-      console.warn(...MixpanelLogger._prependPrefix(args));
+    if (OursPrivacyLogger._shouldLog(token)) {
+      console.warn(...OursPrivacyLogger._prependPrefix(args));
     }
   }
 
   static error(token, ...args) {
-    if (MixpanelLogger._shouldLog(token)) {
-      console.error(...MixpanelLogger._prependPrefix(args));
+    if (OursPrivacyLogger._shouldLog(token)) {
+      console.error(...OursPrivacyLogger._prependPrefix(args));
     }
   }
 }

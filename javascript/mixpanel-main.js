@@ -1,19 +1,19 @@
 import {Platform} from "react-native";
-import {MixpanelCore} from "./mixpanel-core";
-import {MixpanelType} from "./mixpanel-constants";
-import {MixpanelConfig} from "./mixpanel-config";
-import {MixpanelPersistent} from "./mixpanel-persistent";
-import {MixpanelLogger} from "mixpanel-react-native/javascript/mixpanel-logger";
-import packageJson from "mixpanel-react-native/package.json";
+import {OursPrivacyCore} from "./oursprivacy-core";
+import {OursPrivacyType} from "./oursprivacy-constants";
+import {OursPrivacyConfig} from "./oursprivacy-config";
+import {OursPrivacyPersistent} from "./oursprivacy-persistent";
+import {OursPrivacyLogger} from "oursprivacy-react-native/javascript/oursprivacy-logger";
+import packageJson from "oursprivacy-react-native/package.json";
 
-export default class MixpanelMain {
+export default class OursPrivacyMain {
   constructor(token, trackAutomaticEvents, storage) {
     this.token = token;
-    this.config = MixpanelConfig.getInstance();
-    this.core = MixpanelCore(storage);
+    this.config = OursPrivacyConfig.getInstance();
+    this.core = OursPrivacyCore(storage);
     this.core.initialize(token);
     this.core.startProcessingQueue(token);
-    this.mixpanelPersistent = MixpanelPersistent.getInstance();
+    this.oursprivacyPersistent = OursPrivacyPersistent.getInstance();
   }
 
   async initialize(
@@ -21,11 +21,11 @@ export default class MixpanelMain {
     trackAutomaticEvents = false,
     optOutTrackingDefault = false,
     superProperties = null,
-    serverURL = "https://api.mixpanel.com"
+    serverURL = "https://api.oursprivacy.com"
   ) {
-    MixpanelLogger.log(token, `Initializing Mixpanel`);
+    OursPrivacyLogger.log(token, `Initializing OursPrivacy`);
 
-    await this.mixpanelPersistent.initializationCompletePromise(token);
+    await this.oursprivacyPersistent.initializationCompletePromise(token);
     if (optOutTrackingDefault) {
       await this.optOutTracking(token);
       return;
@@ -67,28 +67,28 @@ export default class MixpanelMain {
   }
 
   async reset(token) {
-    await this.mixpanelPersistent.reset(token);
+    await this.oursprivacyPersistent.reset(token);
   }
 
   async track(token, eventName, properties) {
-    if (this.mixpanelPersistent.getOptedOut(token)) {
-      MixpanelLogger.log(
+    if (this.oursprivacyPersistent.getOptedOut(token)) {
+      OursPrivacyLogger.log(
         token,
         `User has opted out of tracking, skipping tracking.`
       );
       return;
     }
 
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Track '${eventName}' with properties`,
       properties
     );
-    const superProperties = this.mixpanelPersistent.getSuperProperties(token);
+    const superProperties = this.oursprivacyPersistent.getSuperProperties(token);
     const identityProps = {
-      distinct_id: this.mixpanelPersistent.getDistinctId(token),
-      $device_id: this.mixpanelPersistent.getDeviceId(token),
-      $user_id: this.mixpanelPersistent.getUserId(token),
+      distinct_id: this.oursprivacyPersistent.getDistinctId(token),
+      $device_id: this.oursprivacyPersistent.getDeviceId(token),
+      $user_id: this.oursprivacyPersistent.getUserId(token),
     };
     const eventElapsedTime = await this.eventElapsedTime(token, eventName);
     const eventProperties = Object.freeze({
@@ -109,12 +109,12 @@ export default class MixpanelMain {
     });
 
     if (eventElapsedTime !== null) {
-      let timeEvents = this.mixpanelPersistent.getTimeEvents(token);
+      let timeEvents = this.oursprivacyPersistent.getTimeEvents(token);
       delete timeEvents[eventName];
-      this.mixpanelPersistent.updateTimeEvents(token, timeEvents);
-      await this.mixpanelPersistent.persistTimeEvents(token);
+      this.oursprivacyPersistent.updateTimeEvents(token, timeEvents);
+      await this.oursprivacyPersistent.persistTimeEvents(token);
     }
-    await this.core.addToMixpanelQueue(token, MixpanelType.EVENTS, eventData);
+    await this.core.addToOursPrivacyQueue(token, OursPrivacyType.EVENTS, eventData);
   }
 
   setLoggingEnabled(token, loggingEnabled) {
@@ -142,39 +142,39 @@ export default class MixpanelMain {
 
   async optOutTracking(token) {
     await this._setOptedOutTrackingFlag(token, true);
-    MixpanelLogger.log(token, "User has opted out of tracking");
-    await this.mixpanelPersistent.reset(token);
+    OursPrivacyLogger.log(token, "User has opted out of tracking");
+    await this.oursprivacyPersistent.reset(token);
   }
 
   async optInTracking(token) {
     await this._setOptedOutTrackingFlag(token, false);
-    MixpanelLogger.log(token, "User has opted in to tracking");
+    OursPrivacyLogger.log(token, "User has opted in to tracking");
     await this.track(token, "$opt_in");
   }
 
   async _setOptedOutTrackingFlag(token, optedOut) {
-    this.mixpanelPersistent.updateOptedOut(token, optedOut);
-    await this.mixpanelPersistent.persistOptedOut(token);
+    this.oursprivacyPersistent.updateOptedOut(token, optedOut);
+    await this.oursprivacyPersistent.persistOptedOut(token);
   }
 
   hasOptedOutTracking(token) {
-    return this.mixpanelPersistent.getOptOut(token);
+    return this.oursprivacyPersistent.getOptOut(token);
   }
 
   async identify(token, newDistinctId) {
-    MixpanelLogger.log(token, `Identify '${newDistinctId}'`);
-    const oldDistinctId = this.mixpanelPersistent.getDistinctId(token);
+    OursPrivacyLogger.log(token, `Identify '${newDistinctId}'`);
+    const oldDistinctId = this.oursprivacyPersistent.getDistinctId(token);
     if (oldDistinctId === newDistinctId) {
-      MixpanelLogger.log(
+      OursPrivacyLogger.log(
         token,
         `Distinct Id is already set to ${newDistinctId}, skipping identify.`
       );
       return;
     }
-    this.mixpanelPersistent.updateDistinctId(token, newDistinctId);
-    this.mixpanelPersistent.updateUserId(token, newDistinctId);
-    const deviceId = this.mixpanelPersistent.getDeviceId(token);
-    await this.mixpanelPersistent.persistIdentity(token);
+    this.oursprivacyPersistent.updateDistinctId(token, newDistinctId);
+    this.oursprivacyPersistent.updateUserId(token, newDistinctId);
+    const deviceId = this.oursprivacyPersistent.getDeviceId(token);
+    await this.oursprivacyPersistent.persistIdentity(token);
     await this.track(token, "$identify", {
       distinctId: newDistinctId,
       $user_id: newDistinctId,
@@ -184,7 +184,7 @@ export default class MixpanelMain {
   }
 
   async alias(token, alias, distinctId) {
-    MixpanelLogger.log(token, `Alias '${alias}' to '${distinctId}'`);
+    OursPrivacyLogger.log(token, `Alias '${alias}' to '${distinctId}'`);
     await this.track(token, "$create_alias", {
       alias,
       distinct_id: distinctId,
@@ -193,30 +193,30 @@ export default class MixpanelMain {
   }
 
   async getDeviceId(token) {
-    if (!this.mixpanelPersistent.getDeviceId(token)) {
-      await this.mixpanelPersistent.loadIdentity(token);
+    if (!this.oursprivacyPersistent.getDeviceId(token)) {
+      await this.oursprivacyPersistent.loadIdentity(token);
     }
     return this.identity[token].deviceId;
   }
 
   async getDistinctId(token) {
-    if (!this.mixpanelPersistent.getDistinctId(token)) {
-      await this.mixpanelPersistent.loadIdentity(token);
+    if (!this.oursprivacyPersistent.getDistinctId(token)) {
+      await this.oursprivacyPersistent.loadIdentity(token);
     }
-    return this.mixpanelPersistent.getDistinctId(token);
+    return this.oursprivacyPersistent.getDistinctId(token);
   }
 
   async _updateSuperProperties(token, properties) {
-    this.mixpanelPersistent.updateSuperProperties(token, properties);
-    await this.mixpanelPersistent.persistSuperProperties(token);
+    this.oursprivacyPersistent.updateSuperProperties(token, properties);
+    await this.oursprivacyPersistent.persistSuperProperties(token);
   }
 
   async registerSuperProperties(token, properties) {
-    MixpanelLogger.log(token, `Register super properties:`, properties);
-    const currentSuperProperties = this.mixpanelPersistent.getSuperProperties(
+    OursPrivacyLogger.log(token, `Register super properties:`, properties);
+    const currentSuperProperties = this.oursprivacyPersistent.getSuperProperties(
       token
     );
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Current Super Properties:`,
       currentSuperProperties
@@ -227,7 +227,7 @@ export default class MixpanelMain {
     };
 
     this._updateSuperProperties(token, updatedSuperProperties);
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Updated Super Properties:`,
       updatedSuperProperties
@@ -235,8 +235,8 @@ export default class MixpanelMain {
   }
 
   async registerSuperPropertiesOnce(token, properties) {
-    MixpanelLogger.log(token, `Register super properties once`, properties);
-    const currentSuperProperties = this.mixpanelPersistent.getSuperProperties(
+    OursPrivacyLogger.log(token, `Register super properties once`, properties);
+    const currentSuperProperties = this.oursprivacyPersistent.getSuperProperties(
       token
     );
 
@@ -246,7 +246,7 @@ export default class MixpanelMain {
     };
 
     this._updateSuperProperties(token, updatedSuperProperties);
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Updated Super Properties:`,
       updatedSuperProperties
@@ -254,45 +254,45 @@ export default class MixpanelMain {
   }
 
   async unregisterSuperProperty(token, propertyName) {
-    MixpanelLogger.log(token, `Unregister super property '${propertyName}'`);
-    let superProperties = this.mixpanelPersistent.getSuperProperties(token);
+    OursPrivacyLogger.log(token, `Unregister super property '${propertyName}'`);
+    let superProperties = this.oursprivacyPersistent.getSuperProperties(token);
     delete superProperties[propertyName];
     this._updateSuperProperties(token, superProperties);
-    MixpanelLogger.log(token, `Updated Super Properties:`, superProperties);
+    OursPrivacyLogger.log(token, `Updated Super Properties:`, superProperties);
   }
 
   async getSuperProperties(token) {
-    if (!this.mixpanelPersistent.getSuperProperties(token)) {
-      await this.mixpanelPersistent.loadSuperProperties(token);
+    if (!this.oursprivacyPersistent.getSuperProperties(token)) {
+      await this.oursprivacyPersistent.loadSuperProperties(token);
     }
-    return this.mixpanelPersistent.getSuperProperties(token);
+    return this.oursprivacyPersistent.getSuperProperties(token);
   }
 
   async clearSuperProperties(token) {
-    MixpanelLogger.log(token, `Clear super properties`);
+    OursPrivacyLogger.log(token, `Clear super properties`);
     this._updateSuperProperties(token, {});
-    MixpanelLogger.log(token, `Updated Super Properties:`, {});
+    OursPrivacyLogger.log(token, `Updated Super Properties:`, {});
   }
 
   async timeEvent(token, eventName) {
     const currentTime = Math.round(Date.now() / 1000);
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Add time event '${eventName}' at`,
       new Date(currentTime * 1000).toLocaleString()
     );
-    this.mixpanelPersistent.updateTimeEvents(token, {
-      ...this.mixpanelPersistent.getTimeEvents(token),
+    this.oursprivacyPersistent.updateTimeEvents(token, {
+      ...this.oursprivacyPersistent.getTimeEvents(token),
       [eventName]: currentTime,
     });
-    await this.mixpanelPersistent.persistTimeEvents(token);
+    await this.oursprivacyPersistent.persistTimeEvents(token);
   }
 
   async eventElapsedTime(token, eventName) {
-    if (!this.mixpanelPersistent.getTimeEvents(token)) {
-      await this.mixpanelPersistent.loadTimeEvents(token);
+    if (!this.oursprivacyPersistent.getTimeEvents(token)) {
+      await this.oursprivacyPersistent.loadTimeEvents(token);
     }
-    const timeEvents = this.mixpanelPersistent.getTimeEvents(token);
+    const timeEvents = this.oursprivacyPersistent.getTimeEvents(token);
     const startTime = timeEvents ? timeEvents[eventName] : undefined;
 
     if (startTime) {
@@ -302,19 +302,19 @@ export default class MixpanelMain {
     return null;
   }
 
-  async sendProfileDataToMixpanel(token, action) {
+  async sendProfileDataToOursPrivacy(token, action) {
     const profileData = {
       $token: token,
       $time: Date.now(),
       ...action,
-      $distinct_id: this.mixpanelPersistent.getDistinctId(token),
-      $device_id: this.mixpanelPersistent.getDeviceId(token),
-      $user_id: this.mixpanelPersistent.getUserId(token),
+      $distinct_id: this.oursprivacyPersistent.getDistinctId(token),
+      $device_id: this.oursprivacyPersistent.getDeviceId(token),
+      $user_id: this.oursprivacyPersistent.getUserId(token),
     };
-    await this.core.addToMixpanelQueue(token, MixpanelType.USER, profileData);
+    await this.core.addToOursPrivacyQueue(token, OursPrivacyType.USER, profileData);
   }
 
-  async sendGroupDataToMixpanel({token, groupKey, groupID, action}) {
+  async sendGroupDataToOursPrivacy({token, groupKey, groupID, action}) {
     const profileData = {
       $token: token,
       $time: Date.now(),
@@ -322,35 +322,35 @@ export default class MixpanelMain {
       $group_id: groupID,
       ...action,
     };
-    await this.core.addToMixpanelQueue(token, MixpanelType.GROUPS, profileData);
+    await this.core.addToOursPrivacyQueue(token, OursPrivacyType.GROUPS, profileData);
   }
 
   async set(token, properties) {
-    MixpanelLogger.log(token, `Set properties: `, properties);
-    await this.sendProfileDataToMixpanel(token, {$set: properties});
+    OursPrivacyLogger.log(token, `Set properties: `, properties);
+    await this.sendProfileDataToOursPrivacy(token, {$set: properties});
   }
 
   async setOnce(token, properties) {
-    MixpanelLogger.log(token, `Set once properties: `, properties);
-    await this.sendProfileDataToMixpanel(token, {$set_once: properties});
+    OursPrivacyLogger.log(token, `Set once properties: `, properties);
+    await this.sendProfileDataToOursPrivacy(token, {$set_once: properties});
   }
 
   async increment(token, properties) {
-    MixpanelLogger.log(token, `Increment properties: `, properties);
-    await this.sendProfileDataToMixpanel(token, {$add: properties});
+    OursPrivacyLogger.log(token, `Increment properties: `, properties);
+    await this.sendProfileDataToOursPrivacy(token, {$add: properties});
   }
 
   async append(token, nameOrProperties, value) {
     if (typeof nameOrProperties === "string" && value !== undefined) {
-      MixpanelLogger.log(token, `Append properties: `, {
+      OursPrivacyLogger.log(token, `Append properties: `, {
         [nameOrProperties]: value,
       });
-      await this.sendProfileDataToMixpanel(token, {
+      await this.sendProfileDataToOursPrivacy(token, {
         $append: {[nameOrProperties]: value},
       });
     } else if (typeof nameOrProperties === "object") {
-      MixpanelLogger.log(token, `Append properties: `, nameOrProperties);
-      await this.sendProfileDataToMixpanel(token, {
+      OursPrivacyLogger.log(token, `Append properties: `, nameOrProperties);
+      await this.sendProfileDataToOursPrivacy(token, {
         $append: nameOrProperties,
       });
     }
@@ -358,67 +358,67 @@ export default class MixpanelMain {
 
   async union(token, nameOrProperties, value) {
     if (typeof nameOrProperties === "string" && value !== undefined) {
-      MixpanelLogger.log(token, `Union properties: `, {
+      OursPrivacyLogger.log(token, `Union properties: `, {
         [nameOrProperties]: value,
       });
-      await this.sendProfileDataToMixpanel(token, {
+      await this.sendProfileDataToOursPrivacy(token, {
         $union: {[nameOrProperties]: value},
       });
     } else if (typeof nameOrProperties === "object") {
-      MixpanelLogger.log(token, `Union properties: `, nameOrProperties);
-      await this.sendProfileDataToMixpanel(token, {$union: nameOrProperties});
+      OursPrivacyLogger.log(token, `Union properties: `, nameOrProperties);
+      await this.sendProfileDataToOursPrivacy(token, {$union: nameOrProperties});
     }
   }
 
   async remove(token, nameOrProperties, value) {
     if (typeof nameOrProperties === "string" && value !== undefined) {
-      MixpanelLogger.log(token, `Remove properties: `, {
+      OursPrivacyLogger.log(token, `Remove properties: `, {
         [nameOrProperties]: value,
       });
-      await this.sendProfileDataToMixpanel(token, {
+      await this.sendProfileDataToOursPrivacy(token, {
         $remove: {[nameOrProperties]: value},
       });
     } else if (typeof nameOrProperties === "object") {
-      MixpanelLogger.log(token, `Remove properties: `, nameOrProperties);
-      await this.sendProfileDataToMixpanel(token, {
+      OursPrivacyLogger.log(token, `Remove properties: `, nameOrProperties);
+      await this.sendProfileDataToOursPrivacy(token, {
         $remove: nameOrProperties,
       });
     }
   }
 
   async trackCharge(token, charge, properties) {
-    MixpanelLogger.log(token, `Track charge: `, charge, properties);
+    OursPrivacyLogger.log(token, `Track charge: `, charge, properties);
     await this.append(token, {
       $transactions: {$amount: charge, $time: Date.now(), ...properties},
     });
   }
 
   async clearCharges(token) {
-    MixpanelLogger.log(token, `Clear charges`);
+    OursPrivacyLogger.log(token, `Clear charges`);
     await this.set(token, {
       $transactions: [],
     });
   }
 
   async unset(token, property) {
-    MixpanelLogger.log(token, `Unset property: `, property);
-    await this.sendProfileDataToMixpanel(token, {$unset: [property]});
+    OursPrivacyLogger.log(token, `Unset property: `, property);
+    await this.sendProfileDataToOursPrivacy(token, {$unset: [property]});
   }
 
   async deleteUser(token) {
-    MixpanelLogger.log(token, `Delete user`);
-    await this.sendProfileDataToMixpanel(token, {$delete: "null"});
+    OursPrivacyLogger.log(token, `Delete user`);
+    await this.sendProfileDataToOursPrivacy(token, {$delete: "null"});
   }
 
   async groupSetProperties(token, groupKey, groupID, properties) {
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Group set properties: `,
       groupKey,
       groupID,
       properties
     );
-    await this.sendGroupDataToMixpanel({
+    await this.sendGroupDataToOursPrivacy({
       token,
       groupKey,
       groupID,
@@ -429,14 +429,14 @@ export default class MixpanelMain {
   }
 
   async groupSetPropertyOnce(token, groupKey, groupID, properties) {
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Group set once properties: `,
       groupKey,
       groupID,
       properties
     );
-    await this.sendGroupDataToMixpanel({
+    await this.sendGroupDataToOursPrivacy({
       token,
       groupKey,
       groupID,
@@ -447,14 +447,14 @@ export default class MixpanelMain {
   }
 
   async groupUnsetProperty(token, groupKey, groupID, prop) {
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Group unset property: `,
       groupKey,
       groupID,
       prop
     );
-    await this.sendGroupDataToMixpanel({
+    await this.sendGroupDataToOursPrivacy({
       token,
       groupKey,
       groupID,
@@ -465,7 +465,7 @@ export default class MixpanelMain {
   }
 
   async groupRemovePropertyValue(token, groupKey, groupID, name, value) {
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Group remove property value: `,
       groupKey,
@@ -473,7 +473,7 @@ export default class MixpanelMain {
       name,
       value
     );
-    await this.sendGroupDataToMixpanel({
+    await this.sendGroupDataToOursPrivacy({
       token,
       groupKey,
       groupID,
@@ -484,7 +484,7 @@ export default class MixpanelMain {
   }
 
   async groupUnionProperty(token, groupKey, groupID, name, value) {
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Group union property: `,
       groupKey,
@@ -492,7 +492,7 @@ export default class MixpanelMain {
       name,
       value
     );
-    await this.sendGroupDataToMixpanel({
+    await this.sendGroupDataToOursPrivacy({
       token,
       groupKey,
       groupID,
@@ -503,7 +503,7 @@ export default class MixpanelMain {
   }
 
   async trackWithGroups(token, eventName, properties, groups) {
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
       `Track with groups: `,
       eventName,
@@ -514,15 +514,15 @@ export default class MixpanelMain {
   }
 
   async setGroup(token, groupKey, groupID) {
-    MixpanelLogger.log(token, `Set group: `, groupKey, groupID);
+    OursPrivacyLogger.log(token, `Set group: `, groupKey, groupID);
     const properties = {[groupKey]: [groupID]};
     await this.registerSuperProperties(token, properties);
     await this.set(token, properties);
   }
 
   async addGroup(token, groupKey, groupID) {
-    MixpanelLogger.log(token, `Add group: `, groupKey, groupID);
-    const superProperties = this.mixpanelPersistent.getSuperProperties(token);
+    OursPrivacyLogger.log(token, `Add group: `, groupKey, groupID);
+    const superProperties = this.oursprivacyPersistent.getSuperProperties(token);
     const groupArray = superProperties[groupKey] || [];
     if (!groupArray.includes(groupID)) {
       this.registerSuperProperties(token, {
@@ -533,8 +533,8 @@ export default class MixpanelMain {
   }
 
   async removeGroup(token, groupKey, groupID) {
-    MixpanelLogger.log(token, `Remove group: `, groupKey, groupID);
-    const superProperties = this.mixpanelPersistent.getSuperProperties(token);
+    OursPrivacyLogger.log(token, `Remove group: `, groupKey, groupID);
+    const superProperties = this.oursprivacyPersistent.getSuperProperties(token);
     if (superProperties && superProperties[groupKey]) {
       const filteredGroup = superProperties[groupKey].filter(
         (id) => id !== groupID
@@ -548,8 +548,8 @@ export default class MixpanelMain {
   }
 
   async deleteGroup(token, groupKey, groupID) {
-    MixpanelLogger.log(token, `Delete group: `, groupKey, groupID);
-    await this.sendGroupDataToMixpanel({
+    OursPrivacyLogger.log(token, `Delete group: `, groupKey, groupID);
+    await this.sendGroupDataToOursPrivacy({
       token,
       groupKey,
       groupID,

@@ -1,19 +1,19 @@
 {
-  "name": "mixpanel-react-native",
+  "name": "oursprivacy-react-native",
   "version": "3.0.9",
-  "description": "Official React Native Tracking Library for Mixpanel Analytics",
+  "description": "Official React Native Tracking Library for OursPrivacy Analytics",
   "main": "index.js",
   "scripts": {
     "test": "jest"
   },
-  "author": "Mixpanel",
+  "author": "OursPrivacy",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mixpanel/mixpanel-react-native.git"
+    "url": "git+https://github.com/oursprivacy/oursprivacy-react-native.git"
   },
   "keywords": [
-    "mixpanel",
+    "oursprivacy",
     "react",
     "native",
     "ios",
@@ -23,10 +23,10 @@
     "sdk"
   ],
   "bugs": {
-    "url": "https://github.com/mixpanel/mixpanel-react-native/issues"
+    "url": "https://github.com/oursprivacy/oursprivacy-react-native/issues"
   },
   "TODO": "Change the git URL before publishing on npm",
-  "homepage": "https://github.com/mixpanel/mixpanel-react-native#readme",
+  "homepage": "https://github.com/oursprivacy/oursprivacy-react-native#readme",
   "metadata": {
     "mp_lib": "react-native"
   },

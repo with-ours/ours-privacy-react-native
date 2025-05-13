@@ -1,4 +1,4 @@
-package com.simplemixpanel
+package com.simpleoursprivacy
 
 import android.app.Application
 import com.facebook.react.PackageList

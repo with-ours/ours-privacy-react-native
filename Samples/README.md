@@ -1,11 +1,11 @@
 
 
-# Sample React Native Applications for Mixpanel Integration
+# Sample React Native Applications for OursPrivacy Integration
 
-This folder contains 3 sample applications demonstrating how you can use Mixpanel in your React Native app.
-- SimpleMixpanel: Integrate Mixpanel with a minimalist approach
-- MixpanelDemo: A full Mixpanel API demo app
-- ContextAPIMixpanel: Integrate Mixpanel with Context API
+This folder contains 3 sample applications demonstrating how you can use OursPrivacy in your React Native app.
+- SimpleOursPrivacy: Integrate OursPrivacy with a minimalist approach
+- OursPrivacyDemo: A full OursPrivacy API demo app
+- ContextAPIOursPrivacy: Integrate OursPrivacy with Context API
 
 # How to Run
 ## Prerequisites
@@ -17,15 +17,15 @@ https://reactnative.dev/docs/environment-setup
 - Under the sample app's root directory, run `yarn install`
 - Under the sample app's ios directory, run `pod install`
 - To run the app in iOS, run `yarn ios`
-- To run the app Android, run `yarn android` 
+- To run the app Android, run `yarn android`
 
-## Add your Mixpanel Token to app.json 
+## Add your OursPrivacy Token to app.json
 There is "token" value in app.json that you'll need to update
-before you can send data to Mixpanel.
+before you can send data to OursPrivacy.
 
-### For Your Mixpanel Token
+### For Your OursPrivacy Token
 
-- Log in to your account at https://www.mixpanel.com
+- Log in to your account at https://www.oursprivacy.com
 - Select the project you'll be working with
 - Click the gear link at the top right to show the project settings dialog
 - Copy the "Token" string from the dialog
@@ -34,6 +34,6 @@ Change the value of "token" in app.json to the value you copied from the web pag
 
 ## Getting More Information
 
-The Mixpanel React Native integration API documentation is available on the Mixpanel website.
+The OursPrivacy React Native integration API documentation is available on the OursPrivacy website.
 
-https://developer.mixpanel.com/docs/react-native
+https://developer.oursprivacy.com/docs/react-native

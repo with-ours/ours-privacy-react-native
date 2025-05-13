@@ -1,14 +1,14 @@
-import {MixpanelPersistent} from "./mixpanel-persistent";
+import {OursPrivacyPersistent} from "./oursprivacy-persistent";
 
-export const MixpanelQueueManager = (() => {
+export const OursPrivacyQueueManager = (() => {
   let _queues = {};
-  let mixpanelPersistent;
+  let oursprivacyPersistent;
 
   const getPersistent = () => {
-    if (!mixpanelPersistent) {
-        mixpanelPersistent = MixpanelPersistent.getInstance();
+    if (!oursprivacyPersistent) {
+        oursprivacyPersistent = OursPrivacyPersistent.getInstance();
     }
-    return mixpanelPersistent;
+    return oursprivacyPersistent;
   };
 
   const initialize = async (token, type) => {

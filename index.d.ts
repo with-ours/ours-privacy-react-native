@@ -1,29 +1,29 @@
-type MixpanelType = any;
-type MixpanelProperties = {[key: string]: MixpanelType};
+type OursPrivacyType = any;
+type OursPrivacyProperties = {[key: string]: OursPrivacyType};
 
-export type MixpanelAsyncStorage = {
+export type OursPrivacyAsyncStorage = {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
   removeItem(key: string): Promise<void>;
 };
 
-export class Mixpanel {
+export class OursPrivacy {
   constructor(token: string, trackAutoMaticEvents: boolean);
   constructor(token: string, trackAutoMaticEvents: boolean, useNative: true);
   constructor(
     token: string,
     trackAutomaticEvents: boolean,
     useNative: false,
-    storage?: MixpanelAsyncStorage
+    storage?: OursPrivacyAsyncStorage
   );
   static init(
     token: string,
     trackAutomaticEvents: boolean,
     optOutTrackingDefault?: boolean
-  ): Promise<Mixpanel>;
+  ): Promise<OursPrivacy>;
   init(
     optOutTrackingDefault?: boolean,
-    superProperties?: MixpanelProperties,
+    superProperties?: OursPrivacyProperties,
     serverURL?: String
   ): Promise<void>;
   setServerURL(serverURL: string): void;
@@ -36,22 +36,22 @@ export class Mixpanel {
   optOutTracking(): void;
   identify(distinctId: string): Promise<void>;
   alias(alias: string, distinctId: string): void;
-  track(eventName: string, properties?: MixpanelProperties): void;
+  track(eventName: string, properties?: OursPrivacyProperties): void;
   getPeople(): People;
   trackWithGroups(
     eventName: string,
-    properties?: MixpanelProperties,
-    groups?: MixpanelProperties
+    properties?: OursPrivacyProperties,
+    groups?: OursPrivacyProperties
   ): void;
-  setGroup(groupKey: string, groupID: MixpanelType): void;
-  getGroup(groupKey: string, groupID: MixpanelType): MixpanelGroup;
-  addGroup(groupKey: string, groupID: MixpanelType): void;
-  removeGroup(groupKey: string, groupID: MixpanelType): void;
-  deleteGroup(groupKey: string, groupID: MixpanelType): void;
-  registerSuperProperties(properties: MixpanelProperties): void;
-  registerSuperPropertiesOnce(properties: MixpanelProperties): void;
+  setGroup(groupKey: string, groupID: OursPrivacyType): void;
+  getGroup(groupKey: string, groupID: OursPrivacyType): OursPrivacyGroup;
+  addGroup(groupKey: string, groupID: OursPrivacyType): void;
+  removeGroup(groupKey: string, groupID: OursPrivacyType): void;
+  deleteGroup(groupKey: string, groupID: OursPrivacyType): void;
+  registerSuperProperties(properties: OursPrivacyProperties): void;
+  registerSuperPropertiesOnce(properties: OursPrivacyProperties): void;
   unregisterSuperProperty(propertyName: string): void;
-  getSuperProperties(): Promise<MixpanelProperties>;
+  getSuperProperties(): Promise<OursPrivacyProperties>;
   clearSuperProperties(): void;
   timeEvent(eventName: string): void;
   eventElapsedTime(eventName: string): Promise<number>;
@@ -62,32 +62,32 @@ export class Mixpanel {
 }
 
 export class People {
-  constructor(token: string, mixpanelInstance: any);
-  set(prop: string, to: MixpanelType): void;
-  set(properties: MixpanelProperties): void;
-  setOnce(prop: string, to: MixpanelType): void;
-  setOnce(properties: MixpanelProperties): void;
+  constructor(token: string, oursprivacyInstance: any);
+  set(prop: string, to: OursPrivacyType): void;
+  set(properties: OursPrivacyProperties): void;
+  setOnce(prop: string, to: OursPrivacyType): void;
+  setOnce(properties: OursPrivacyProperties): void;
   increment(prop: string, by: number): void;
-  increment(properties: MixpanelProperties): void;
-  append(name: string, value: MixpanelType): void;
-  union(name: string, value: Array<MixpanelType>): void;
-  remove(name: string, value: MixpanelType): void;
+  increment(properties: OursPrivacyProperties): void;
+  append(name: string, value: OursPrivacyType): void;
+  union(name: string, value: Array<OursPrivacyType>): void;
+  remove(name: string, value: OursPrivacyType): void;
   unset(name: string): void;
-  trackCharge(charge: number, properties: MixpanelProperties): void;
+  trackCharge(charge: number, properties: OursPrivacyProperties): void;
   clearCharges(): void;
   deleteUser(): void;
 }
 
-export class MixpanelGroup {
+export class OursPrivacyGroup {
   constructor(
     token: string,
     groupKey: string,
-    groupID: MixpanelType,
-    mixpanelInstance: any
+    groupID: OursPrivacyType,
+    oursprivacyInstance: any
   );
-  set(prop: string, to: MixpanelType): void;
-  setOnce(prop: string, to: MixpanelType): void;
+  set(prop: string, to: OursPrivacyType): void;
+  setOnce(prop: string, to: OursPrivacyType): void;
   unset(prop: string): void;
-  remove(name: string, value: MixpanelType): void;
-  union(name: string, value: MixpanelType): void;
+  remove(name: string, value: OursPrivacyType): void;
+  union(name: string, value: OursPrivacyType): void;
 }

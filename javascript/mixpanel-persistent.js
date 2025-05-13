@@ -7,28 +7,28 @@ import {
   getQueueKey,
   getUserIdKey,
   getAppHasOpenedBeforeKey,
-} from "./mixpanel-constants";
+} from "./oursprivacy-constants";
 
-import {AsyncStorageAdapter} from "./mixpanel-storage";
+import {AsyncStorageAdapter} from "./oursprivacy-storage";
 import uuid from "uuid";
-import {MixpanelLogger} from "mixpanel-react-native/javascript/mixpanel-logger";
+import {OursPrivacyLogger} from "oursprivacy-react-native/javascript/oursprivacy-logger";
 
-export class MixpanelPersistent {
+export class OursPrivacyPersistent {
   static instance;
 
   static getInstance(storage) {
-    if (!MixpanelPersistent.instance) {
-      MixpanelPersistent.instance = new MixpanelPersistent(
+    if (!OursPrivacyPersistent.instance) {
+      OursPrivacyPersistent.instance = new OursPrivacyPersistent(
         new AsyncStorageAdapter(storage)
       );
-      MixpanelPersistent.initializationCompletePromise = MixpanelPersistent.instance.initializationCompletePromise();
+      OursPrivacyPersistent.initializationCompletePromise = OursPrivacyPersistent.instance.initializationCompletePromise();
     }
-    return MixpanelPersistent.instance;
+    return OursPrivacyPersistent.instance;
   }
 
   constructor(storageAdapter) {
-    if (MixpanelPersistent.instance) {
-      throw new Error(`Use MixpanelPersistent.getInstance()`);
+    if (OursPrivacyPersistent.instance) {
+      throw new Error(`Use OursPrivacyPersistent.getInstance()`);
     }
 
     this.storageAdapter = storageAdapter;
@@ -65,7 +65,7 @@ export class MixpanelPersistent {
         this._identity[token].deviceId
       );
     }
-    MixpanelLogger.log(token, "deviceId:", this._identity[token].deviceId);
+    OursPrivacyLogger.log(token, "deviceId:", this._identity[token].deviceId);
   }
 
   async loadDistinctId(token) {
@@ -85,7 +85,7 @@ export class MixpanelPersistent {
         this._identity[token].distinctId
       );
     }
-    MixpanelLogger.log(token, "distinctId:", this._identity[token].distinctId);
+    OursPrivacyLogger.log(token, "distinctId:", this._identity[token].distinctId);
   }
 
   async loadUserId(token) {
@@ -95,7 +95,7 @@ export class MixpanelPersistent {
       }
       this._identity[token].userId = userId;
     });
-    MixpanelLogger.log(token, "userId:", this._identity[token].userId);
+    OursPrivacyLogger.log(token, "userId:", this._identity[token].userId);
   }
 
   async loadIdentity(token) {

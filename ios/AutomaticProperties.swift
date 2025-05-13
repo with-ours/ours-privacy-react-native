@@ -1,12 +1,12 @@
 import Foundation
-import Mixpanel
+import OursPrivacy
 
 class AutomaticProperties {
-    static var peopleProperties: Dictionary<String, MixpanelType> = [:];
-    
+    static var peopleProperties: Dictionary<String, OursPrivacyType> = [:];
+
     static func setAutomaticProperties(_ properties: [String: Any]) {
         for (key,value) in properties {
-            peopleProperties[key] = MixpanelTypeHandler.mixpanelTypeValue(value)
+            peopleProperties[key] = OursPrivacyTypeHandler.oursprivacyTypeValue(value)
         }
     }
 }

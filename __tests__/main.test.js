@@ -1,25 +1,25 @@
-import {MixpanelType} from "mixpanel-react-native/javascript/mixpanel-constants";
+import {OursPrivacyType} from "oursprivacy-react-native/javascript/oursprivacy-constants";
 import {exp} from "react-native/Libraries/Animated/src/Easing";
 import {get} from "react-native/Libraries/Utilities/PixelRatio";
 
-jest.mock("mixpanel-react-native/javascript/mixpanel-core", () => ({
-  MixpanelCore: jest.fn().mockImplementation(() => ({
+jest.mock("oursprivacy-react-native/javascript/oursprivacy-core", () => ({
+  OursPrivacyCore: jest.fn().mockImplementation(() => ({
     initialize: jest.fn(),
     startProcessingQueue: jest.fn(),
-    addToMixpanelQueue: jest.fn(),
+    addToOursPrivacyQueue: jest.fn(),
     flush: jest.fn(),
   })),
 }));
 
-jest.mock("mixpanel-react-native/javascript/mixpanel-network", () => ({
-  MixpanelNetwork: {
+jest.mock("oursprivacy-react-native/javascript/oursprivacy-network", () => ({
+  OursPrivacyNetwork: {
     sendRequest: jest.fn(),
   },
 }));
 
-jest.mock("mixpanel-react-native/javascript/mixpanel-persistent", () => {
+jest.mock("oursprivacy-react-native/javascript/oursprivacy-persistent", () => {
   return {
-    MixpanelPersistent: {
+    OursPrivacyPersistent: {
       getInstance: jest.fn().mockImplementation(() => {
         return {
           initializationCompletePromise: jest.fn(),
@@ -68,8 +68,8 @@ jest.mock("mixpanel-react-native/javascript/mixpanel-persistent", () => {
   };
 });
 
-jest.mock("mixpanel-react-native/javascript/mixpanel-config", () => ({
-  MixpanelConfig: {
+jest.mock("oursprivacy-react-native/javascript/oursprivacy-config", () => ({
+  OursPrivacyConfig: {
     getInstance: jest.fn().mockReturnValue({
       getFlushInterval: jest.fn().mockReturnValue(1000),
       getFlushBatchSize: jest.fn().mockReturnValue(50),
@@ -82,45 +82,45 @@ jest.mock("mixpanel-react-native/javascript/mixpanel-config", () => ({
   },
 }));
 
-// jest.mock("mixpanel-react-native/javascript/mixpanel-logger", () => {
+// jest.mock("oursprivacy-react-native/javascript/oursprivacy-logger", () => {
 //   return {
-//     MixpanelLogger: {
+//     OursPrivacyLogger: {
 //       log: jest.fn(),
 //     },
 //   };
 // });
 
 const {
-  MixpanelNetwork,
-} = require("mixpanel-react-native/javascript/mixpanel-network");
+  OursPrivacyNetwork,
+} = require("oursprivacy-react-native/javascript/oursprivacy-network");
 
 const {
-  MixpanelCore,
-} = require("mixpanel-react-native/javascript/mixpanel-core");
+  OursPrivacyCore,
+} = require("oursprivacy-react-native/javascript/oursprivacy-core");
 
 const {
-  MixpanelQueueManager,
-} = require("mixpanel-react-native/javascript/mixpanel-queue");
+  OursPrivacyQueueManager,
+} = require("oursprivacy-react-native/javascript/oursprivacy-queue");
 
 const {
-  MixpanelPersistent,
-} = require("mixpanel-react-native/javascript/mixpanel-persistent");
+  OursPrivacyPersistent,
+} = require("oursprivacy-react-native/javascript/oursprivacy-persistent");
 
 const {
-  MixpanelConfig,
-} = require("mixpanel-react-native/javascript/mixpanel-config");
+  OursPrivacyConfig,
+} = require("oursprivacy-react-native/javascript/oursprivacy-config");
 
-describe("MixpanelMain", () => {
-  let mixpanelMain;
+describe("OursPrivacyMain", () => {
+  let oursprivacyMain;
   const token = "test-token";
 
   beforeEach(() => {
     jest.clearAllMocks();
     jest.isolateModules(async () => {
-      const MixpanelMain = require("mixpanel-react-native/javascript/mixpanel-main")
+      const OursPrivacyMain = require("oursprivacy-react-native/javascript/oursprivacy-main")
         .default;
-      mixpanelMain = new MixpanelMain(token);
-      MixpanelConfig.getInstance().getLoggingEnabled.mockReturnValue(true);
+      oursprivacyMain = new OursPrivacyMain(token);
+      OursPrivacyConfig.getInstance().getLoggingEnabled.mockReturnValue(true);
     });
     jest.spyOn(console, "log").mockImplementation(() => {});
   });
@@ -129,9 +129,9 @@ describe("MixpanelMain", () => {
     const trackAutomaticEvents = false;
     const optOutTrackingDefault = false;
     const superProperties = {superProp1: "value1", superProp2: "value2"};
-    const serverURL = "https://api.mixpanel.com";
+    const serverURL = "https://api.oursprivacy.com";
 
-    await mixpanelMain.initialize(
+    await oursprivacyMain.initialize(
       token,
       trackAutomaticEvents,
       optOutTrackingDefault,
@@ -139,17 +139,17 @@ describe("MixpanelMain", () => {
       serverURL
     );
 
-    expect(mixpanelMain.core.initialize).toHaveBeenCalledWith(token);
+    expect(oursprivacyMain.core.initialize).toHaveBeenCalledWith(token);
 
     expect(
-      mixpanelMain.mixpanelPersistent.updateSuperProperties
+      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
     ).toHaveBeenCalledWith(token, {
       superProp1: "value1",
       superProp2: "value2",
       company_id: [222],
     });
     expect(
-      mixpanelMain.mixpanelPersistent.persistSuperProperties
+      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
     ).toHaveBeenCalledWith(token);
   });
 
@@ -157,10 +157,10 @@ describe("MixpanelMain", () => {
     const trackAutomaticEvents = false;
     const optOutTrackingDefault = true;
     const superProperties = {superProp1: "value1", superProp2: "value2"};
-    const serverURL = "https://api.mixpanel.com";
+    const serverURL = "https://api.oursprivacy.com";
 
 
-    await mixpanelMain.initialize(
+    await oursprivacyMain.initialize(
       token,
       trackAutomaticEvents,
       optOutTrackingDefault,
@@ -172,39 +172,39 @@ describe("MixpanelMain", () => {
     const eventProperties = {prop1: "value1", prop2: "value2"};
 
     expect(
-          mixpanelMain.mixpanelPersistent.updateOptedOut
+          oursprivacyMain.oursprivacyPersistent.updateOptedOut
         ).toHaveBeenCalledWith(token, true);
 
-    mixpanelMain.mixpanelPersistent.getOptedOut.mockReturnValue(true);
-    await mixpanelMain.track(token, eventName, eventProperties);
-    expect(mixpanelMain.core.addToMixpanelQueue).not.toHaveBeenCalled();
+    oursprivacyMain.oursprivacyPersistent.getOptedOut.mockReturnValue(true);
+    await oursprivacyMain.track(token, eventName, eventProperties);
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).not.toHaveBeenCalled();
   });
 
   it("should track if initialize with optOutTrackingDefault being false", async () => {
     const trackAutomaticEvents = false;
     const optOutTrackingDefault = false;
     const superProperties = {superProp1: "value1", superProp2: "value2"};
-    const serverURL = "https://api.mixpanel.com";
+    const serverURL = "https://api.oursprivacy.com";
 
-    await mixpanelMain.initialize(
+    await oursprivacyMain.initialize(
       token,
       trackAutomaticEvents,
       optOutTrackingDefault,
       superProperties,
       serverURL
     );
-    mixpanelMain.setLoggingEnabled(token, true);
+    oursprivacyMain.setLoggingEnabled(token, true);
     const eventName = "Test Event";
     const eventProperties = {prop1: "value1", prop2: "value2"};
 
-    await mixpanelMain.track(token, eventName, eventProperties);
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalled();
+    await oursprivacyMain.track(token, eventName, eventProperties);
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalled();
   });
 
   it("register super properties should update properties", async () => {
-    mixpanelMain.registerSuperProperties(token, {superProp3: "value3"});
+    oursprivacyMain.registerSuperProperties(token, {superProp3: "value3"});
     expect(
-      mixpanelMain.mixpanelPersistent.updateSuperProperties
+      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
     ).toHaveBeenCalledWith(token, {
       superProp1: "value1",
       superProp2: "value2",
@@ -212,14 +212,14 @@ describe("MixpanelMain", () => {
       company_id: [222],
     });
     expect(
-      mixpanelMain.mixpanelPersistent.persistSuperProperties
+      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
     ).toHaveBeenCalledWith(token);
   });
 
   it("register super properties once should update properties only once", async () => {
-    mixpanelMain.registerSuperPropertiesOnce(token, {superProp3: "value3"});
+    oursprivacyMain.registerSuperPropertiesOnce(token, {superProp3: "value3"});
     expect(
-      mixpanelMain.mixpanelPersistent.updateSuperProperties
+      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
     ).toHaveBeenCalledWith(token, {
       superProp1: "value1",
       superProp2: "value2",
@@ -227,11 +227,11 @@ describe("MixpanelMain", () => {
       company_id: [222],
     });
     expect(
-      mixpanelMain.mixpanelPersistent.persistSuperProperties
+      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
     ).toHaveBeenCalledWith(token);
-    mixpanelMain.registerSuperPropertiesOnce(token, {superProp3: "value4"});
+    oursprivacyMain.registerSuperPropertiesOnce(token, {superProp3: "value4"});
     expect(
-      mixpanelMain.mixpanelPersistent.updateSuperProperties
+      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
     ).toHaveBeenCalledWith(token, {
       superProp1: "value1",
       superProp2: "value2",
@@ -239,14 +239,14 @@ describe("MixpanelMain", () => {
       company_id: [222],
     });
     expect(
-      mixpanelMain.mixpanelPersistent.persistSuperProperties
+      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
     ).toHaveBeenCalledWith(token);
   });
 
   it("unregister super properties should update properties properly", async () => {
-    mixpanelMain.registerSuperPropertiesOnce(token, {superProp3: "value3"});
+    oursprivacyMain.registerSuperPropertiesOnce(token, {superProp3: "value3"});
     expect(
-      mixpanelMain.mixpanelPersistent.updateSuperProperties
+      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
     ).toHaveBeenCalledWith(token, {
       superProp1: "value1",
       superProp2: "value2",
@@ -254,9 +254,9 @@ describe("MixpanelMain", () => {
       company_id: [222],
     });
 
-    mixpanelMain.unregisterSuperProperty(token, "superProp3");
+    oursprivacyMain.unregisterSuperProperty(token, "superProp3");
     expect(
-      mixpanelMain.mixpanelPersistent.updateSuperProperties
+      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
     ).toHaveBeenCalledWith(token, {
       superProp1: "value1",
       superProp2: "value2",
@@ -265,12 +265,12 @@ describe("MixpanelMain", () => {
   });
 
   it("clear super properties should clear properties properly", async () => {
-    mixpanelMain.clearSuperProperties(token);
+    oursprivacyMain.clearSuperProperties(token);
     expect(
-      mixpanelMain.mixpanelPersistent.updateSuperProperties
+      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
     ).toHaveBeenCalledWith(token, {});
     expect(
-      mixpanelMain.mixpanelPersistent.persistSuperProperties
+      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
     ).toHaveBeenCalledWith(token);
   });
 
@@ -278,10 +278,10 @@ describe("MixpanelMain", () => {
     const eventName = "Test Event";
     const eventProperties = {prop1: "value1", prop2: "value2"};
 
-    await mixpanelMain.track(token, eventName, eventProperties);
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    await oursprivacyMain.track(token, eventName, eventProperties);
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.EVENTS,
+      OursPrivacyType.EVENTS,
       expect.objectContaining({
         event: eventName,
         properties: expect.objectContaining({
@@ -300,34 +300,34 @@ describe("MixpanelMain", () => {
   });
 
   it("should trigger the flush on the flush call", async () => {
-    mixpanelMain.flush(token);
-    expect(mixpanelMain.core.flush).toHaveBeenCalledWith(token);
+    oursprivacyMain.flush(token);
+    expect(oursprivacyMain.core.flush).toHaveBeenCalledWith(token);
   });
 
   it("setLoggingEnabled should work as expected", async () => {
-    mixpanelMain.setLoggingEnabled(token, true);
-    expect(mixpanelMain.config.setLoggingEnabled).toHaveBeenCalledWith(
+    oursprivacyMain.setLoggingEnabled(token, true);
+    expect(oursprivacyMain.config.setLoggingEnabled).toHaveBeenCalledWith(
       token,
       true
     );
-    MixpanelConfig.getInstance().getLoggingEnabled.mockReturnValueOnce(true);
-    await mixpanelMain.track(token, "test-event");
+    OursPrivacyConfig.getInstance().getLoggingEnabled.mockReturnValueOnce(true);
+    await oursprivacyMain.track(token, "test-event");
     expect(console.log).toHaveBeenCalled();
   });
 
   it("timeEvent should work as expected", async () => {
-    mixpanelMain.timeEvent(token, "test-event");
+    oursprivacyMain.timeEvent(token, "test-event");
     expect(
-      mixpanelMain.mixpanelPersistent.updateTimeEvents
+      oursprivacyMain.oursprivacyPersistent.updateTimeEvents
     ).toHaveBeenCalledWith(token, {"test-event": expect.any(Number)});
     expect(
-      mixpanelMain.mixpanelPersistent.persistTimeEvents
+      oursprivacyMain.oursprivacyPersistent.persistTimeEvents
     ).toHaveBeenCalledWith(token);
   });
 
   it("eventElapsedTime should work as expected", async () => {
-    mixpanelMain.timeEvent(token, "test-event");
-    const elapsedTime = await mixpanelMain.eventElapsedTime(
+    oursprivacyMain.timeEvent(token, "test-event");
+    const elapsedTime = await oursprivacyMain.eventElapsedTime(
       token,
       "test-event"
     );
@@ -337,11 +337,11 @@ describe("MixpanelMain", () => {
   it("should update the identity properties on identify", async () => {
     jest.resetModules();
     const newDistinctId = "new-distinct-id";
-    await mixpanelMain.identify(token, newDistinctId);
+    await oursprivacyMain.identify(token, newDistinctId);
     expect(
-      mixpanelMain.mixpanelPersistent.updateDistinctId
+      oursprivacyMain.oursprivacyPersistent.updateDistinctId
     ).toHaveBeenCalledWith(token, newDistinctId);
-    expect(mixpanelMain.mixpanelPersistent.updateUserId).toHaveBeenCalledWith(
+    expect(oursprivacyMain.oursprivacyPersistent.updateUserId).toHaveBeenCalledWith(
       token,
       newDistinctId
     );
@@ -349,11 +349,11 @@ describe("MixpanelMain", () => {
 
   it("should not update the identity properties if the new distinctid is the save as before", async () => {
     const newDistinctId = "distinct-id-mock";
-    await mixpanelMain.identify(token, newDistinctId);
+    await oursprivacyMain.identify(token, newDistinctId);
     expect(
-      mixpanelMain.mixpanelPersistent.updateDistinctId
+      oursprivacyMain.oursprivacyPersistent.updateDistinctId
     ).toHaveBeenCalledTimes(0);
-    expect(mixpanelMain.mixpanelPersistent.updateUserId).toHaveBeenCalledTimes(
+    expect(oursprivacyMain.oursprivacyPersistent.updateUserId).toHaveBeenCalledTimes(
       0
     );
   });
@@ -361,11 +361,11 @@ describe("MixpanelMain", () => {
   it("should send correct payload on set profile properties", async () => {
     const properties = {prop1: "value1", prop2: "value2"};
 
-    await mixpanelMain.set(token, properties);
+    await oursprivacyMain.set(token, properties);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -380,11 +380,11 @@ describe("MixpanelMain", () => {
   it("should send correct payload on setOnce profile properties", async () => {
     const properties = {prop1: "value1", prop2: "value2"};
 
-    await mixpanelMain.setOnce(token, properties);
+    await oursprivacyMain.setOnce(token, properties);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -399,11 +399,11 @@ describe("MixpanelMain", () => {
   it("should send correct payload on increment profile properties", async () => {
     const properties = {prop1: 3};
 
-    await mixpanelMain.increment(token, properties);
+    await oursprivacyMain.increment(token, properties);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -418,11 +418,11 @@ describe("MixpanelMain", () => {
   it("should send correct payload on append profile properties", async () => {
     const properties = {prop1: "value1"};
 
-    await mixpanelMain.append(token, properties);
+    await oursprivacyMain.append(token, properties);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -433,11 +433,11 @@ describe("MixpanelMain", () => {
       })
     );
 
-    await mixpanelMain.append(token, "testProp", "testValue");
+    await oursprivacyMain.append(token, "testProp", "testValue");
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -452,11 +452,11 @@ describe("MixpanelMain", () => {
   it("should send correct payload on union profile properties", async () => {
     const properties = {prop1: "value1"};
 
-    await mixpanelMain.union(token, properties);
+    await oursprivacyMain.union(token, properties);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -467,11 +467,11 @@ describe("MixpanelMain", () => {
       })
     );
 
-    await mixpanelMain.union(token, "testProp", "testValue");
+    await oursprivacyMain.union(token, "testProp", "testValue");
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -486,11 +486,11 @@ describe("MixpanelMain", () => {
   it("should send correct payload on remove profile properties", async () => {
     const properties = {prop1: "value1"};
 
-    await mixpanelMain.remove(token, properties);
+    await oursprivacyMain.remove(token, properties);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -501,11 +501,11 @@ describe("MixpanelMain", () => {
       })
     );
 
-    await mixpanelMain.remove(token, "testProp", "testValue");
+    await oursprivacyMain.remove(token, "testProp", "testValue");
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -521,11 +521,11 @@ describe("MixpanelMain", () => {
     const properties = {prop1: "value1"};
     const charge = 100;
 
-    await mixpanelMain.trackCharge(token, charge, properties);
+    await oursprivacyMain.trackCharge(token, charge, properties);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -544,11 +544,11 @@ describe("MixpanelMain", () => {
   });
 
   it("should send correct payload on clearCharge", async () => {
-    await mixpanelMain.clearCharges(token);
+    await oursprivacyMain.clearCharges(token);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -565,11 +565,11 @@ describe("MixpanelMain", () => {
   it("should send correct payload on unset profile properties", async () => {
     const property = "prop1";
 
-    await mixpanelMain.unset(token, property);
+    await oursprivacyMain.unset(token, property);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -582,10 +582,10 @@ describe("MixpanelMain", () => {
   });
 
   it("should send correct payload on delete profile", async () => {
-    await mixpanelMain.deleteUser(token);
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    await oursprivacyMain.deleteUser(token);
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -601,11 +601,11 @@ describe("MixpanelMain", () => {
     const properties = {prop1: "value1"};
     const eventName = "event1";
     const groups = {company_id: 111};
-    await mixpanelMain.trackWithGroups(token, eventName, properties, groups);
+    await oursprivacyMain.trackWithGroups(token, eventName, properties, groups);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.EVENTS,
+      OursPrivacyType.EVENTS,
       expect.objectContaining({
         event: "event1",
         properties: expect.objectContaining({
@@ -624,11 +624,11 @@ describe("MixpanelMain", () => {
   });
 
   it("should send correct payload on addGroup", async () => {
-    await mixpanelMain.addGroup(token, "company_id", 111);
+    await oursprivacyMain.addGroup(token, "company_id", 111);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -640,23 +640,23 @@ describe("MixpanelMain", () => {
     );
 
     expect(
-      mixpanelMain.mixpanelPersistent.updateSuperProperties
+      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
     ).toHaveBeenCalledWith(token, {
       company_id: [222, 111],
       superProp1: "value1",
       superProp2: "value2",
     });
     expect(
-      mixpanelMain.mixpanelPersistent.persistSuperProperties
+      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
     ).toHaveBeenCalledWith(token);
   });
 
   it("should send correct payload on setGroup", async () => {
-    await mixpanelMain.setGroup(token, "company_id", 333);
+    await oursprivacyMain.setGroup(token, "company_id", 333);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -668,35 +668,35 @@ describe("MixpanelMain", () => {
     );
 
     expect(
-      mixpanelMain.mixpanelPersistent.updateSuperProperties
+      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
     ).toHaveBeenCalledWith(token, {
       company_id: [333],
       superProp1: "value1",
       superProp2: "value2",
     });
     expect(
-      mixpanelMain.mixpanelPersistent.persistSuperProperties
+      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
     ).toHaveBeenCalledWith(token);
   });
 
   it("should send correct payload on removeGroup", async () => {
-    await mixpanelMain.addGroup(token, "company_id", 111);
+    await oursprivacyMain.addGroup(token, "company_id", 111);
     // The company id has been added
     expect(
-      mixpanelMain.mixpanelPersistent.updateSuperProperties
+      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
     ).toHaveBeenCalledWith(token, {
       company_id: [222, 111],
       superProp1: "value1",
       superProp2: "value2",
     });
     expect(
-      mixpanelMain.mixpanelPersistent.persistSuperProperties
+      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
     ).toHaveBeenCalledWith(token);
 
-    await mixpanelMain.removeGroup(token, "company_id", 111);
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    await oursprivacyMain.removeGroup(token, "company_id", 111);
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.USER,
+      OursPrivacyType.USER,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -709,22 +709,22 @@ describe("MixpanelMain", () => {
 
     // The company id has been removed
     expect(
-      mixpanelMain.mixpanelPersistent.updateSuperProperties
+      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
     ).toHaveBeenCalledWith(token, {
       company_id: [222],
       superProp1: "value1",
       superProp2: "value2",
     });
     expect(
-      mixpanelMain.mixpanelPersistent.persistSuperProperties
+      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
     ).toHaveBeenCalledWith(token);
   });
 
   it("should send correct payload on deleteGroup", async () => {
-    await mixpanelMain.deleteGroup(token);
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    await oursprivacyMain.deleteGroup(token);
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.GROUPS,
+      OursPrivacyType.GROUPS,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -736,11 +736,11 @@ describe("MixpanelMain", () => {
   it("should send correct payload on group set", async () => {
     const properties = {prop1: "value1", prop2: "value2"};
 
-    await mixpanelMain.groupSetProperties(token, "company_id", 444, properties);
+    await oursprivacyMain.groupSetProperties(token, "company_id", 444, properties);
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.GROUPS,
+      OursPrivacyType.GROUPS,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -754,16 +754,16 @@ describe("MixpanelMain", () => {
   it("should send correct payload on group set once", async () => {
     const properties = {prop1: "value1", prop2: "value2"};
 
-    await mixpanelMain.groupSetPropertyOnce(
+    await oursprivacyMain.groupSetPropertyOnce(
       token,
       "company_id",
       444,
       properties
     );
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.GROUPS,
+      OursPrivacyType.GROUPS,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -775,11 +775,11 @@ describe("MixpanelMain", () => {
   });
 
   it("should send correct payload on groupUnsetProperty", async () => {
-    await mixpanelMain.groupUnsetProperty(token, "company_id", 444, "prop1");
+    await oursprivacyMain.groupUnsetProperty(token, "company_id", 444, "prop1");
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.GROUPS,
+      OursPrivacyType.GROUPS,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -791,7 +791,7 @@ describe("MixpanelMain", () => {
   });
 
   it("should send correct payload on groupRemovePropertyValue", async () => {
-    await mixpanelMain.groupRemovePropertyValue(
+    await oursprivacyMain.groupRemovePropertyValue(
       token,
       "company_id",
       444,
@@ -799,9 +799,9 @@ describe("MixpanelMain", () => {
       "value1"
     );
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.GROUPS,
+      OursPrivacyType.GROUPS,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),
@@ -813,7 +813,7 @@ describe("MixpanelMain", () => {
   });
 
   it("should send correct payload on groupUnionProperty", async () => {
-    await mixpanelMain.groupUnionProperty(
+    await oursprivacyMain.groupUnionProperty(
       token,
       "company_id",
       444,
@@ -821,9 +821,9 @@ describe("MixpanelMain", () => {
       "value1"
     );
 
-    expect(mixpanelMain.core.addToMixpanelQueue).toHaveBeenCalledWith(
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      MixpanelType.GROUPS,
+      OursPrivacyType.GROUPS,
       expect.objectContaining({
         $token: token,
         $time: expect.any(Number),

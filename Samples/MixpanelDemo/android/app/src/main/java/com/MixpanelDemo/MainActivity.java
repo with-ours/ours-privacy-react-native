@@ -1,4 +1,4 @@
-package com.mixpaneldemo;
+package com.oursprivacydemo;
 
 import com.facebook.react.ReactActivity;
 
@@ -10,6 +10,6 @@ public class MainActivity extends ReactActivity {
    */
   @Override
   protected String getMainComponentName() {
-    return "MixpanelDemo";
+    return "OursPrivacyDemo";
   }
 }

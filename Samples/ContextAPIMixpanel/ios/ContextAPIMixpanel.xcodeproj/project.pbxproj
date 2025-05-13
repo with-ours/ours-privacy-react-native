@@ -7,14 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		00E356F31AD99517003FC87E /* ContextAPIMixpanelTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* ContextAPIMixpanelTests.m */; };
+		00E356F31AD99517003FC87E /* ContextAPIOursPrivacyTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* ContextAPIOursPrivacyTests.m */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.m */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		4C56D4EDA74960AC2F8EAD3D /* libPods-ContextAPIMixpanel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 070ADF1CCDB3716C2A6D788B /* libPods-ContextAPIMixpanel.a */; };
+		4C56D4EDA74960AC2F8EAD3D /* libPods-ContextAPIOursPrivacy.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 070ADF1CCDB3716C2A6D788B /* libPods-ContextAPIOursPrivacy.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		8678DF7226B2811B00D79E6C /* File.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8678DF7126B2811B00D79E6C /* File.swift */; };
-		E1D9683EF9D3E4683454F0E0 /* libPods-ContextAPIMixpanel-ContextAPIMixpanelTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0D90040F1F28FB65E6F1620D /* libPods-ContextAPIMixpanel-ContextAPIMixpanelTests.a */; };
+		E1D9683EF9D3E4683454F0E0 /* libPods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0D90040F1F28FB65E6F1620D /* libPods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -23,30 +23,30 @@
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 13B07F861A680F5B00A75B9A;
-			remoteInfo = ContextAPIMixpanel;
+			remoteInfo = ContextAPIOursPrivacy;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		00E356EE1AD99517003FC87E /* ContextAPIMixpanelTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ContextAPIMixpanelTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		00E356EE1AD99517003FC87E /* ContextAPIOursPrivacyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ContextAPIOursPrivacyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		00E356F21AD99517003FC87E /* ContextAPIMixpanelTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ContextAPIMixpanelTests.m; sourceTree = "<group>"; };
-		070ADF1CCDB3716C2A6D788B /* libPods-ContextAPIMixpanel.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ContextAPIMixpanel.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		0D90040F1F28FB65E6F1620D /* libPods-ContextAPIMixpanel-ContextAPIMixpanelTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ContextAPIMixpanel-ContextAPIMixpanelTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07F961A680F5B00A75B9A /* ContextAPIMixpanel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ContextAPIMixpanel.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = ContextAPIMixpanel/AppDelegate.h; sourceTree = "<group>"; };
-		13B07FB01A68108700A75B9A /* AppDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AppDelegate.m; path = ContextAPIMixpanel/AppDelegate.m; sourceTree = "<group>"; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = ContextAPIMixpanel/Images.xcassets; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = ContextAPIMixpanel/Info.plist; sourceTree = "<group>"; };
-		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = ContextAPIMixpanel/main.m; sourceTree = "<group>"; };
-		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = ContextAPIMixpanel/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		8678DF7026B2811B00D79E6C /* ContextAPIMixpanel-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ContextAPIMixpanel-Bridging-Header.h"; sourceTree = "<group>"; };
+		00E356F21AD99517003FC87E /* ContextAPIOursPrivacyTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ContextAPIOursPrivacyTests.m; sourceTree = "<group>"; };
+		070ADF1CCDB3716C2A6D788B /* libPods-ContextAPIOursPrivacy.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ContextAPIOursPrivacy.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		0D90040F1F28FB65E6F1620D /* libPods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07F961A680F5B00A75B9A /* ContextAPIOursPrivacy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ContextAPIOursPrivacy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = ContextAPIOursPrivacy/AppDelegate.h; sourceTree = "<group>"; };
+		13B07FB01A68108700A75B9A /* AppDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AppDelegate.m; path = ContextAPIOursPrivacy/AppDelegate.m; sourceTree = "<group>"; };
+		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = ContextAPIOursPrivacy/Images.xcassets; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = ContextAPIOursPrivacy/Info.plist; sourceTree = "<group>"; };
+		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = ContextAPIOursPrivacy/main.m; sourceTree = "<group>"; };
+		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = ContextAPIOursPrivacy/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		8678DF7026B2811B00D79E6C /* ContextAPIOursPrivacy-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ContextAPIOursPrivacy-Bridging-Header.h"; sourceTree = "<group>"; };
 		8678DF7126B2811B00D79E6C /* File.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = File.swift; sourceTree = "<group>"; };
-		A995839BB4DB59A1768C972C /* Pods-ContextAPIMixpanel.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ContextAPIMixpanel.debug.xcconfig"; path = "Target Support Files/Pods-ContextAPIMixpanel/Pods-ContextAPIMixpanel.debug.xcconfig"; sourceTree = "<group>"; };
-		D59DDF862CF29E8280C89697 /* Pods-ContextAPIMixpanel-ContextAPIMixpanelTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ContextAPIMixpanel-ContextAPIMixpanelTests.debug.xcconfig"; path = "Target Support Files/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests.debug.xcconfig"; sourceTree = "<group>"; };
-		DFC7BE5609AE34433BA119CF /* Pods-ContextAPIMixpanel-ContextAPIMixpanelTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ContextAPIMixpanel-ContextAPIMixpanelTests.release.xcconfig"; path = "Target Support Files/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests.release.xcconfig"; sourceTree = "<group>"; };
+		A995839BB4DB59A1768C972C /* Pods-ContextAPIOursPrivacy.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ContextAPIOursPrivacy.debug.xcconfig"; path = "Target Support Files/Pods-ContextAPIOursPrivacy/Pods-ContextAPIOursPrivacy.debug.xcconfig"; sourceTree = "<group>"; };
+		D59DDF862CF29E8280C89697 /* Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.debug.xcconfig"; path = "Target Support Files/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.debug.xcconfig"; sourceTree = "<group>"; };
+		DFC7BE5609AE34433BA119CF /* Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.release.xcconfig"; path = "Target Support Files/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		FC366786B160586EAA5FAA26 /* Pods-ContextAPIMixpanel.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ContextAPIMixpanel.release.xcconfig"; path = "Target Support Files/Pods-ContextAPIMixpanel/Pods-ContextAPIMixpanel.release.xcconfig"; sourceTree = "<group>"; };
+		FC366786B160586EAA5FAA26 /* Pods-ContextAPIOursPrivacy.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ContextAPIOursPrivacy.release.xcconfig"; path = "Target Support Files/Pods-ContextAPIOursPrivacy/Pods-ContextAPIOursPrivacy.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,7 +54,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E1D9683EF9D3E4683454F0E0 /* libPods-ContextAPIMixpanel-ContextAPIMixpanelTests.a in Frameworks */,
+				E1D9683EF9D3E4683454F0E0 /* libPods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -62,20 +62,20 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4C56D4EDA74960AC2F8EAD3D /* libPods-ContextAPIMixpanel.a in Frameworks */,
+				4C56D4EDA74960AC2F8EAD3D /* libPods-ContextAPIOursPrivacy.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		00E356EF1AD99517003FC87E /* ContextAPIMixpanelTests */ = {
+		00E356EF1AD99517003FC87E /* ContextAPIOursPrivacyTests */ = {
 			isa = PBXGroup;
 			children = (
-				00E356F21AD99517003FC87E /* ContextAPIMixpanelTests.m */,
+				00E356F21AD99517003FC87E /* ContextAPIOursPrivacyTests.m */,
 				00E356F01AD99517003FC87E /* Supporting Files */,
 			);
-			path = ContextAPIMixpanelTests;
+			path = ContextAPIOursPrivacyTests;
 			sourceTree = "<group>";
 		};
 		00E356F01AD99517003FC87E /* Supporting Files */ = {
@@ -89,15 +89,15 @@
 		07DA8B0FC538F98905ACE273 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				A995839BB4DB59A1768C972C /* Pods-ContextAPIMixpanel.debug.xcconfig */,
-				FC366786B160586EAA5FAA26 /* Pods-ContextAPIMixpanel.release.xcconfig */,
-				D59DDF862CF29E8280C89697 /* Pods-ContextAPIMixpanel-ContextAPIMixpanelTests.debug.xcconfig */,
-				DFC7BE5609AE34433BA119CF /* Pods-ContextAPIMixpanel-ContextAPIMixpanelTests.release.xcconfig */,
+				A995839BB4DB59A1768C972C /* Pods-ContextAPIOursPrivacy.debug.xcconfig */,
+				FC366786B160586EAA5FAA26 /* Pods-ContextAPIOursPrivacy.release.xcconfig */,
+				D59DDF862CF29E8280C89697 /* Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.debug.xcconfig */,
+				DFC7BE5609AE34433BA119CF /* Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
 		};
-		13B07FAE1A68108700A75B9A /* ContextAPIMixpanel */ = {
+		13B07FAE1A68108700A75B9A /* ContextAPIOursPrivacy */ = {
 			isa = PBXGroup;
 			children = (
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
@@ -107,17 +107,17 @@
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				8678DF7126B2811B00D79E6C /* File.swift */,
-				8678DF7026B2811B00D79E6C /* ContextAPIMixpanel-Bridging-Header.h */,
+				8678DF7026B2811B00D79E6C /* ContextAPIOursPrivacy-Bridging-Header.h */,
 			);
-			name = ContextAPIMixpanel;
+			name = ContextAPIOursPrivacy;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				070ADF1CCDB3716C2A6D788B /* libPods-ContextAPIMixpanel.a */,
-				0D90040F1F28FB65E6F1620D /* libPods-ContextAPIMixpanel-ContextAPIMixpanelTests.a */,
+				070ADF1CCDB3716C2A6D788B /* libPods-ContextAPIOursPrivacy.a */,
+				0D90040F1F28FB65E6F1620D /* libPods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -132,9 +132,9 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* ContextAPIMixpanel */,
+				13B07FAE1A68108700A75B9A /* ContextAPIOursPrivacy */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
-				00E356EF1AD99517003FC87E /* ContextAPIMixpanelTests */,
+				00E356EF1AD99517003FC87E /* ContextAPIOursPrivacyTests */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				07DA8B0FC538F98905ACE273 /* Pods */,
@@ -147,8 +147,8 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* ContextAPIMixpanel.app */,
-				00E356EE1AD99517003FC87E /* ContextAPIMixpanelTests.xctest */,
+				13B07F961A680F5B00A75B9A /* ContextAPIOursPrivacy.app */,
+				00E356EE1AD99517003FC87E /* ContextAPIOursPrivacyTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -156,9 +156,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		00E356ED1AD99517003FC87E /* ContextAPIMixpanelTests */ = {
+		00E356ED1AD99517003FC87E /* ContextAPIOursPrivacyTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "ContextAPIMixpanelTests" */;
+			buildConfigurationList = 00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "ContextAPIOursPrivacyTests" */;
 			buildPhases = (
 				D626B2DD4F85D5CF3EF7CC58 /* [CP] Check Pods Manifest.lock */,
 				00E356EA1AD99517003FC87E /* Sources */,
@@ -172,14 +172,14 @@
 			dependencies = (
 				00E356F51AD99517003FC87E /* PBXTargetDependency */,
 			);
-			name = ContextAPIMixpanelTests;
-			productName = ContextAPIMixpanelTests;
-			productReference = 00E356EE1AD99517003FC87E /* ContextAPIMixpanelTests.xctest */;
+			name = ContextAPIOursPrivacyTests;
+			productName = ContextAPIOursPrivacyTests;
+			productReference = 00E356EE1AD99517003FC87E /* ContextAPIOursPrivacyTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		13B07F861A680F5B00A75B9A /* ContextAPIMixpanel */ = {
+		13B07F861A680F5B00A75B9A /* ContextAPIOursPrivacy */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "ContextAPIMixpanel" */;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "ContextAPIOursPrivacy" */;
 			buildPhases = (
 				3CFAD8C9391B4C57C0AFF644 /* [CP] Check Pods Manifest.lock */,
 				FD10A7F022414F080027D42C /* Start Packager */,
@@ -194,9 +194,9 @@
 			);
 			dependencies = (
 			);
-			name = ContextAPIMixpanel;
-			productName = ContextAPIMixpanel;
-			productReference = 13B07F961A680F5B00A75B9A /* ContextAPIMixpanel.app */;
+			name = ContextAPIOursPrivacy;
+			productName = ContextAPIOursPrivacy;
+			productReference = 13B07F961A680F5B00A75B9A /* ContextAPIOursPrivacy.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -216,7 +216,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "ContextAPIMixpanel" */;
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "ContextAPIOursPrivacy" */;
 			compatibilityVersion = "Xcode 12.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -229,8 +229,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				13B07F861A680F5B00A75B9A /* ContextAPIMixpanel */,
-				00E356ED1AD99517003FC87E /* ContextAPIMixpanelTests */,
+				13B07F861A680F5B00A75B9A /* ContextAPIOursPrivacy */,
+				00E356ED1AD99517003FC87E /* ContextAPIOursPrivacyTests */,
 			);
 		};
 /* End PBXProject section */
@@ -275,15 +275,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		2DF0B23D37B671F2353D4181 /* [CP] Copy Pods Resources */ = {
@@ -292,15 +292,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests-resources-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests-resources-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		3CFAD8C9391B4C57C0AFF644 /* [CP] Check Pods Manifest.lock */ = {
@@ -318,7 +318,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-ContextAPIMixpanel-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-ContextAPIOursPrivacy-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -331,15 +331,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel/Pods-ContextAPIMixpanel-resources-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy/Pods-ContextAPIOursPrivacy-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel/Pods-ContextAPIMixpanel-resources-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy/Pods-ContextAPIOursPrivacy-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel/Pods-ContextAPIMixpanel-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy/Pods-ContextAPIOursPrivacy-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		D626B2DD4F85D5CF3EF7CC58 /* [CP] Check Pods Manifest.lock */ = {
@@ -357,7 +357,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-ContextAPIMixpanel-ContextAPIMixpanelTests-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -370,15 +370,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel/Pods-ContextAPIMixpanel-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy/Pods-ContextAPIOursPrivacy-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel/Pods-ContextAPIMixpanel-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy/Pods-ContextAPIOursPrivacy-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ContextAPIMixpanel/Pods-ContextAPIMixpanel-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ContextAPIOursPrivacy/Pods-ContextAPIOursPrivacy-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		FD10A7F022414F080027D42C /* Start Packager */ = {
@@ -407,7 +407,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				00E356F31AD99517003FC87E /* ContextAPIMixpanelTests.m in Sources */,
+				00E356F31AD99517003FC87E /* ContextAPIOursPrivacyTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -426,7 +426,7 @@
 /* Begin PBXTargetDependency section */
 		00E356F51AD99517003FC87E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 13B07F861A680F5B00A75B9A /* ContextAPIMixpanel */;
+			target = 13B07F861A680F5B00A75B9A /* ContextAPIOursPrivacy */;
 			targetProxy = 00E356F41AD99517003FC87E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -434,7 +434,7 @@
 /* Begin XCBuildConfiguration section */
 		00E356F61AD99517003FC87E /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = D59DDF862CF29E8280C89697 /* Pods-ContextAPIMixpanel-ContextAPIMixpanelTests.debug.xcconfig */;
+			baseConfigurationReference = D59DDF862CF29E8280C89697 /* Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -442,7 +442,7 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				INFOPLIST_FILE = ContextAPIMixpanelTests/Info.plist;
+				INFOPLIST_FILE = ContextAPIOursPrivacyTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -456,18 +456,18 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ContextAPIMixpanel.app/ContextAPIMixpanel";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ContextAPIOursPrivacy.app/ContextAPIOursPrivacy";
 			};
 			name = Debug;
 		};
 		00E356F71AD99517003FC87E /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = DFC7BE5609AE34433BA119CF /* Pods-ContextAPIMixpanel-ContextAPIMixpanelTests.release.xcconfig */;
+			baseConfigurationReference = DFC7BE5609AE34433BA119CF /* Pods-ContextAPIOursPrivacy-ContextAPIOursPrivacyTests.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COPY_PHASE_STRIP = NO;
-				INFOPLIST_FILE = ContextAPIMixpanelTests/Info.plist;
+				INFOPLIST_FILE = ContextAPIOursPrivacyTests/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -481,19 +481,19 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ContextAPIMixpanel.app/ContextAPIMixpanel";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ContextAPIOursPrivacy.app/ContextAPIOursPrivacy";
 			};
 			name = Release;
 		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A995839BB4DB59A1768C972C /* Pods-ContextAPIMixpanel.debug.xcconfig */;
+			baseConfigurationReference = A995839BB4DB59A1768C972C /* Pods-ContextAPIOursPrivacy.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
-				INFOPLIST_FILE = ContextAPIMixpanel/Info.plist;
+				INFOPLIST_FILE = ContextAPIOursPrivacy/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -505,8 +505,8 @@
 					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = ContextAPIMixpanel;
-				SWIFT_OBJC_BRIDGING_HEADER = "ContextAPIMixpanel-Bridging-Header.h";
+				PRODUCT_NAME = ContextAPIOursPrivacy;
+				SWIFT_OBJC_BRIDGING_HEADER = "ContextAPIOursPrivacy-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -515,12 +515,12 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = FC366786B160586EAA5FAA26 /* Pods-ContextAPIMixpanel.release.xcconfig */;
+			baseConfigurationReference = FC366786B160586EAA5FAA26 /* Pods-ContextAPIOursPrivacy.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				INFOPLIST_FILE = ContextAPIMixpanel/Info.plist;
+				INFOPLIST_FILE = ContextAPIOursPrivacy/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -532,8 +532,8 @@
 					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = ContextAPIMixpanel;
-				SWIFT_OBJC_BRIDGING_HEADER = "ContextAPIMixpanel-Bridging-Header.h";
+				PRODUCT_NAME = ContextAPIOursPrivacy;
+				SWIFT_OBJC_BRIDGING_HEADER = "ContextAPIOursPrivacy-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -663,7 +663,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "ContextAPIMixpanelTests" */ = {
+		00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "ContextAPIOursPrivacyTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				00E356F61AD99517003FC87E /* Debug */,
@@ -672,7 +672,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "ContextAPIMixpanel" */ = {
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "ContextAPIOursPrivacy" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
@@ -681,7 +681,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "ContextAPIMixpanel" */ = {
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "ContextAPIOursPrivacy" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,

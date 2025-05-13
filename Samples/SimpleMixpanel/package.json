@@ -1,5 +1,5 @@
 {
-  "name": "SimpleMixpanel",
+  "name": "SimpleOursPrivacy",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -11,7 +11,7 @@
     "postinstall": "patch-package"
   },
   "dependencies": {
-    "mixpanel-react-native": "file:../..",
+    "oursprivacy-react-native": "file:../..",
     "react": "18.2.0",
     "react-native": "0.73.0"
   },

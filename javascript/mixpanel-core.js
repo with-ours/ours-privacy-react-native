@@ -1,24 +1,24 @@
-import {MixpanelQueueManager} from "./mixpanel-queue";
-import {MixpanelNetwork} from "./mixpanel-network";
-import {SessionMetadata} from "./mixpanel-utils";
-import {MixpanelType} from "./mixpanel-constants";
-import {MixpanelConfig} from "./mixpanel-config";
-import {MixpanelPersistent} from "./mixpanel-persistent";
-import {MixpanelLogger} from "./mixpanel-logger";
+import {OursPrivacyQueueManager} from "./oursprivacy-queue";
+import {OursPrivacyNetwork} from "./oursprivacy-network";
+import {SessionMetadata} from "./oursprivacy-utils";
+import {OursPrivacyType} from "./oursprivacy-constants";
+import {OursPrivacyConfig} from "./oursprivacy-config";
+import {OursPrivacyPersistent} from "./oursprivacy-persistent";
+import {OursPrivacyLogger} from "./oursprivacy-logger";
 
-export const MixpanelCore = (storage) => {
-  const mixpanelPersistent = MixpanelPersistent.getInstance(storage);
-  const config = MixpanelConfig.getInstance();
+export const OursPrivacyCore = (storage) => {
+  const oursprivacyPersistent = OursPrivacyPersistent.getInstance(storage);
+  const config = OursPrivacyConfig.getInstance();
   let isProcessingQueue = false;
   let processQueueInterval = null;
 
   const initialize = async (token) => {
-    await MixpanelQueueManager.initialize(token, MixpanelType.EVENTS);
+    await OursPrivacyQueueManager.initialize(token, OursPrivacyType.EVENTS);
   };
 
   const startProcessingQueue = (token) => {
-    if (mixpanelPersistent.getOptedOut(token)) {
-      MixpanelLogger.log(
+    if (oursprivacyPersistent.getOptedOut(token)) {
+      OursPrivacyLogger.log(
         token,
         `User has opted out of tracking, skipping processing queue.`
       );
@@ -26,7 +26,7 @@ export const MixpanelCore = (storage) => {
     }
 
     if (isProcessingQueue) {
-      MixpanelLogger.log(
+      OursPrivacyLogger.log(
         token,
         `Queue is already being processed. Skipping new cycle.`
       );
@@ -37,9 +37,9 @@ export const MixpanelCore = (storage) => {
 
     processQueueInterval = setInterval(async () => {
       clearInterval(processQueueInterval);
-      await processQueue(token, MixpanelType.EVENTS);
-      await processQueue(token, MixpanelType.USER);
-      await processQueue(token, MixpanelType.GROUPS);
+      await processQueue(token, OursPrivacyType.EVENTS);
+      await processQueue(token, OursPrivacyType.USER);
+      await processQueue(token, OursPrivacyType.GROUPS);
 
       isProcessingQueue = false;
       startProcessingQueue(token);
@@ -50,35 +50,35 @@ export const MixpanelCore = (storage) => {
     try {
       JSON.stringify(obj);
     } catch (error) {
-      MixpanelLogger.error(token, `Error in Mixpanel payload: ${error}`);
+      OursPrivacyLogger.error(token, `Error in OursPrivacy payload: ${error}`);
       return false;
     }
     return true;
   };
 
-  const addToMixpanelQueue = async (token, type, data) => {
-    if (mixpanelPersistent.getOptedOut(token)) {
-      MixpanelLogger.log(
+  const addToOursPrivacyQueue = async (token, type, data) => {
+    if (oursprivacyPersistent.getOptedOut(token)) {
+      OursPrivacyLogger.log(
         token,
         `User has opted out of tracking, skipping tracking.`
       );
       return;
     }
     if (!isValidAndSerializable(token, data)) {
-      MixpanelLogger.error(
+      OursPrivacyLogger.error(
         token,
-        `The Mixpanel payload is not valid or not serializable.`
+        `The OursPrivacy payload is not valid or not serializable.`
       );
       return;
     }
     const sessionMetadata = new SessionMetadata();
-    await MixpanelQueueManager.enqueue(token, type, {
+    await OursPrivacyQueueManager.enqueue(token, type, {
       ...sessionMetadata.toDict(type),
       ...data,
     });
-    MixpanelLogger.log(
+    OursPrivacyLogger.log(
       token,
-      `The mixpanel payload is added to the Mixpanel queue. Payload: '${JSON.stringify(
+      `The oursprivacy payload is added to the OursPrivacy queue. Payload: '${JSON.stringify(
         {
           ...sessionMetadata.toDict(type),
           ...data,
@@ -88,32 +88,32 @@ export const MixpanelCore = (storage) => {
   };
 
   const flush = async (token) => {
-    if (mixpanelPersistent.getOptedOut(token)) {
-      MixpanelLogger.log(
+    if (oursprivacyPersistent.getOptedOut(token)) {
+      OursPrivacyLogger.log(
         token,
         `User has opted out of tracking, do not flush queue.`
       );
       return;
     }
-    await processQueue(token, MixpanelType.EVENTS);
-    await processQueue(token, MixpanelType.USER);
-    await processQueue(token, MixpanelType.GROUPS);
+    await processQueue(token, OursPrivacyType.EVENTS);
+    await processQueue(token, OursPrivacyType.USER);
+    await processQueue(token, OursPrivacyType.GROUPS);
   };
 
   const processQueue = async (token, type) => {
-    MixpanelLogger.log(token, `Processing queue for endpoint: ${type}`);
+    OursPrivacyLogger.log(token, `Processing queue for endpoint: ${type}`);
     const processBatch = async () => {
-      const queue = MixpanelQueueManager.getQueue(token, type);
+      const queue = OursPrivacyQueueManager.getQueue(token, type);
       if (queue.length > 0) {
-        MixpanelLogger.log(token, `[Flushing queue] endpoint: ${type}`);
-        MixpanelLogger.log(
+        OursPrivacyLogger.log(token, `[Flushing queue] endpoint: ${type}`);
+        OursPrivacyLogger.log(
           token,
           `[Flushing queue] queue: ${JSON.stringify(queue)}`
         );
         const batchSize = config.getFlushBatchSize(token);
         const batch = queue.slice(0, batchSize);
         try {
-          await MixpanelNetwork.sendRequest({
+          await OursPrivacyNetwork.sendRequest({
             token,
             data: batch,
             endpoint: type,
@@ -121,9 +121,9 @@ export const MixpanelCore = (storage) => {
             useIPAddressForGeoLocation:
               config.getUseIpAddressForGeolocation(token),
           });
-          await MixpanelQueueManager.spliceQueue(token, type, 0, batch.length);
+          await OursPrivacyQueueManager.spliceQueue(token, type, 0, batch.length);
           // Process the next batch if there are more events in the queue
-          const queue = MixpanelQueueManager.getQueue(token, type);
+          const queue = OursPrivacyQueueManager.getQueue(token, type);
           if (queue.length > 0) {
             setTimeout(processBatch, 0);
           }
@@ -138,16 +138,16 @@ export const MixpanelCore = (storage) => {
 
   const handleBatchError = (token, error, type, callback) => {
     if (error.code === 400) {
-      MixpanelLogger.error(
+      OursPrivacyLogger.error(
         token,
         `Bad request received due to corrupted data within the batch. The corrupted data is now being removed from the queue...`
       );
       // Remove the corrupted data from the queue, to avoid the data loss, only remove one event at a time
-      MixpanelQueueManager.spliceQueue(token, type, 0, 1).then(() => {
+      OursPrivacyQueueManager.spliceQueue(token, type, 0, 1).then(() => {
         setTimeout(callback, 0);
       });
     } else {
-      MixpanelLogger.error(
+      OursPrivacyLogger.error(
         token,
         `Error sending event batch from queue, error: ${error}`
       );
@@ -157,7 +157,7 @@ export const MixpanelCore = (storage) => {
   return {
     initialize,
     startProcessingQueue,
-    addToMixpanelQueue,
+    addToOursPrivacyQueue,
     flush,
   };
 };
