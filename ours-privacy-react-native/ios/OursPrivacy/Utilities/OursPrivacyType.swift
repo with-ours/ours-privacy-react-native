@@ -13,7 +13,7 @@ import Foundation
 /// Property keys must be String objects and the supported value types need to conform to OursPrivacyType.
 /// OursPrivacyType can be either String, Int, UInt, Double, Float, Bool, [OursPrivacyType], [String: OursPrivacyType], Date, URL, or NSNull.
 /// Numbers are not NaN or infinity
-@objc public protocol OursPrivacyType: AnyObject {
+public protocol OursPrivacyType: Any {
     /**
      Checks if this object has nested object types that OursPrivacy supports.
      */

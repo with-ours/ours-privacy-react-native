@@ -20,7 +20,7 @@ Install the ours-privacy-react-native module into a react native project
 ```
 cd ours-privacy-react-native
 npm pack
-cd ../example
+cd ../Demo
 npm install ../ours-privacy-react-native/ours-privacy-react-native-0.1.0.tgz
 npm install
 cd ios

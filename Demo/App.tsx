@@ -26,8 +26,11 @@ import {
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 
+import {v4} from "uuid"
+
 import { OursPrivacy } from 'ours-privacy-react-native';
-console.log(NativeModules);
+
+console.log("Test", NativeModules);
 if (__DEV__) {
   require("./reactotron");
 }
@@ -46,10 +49,11 @@ async function getOursPrivacy() {
 }
 
 async function track(event: string) {
-
   try {
     console.log('Calling native module...');
-    var result  = (await getOursPrivacy()).track(event)
+    var distinctId = await (await getOursPrivacy()).getDistinctId();
+    console.log(distinctId);
+    var result  = (await getOursPrivacy()).track(event, { distinctId: distinctId })
     console.log('Native result:', result);
   } catch (err) {
     console.error('Error calling native module:', err);

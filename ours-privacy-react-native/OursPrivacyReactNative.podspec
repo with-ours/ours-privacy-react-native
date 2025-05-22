@@ -19,10 +19,4 @@ Pod::Spec.new do |s|
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
 
   s.dependency "React-Core"
-  s.dependency "React-Core/DevSupport"
-  s.dependency "React-RCTBridge"
-  s.dependency "ReactCommon"
-  s.dependency "Yoga"
-  s.dependency "React-Codegen"
-  s.dependency "RCT-Folly"
 end

@@ -19,7 +19,7 @@ import WatchKit
 #endif
 
 class AutomaticProperties {
-    
+
     static var peopleProperties: Dictionary<String, OursPrivacyType> = [:];
 
     static func setAutomaticProperties(_ properties: [String: Any]) {
@@ -27,7 +27,7 @@ class AutomaticProperties {
             peopleProperties[key] = OursPrivacyTypeHandler.oursprivacyTypeValue(value)
         }
     }
-    
+
     static let automaticPropertiesLock = ReadWriteLock(label: "automaticPropertiesLock")
 
     static var properties: InternalProperties = {
@@ -77,33 +77,33 @@ class AutomaticProperties {
         let infoDict = Bundle.main.infoDictionary ?? [:]
         p["$app_build_number"]     = infoDict["CFBundleVersion"] as? String ?? "Unknown"
         p["$app_version_string"]   = infoDict["CFBundleShortVersionString"] as? String ?? "Unknown"
-        
+
         p["mp_lib"]             = "swift"
         p["$lib_version"]       = AutomaticProperties.libVersion()
         p["$manufacturer"]      = "Apple"
         p["$model"]             = AutomaticProperties.deviceModel()
-        
-        return p
-    }()
-
-    static var peopleProperties: InternalProperties = {
-        var p = InternalProperties()
-        let infoDict = Bundle.main.infoDictionary
-        if let infoDict = infoDict {
-            p["$ios_app_version"] = infoDict["CFBundleVersion"]
-            p["$ios_app_release"] = infoDict["CFBundleShortVersionString"]
-        }
-        p["$ios_device_model"]  = AutomaticProperties.deviceModel()
-        #if !os(OSX) && !os(watchOS) && !os(visionOS)
-        p["$ios_version"]       = UIDevice.current.systemVersion
-        #else
-        p["$ios_version"]       = ProcessInfo.processInfo.operatingSystemVersionString
-        #endif
-        p["$ios_lib_version"]   = AutomaticProperties.libVersion()
-        p["$swift_lib_version"] = AutomaticProperties.libVersion()
 
         return p
     }()
+
+    // static var peopleProperties: InternalProperties = {
+    //     var p = InternalProperties()
+    //     let infoDict = Bundle.main.infoDictionary
+    //     if let infoDict = infoDict {
+    //         p["$ios_app_version"] = infoDict["CFBundleVersion"]
+    //         p["$ios_app_release"] = infoDict["CFBundleShortVersionString"]
+    //     }
+    //     p["$ios_device_model"]  = AutomaticProperties.deviceModel()
+    //     #if !os(OSX) && !os(watchOS) && !os(visionOS)
+    //     p["$ios_version"]       = UIDevice.current.systemVersion
+    //     #else
+    //     p["$ios_version"]       = ProcessInfo.processInfo.operatingSystemVersionString
+    //     #endif
+    //     p["$ios_lib_version"]   = AutomaticProperties.libVersion()
+    //     p["$swift_lib_version"] = AutomaticProperties.libVersion()
+
+    //     return p
+    // }()
 
     class func deviceModel() -> String {
         var modelCode : String = "Unknown"
@@ -133,7 +133,7 @@ class AutomaticProperties {
         let watchSize40mm = Int(162)
         let watchSize42mm = Int(156)
         let watchSize44mm = Int(184)
-        
+
         let screenWidth = Int(WKInterfaceDevice.current().screenBounds.size.width)
         switch screenWidth {
         case watchSize38mm:
@@ -149,7 +149,7 @@ class AutomaticProperties {
         }
     }
     #endif
-    
+
     class func isiOSAppOnMac() -> Bool {
         var isiOSAppOnMac = false
         if #available(iOS 14.0, macOS 11.0, watchOS 7.0, tvOS 14.0, *) {

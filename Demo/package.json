@@ -12,7 +12,8 @@
   "dependencies": {
     "ours-privacy-react-native": "file:../ours-privacy-react-native/ours-privacy-react-native-0.1.0.tgz",
     "react": "19.0.0",
-    "react-native": "0.79.2"
+    "react-native": "0.79.2",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
