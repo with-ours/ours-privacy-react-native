@@ -12,7 +12,7 @@ public class OPConstants {
     }
     public static class URL {
         public static final String OURSPRIVACY_API = "https://api.oursprivacy.com/api/v1";
-        public static final String EVENT = "/track/";
-        public static final String IDENTIFY = "/identify/";
+        public static final String EVENT = "/track";
+        public static final String IDENTIFY = "/identify";
     }
 }

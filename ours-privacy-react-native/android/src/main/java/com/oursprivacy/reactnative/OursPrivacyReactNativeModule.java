@@ -133,14 +133,14 @@ public class OursPrivacyReactNativeModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void identify(final String token, final String distinctId, Promise promise) {
+    public void identify(final String token, final String distinctId, ReadableMap userProperties, Promise promise) {
         OursPrivacyAPI instance = OursPrivacyAPI.getInstance(this.mReactContext, token, true);
         if (instance == null) {
             promise.reject("Instance Error", "Failed to get OursPrivacy instance");
             return;
         }
         synchronized (instance) {
-            instance.identify(distinctId);
+            instance.identify(distinctId, userProperties);
             promise.resolve(null);
         }
     }

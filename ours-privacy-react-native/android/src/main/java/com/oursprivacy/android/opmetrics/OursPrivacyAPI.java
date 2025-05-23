@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 import androidx.core.content.ContextCompat;
 
+import com.facebook.react.bridge.ReadableMap;
 import com.oursprivacy.android.util.OPLog;
 import com.oursprivacy.android.util.ProxyServerInteractor;
 
@@ -515,7 +516,7 @@ public class OursPrivacyAPI {
     public boolean shouldGzipRequestPayload() {
         return mConfig.shouldGzipRequestPayload();
     }
-    
+
     /**
      * Set an integer number of bytes, the maximum size limit to the OursPrivacy database.
      *
@@ -606,7 +607,7 @@ public class OursPrivacyAPI {
      *     value is globally unique for each individual user you intend to track.
      *
      */
-    public void identify(String distinctId) {
+    public void identify(String distinctId, ReadableMap userProperties) {
         if (hasOptedOutTracking()) return;
         if (distinctId == null) {
             OPLog.e(LOGTAG, "Can't identify with null distinct_id.");
@@ -627,7 +628,7 @@ public class OursPrivacyAPI {
                     JSONObject identifyPayload = new JSONObject();
                     identifyPayload.put("$anon_distinct_id", currentEventsDistinctId);
                     track("$identify", identifyPayload);
-                    getAnalyticsMessages().sendIdentify(currentEventsDistinctId, mToken, mConfig.getIdentifyEndpoint());
+                    getAnalyticsMessages().sendIdentify(currentEventsDistinctId, mToken, userProperties, mConfig.getIdentifyEndpoint());
                 } catch (JSONException e) {
                     OPLog.e(LOGTAG, "Could not track $identify event");
                 }
@@ -953,7 +954,7 @@ public class OursPrivacyAPI {
         // and waiting People Analytics properties. Will have no effect
         // on messages already queued to send with AnalyticsMessages.
         mPersistentIdentity.clearPreferences();
-        identify(getDistinctId());
+        identify(getDistinctId(), null);
         flush();
     }
 
@@ -1031,7 +1032,7 @@ public class OursPrivacyAPI {
     public void optInTracking(String distinctId, JSONObject properties) {
         mPersistentIdentity.setOptOutTracking(false, mToken);
         if (distinctId != null) {
-            identify(distinctId);
+            identify(distinctId, null);
         }
         track("$opt_in", properties);
     }

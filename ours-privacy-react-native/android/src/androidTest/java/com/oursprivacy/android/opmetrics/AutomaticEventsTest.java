@@ -26,6 +26,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -192,8 +193,8 @@ public class AutomaticEventsTest {
         assertEquals("An Event Three", mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
 
-        String[] noEvents = mockAdapter.generateDataString(OPDbAdapter.Table.EVENTS, TOKEN);
-        assertNull(noEvents);
+        ArrayList<JSONObject> noEvents = mockAdapter.generateDataString(OPDbAdapter.Table.EVENTS, TOKEN);
+        assertTrue(noEvents.isEmpty());
 
         mCleanOursPrivacyAPI.flush();
         assertEquals(null, mPerformRequestEvents.poll(MAX_TIMEOUT_POLL, TimeUnit.MILLISECONDS));
