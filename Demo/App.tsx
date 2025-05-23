@@ -42,7 +42,7 @@ type SectionProps = PropsWithChildren<{
 let opInstance: OursPrivacy
 async function getOursPrivacy() {
   if (!opInstance) {
-    opInstance = await OursPrivacy.init("e93676a05e4c1dbed98cd2cd3fc03b206c289921af313192296d9dbbf0bfff00", false, false)
+    opInstance = await OursPrivacy.init("", false, false)
     opInstance.setServerURL("https://dev-api.oursprivacy.com/api/v1")
   }
   return opInstance
@@ -52,8 +52,9 @@ async function track(event: string) {
   try {
     console.log('Calling native module...');
     var distinctId = await (await getOursPrivacy()).getDistinctId();
-    console.log(distinctId);
-    var result  = (await getOursPrivacy()).track(event, { distinctId: distinctId })
+    await (await getOursPrivacy()).identify(distinctId)
+    var result  = (await getOursPrivacy()).track(event, { distinctId: distinctId });
+    (await getOursPrivacy()).flush();
     console.log('Native result:', result);
   } catch (err) {
     console.error('Error calling native module:', err);

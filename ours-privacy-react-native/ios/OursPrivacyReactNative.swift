@@ -6,7 +6,7 @@ open class OursPrivacyReactNative: NSObject, RCTBridgeModule {
     public static func moduleName() -> String! {
         return "OursPrivacyReactNative"
     }
-    
+
 
     @objc public static func requiresMainQueueSetup() -> Bool {
         return false

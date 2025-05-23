@@ -38,7 +38,7 @@ RCT_EXTERN_METHOD(eventElapsedTime:(NSString *)token event:(NSString *)event res
 
 // MARK: - Managing User Identity
 
-RCT_EXTERN_METHOD(identify:(NSString *)token distinctId:(NSString *)distinctId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(identify:(NSString *)token distinctId:(NSString *)distinctId userProperties:(NSDictionary *)userProperties resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(alias:(NSString *)token alias:(NSString *)alias distinctId:(NSString *)distinctId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 

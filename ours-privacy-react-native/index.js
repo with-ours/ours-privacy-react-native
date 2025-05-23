@@ -107,7 +107,7 @@ export class OursPrivacy {
       trackAutomaticEvents,
       optOutTrackingDefault,
       Helper.getMetaData(),
-      "https://api.oursprivacy.com"
+      "https://api.oursprivacy.com/api/v1"
     );
     return new OursPrivacy(token, trackAutomaticEvents);
   }

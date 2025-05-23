@@ -21,7 +21,7 @@ export default class OursPrivacyMain {
     trackAutomaticEvents = false,
     optOutTrackingDefault = false,
     superProperties = null,
-    serverURL = "https://api.oursprivacy.com"
+    serverURL = "https://api.oursprivacy.com/api/v1"
   ) {
     OursPrivacyLogger.log(token, `Initializing OursPrivacy`);
 
