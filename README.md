@@ -1,6 +1,6 @@
 # Ours Privacy React Native SDK
 
-[![npm version](https://img.shields.io/npm/v/ours-privacy-react-native.svg)](https://www.npmjs.com/package/ours-privacy-react-native)
+[![npm version](https://img.shields.io/npm/v/@oursprivacy/react-native.svg)](https://www.npmjs.com/package/@oursprivacy/react-native)
 [![React Native](https://img.shields.io/badge/React%20Native-compatible-brightgreen.svg)](https://reactnative.dev/)
 [![Documentation](https://img.shields.io/badge/Documentation-blue)](https://docs.oursprivacy.com/docs/overview)
 
@@ -40,7 +40,7 @@ You will need an API token for an Ours Privacy source for initializing your libr
 1. Under your app's root directory, install Ours Privacy React Native SDK:
 
 ```bash
-npm install ours-privacy-react-native
+npm install @oursprivacy/react-native
 ```
 
 2. Under your application's iOS folder, run:
@@ -56,7 +56,7 @@ Note: You do not need to update your Podfile to add Ours Privacy.
 To start tracking with the library you must first initialize with your project token:
 
 ```js
-import { OursPrivacy } from 'ours-privacy-react-native';
+import { OursPrivacy } from '@oursprivacy/react-native';
 
 const trackAutomaticEvents = false;
 const oursprivacy = new OursPrivacy("YOUR_API_TOKEN", trackAutomaticEvents);
@@ -99,7 +99,7 @@ Here's a runnable code example that covers everything in this quickstart guide:
 ```js
 import React from 'react';
 import { Button, SafeAreaView } from "react-native";
-import { OursPrivacy } from 'ours-privacy-react-native';
+import { OursPrivacy } from '@oursprivacy/react-native';
 
 const trackAutomaticEvents = false;
 const oursprivacy = new OursPrivacy("YOUR_API_TOKEN", trackAutomaticEvents);
@@ -197,4 +197,4 @@ For help with this SDK, please:
 ## Related Links
 
 - [Ours Privacy](https://oursprivacy.com)
-- [npm Package](https://www.npmjs.com/package/ours-privacy-react-native)
+- [npm Package](https://www.npmjs.com/package/@oursprivacy/react-native)

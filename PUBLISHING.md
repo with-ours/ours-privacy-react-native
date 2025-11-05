@@ -4,7 +4,7 @@ This document describes how to build, version, and publish the OursPrivacy React
 
 ## Overview
 
-- **Package Name**: `ours-privacy-react-native`
+- **Package Name**: `@oursprivacy/react-native`
 - **Target Registry**: npm (https://www.npmjs.com/)
 - **Current Status**: ❌ Not yet published to npm
 - **Build System**: React Native with native iOS/Android modules
@@ -31,16 +31,16 @@ This document describes how to build, version, and publish the OursPrivacy React
    npm whoami
    
    # Check if you can publish (may need to be added as collaborator)
-   npm access list packages ours-privacy-react-native
+   npm access list packages @oursprivacy/react-native
    ```
 
 ## Version Management
 
 ### Current Version
-Check current version in `ours-privacy-react-native/package.json`:
+Check current version in `package.json`:
 ```json
 {
-  "name": "ours-privacy-react-native",
+  "name": "@oursprivacy/react-native",
   "version": "0.1.0"
 }
 ```
@@ -49,14 +49,13 @@ Check current version in `ours-privacy-react-native/package.json`:
 Manually update version in `package.json`:
 ```json
 {
-  "name": "ours-privacy-react-native",
+  "name": "@oursprivacy/react-native",
   "version": "0.1.1"
 }
 ```
 
 Or use npm version commands:
 ```bash
-cd ours-privacy-react-native
 npm version patch  # 0.1.0 -> 0.1.1
 npm version minor  # 0.1.0 -> 0.2.0
 npm version major  # 0.1.0 -> 1.0.0
@@ -66,8 +65,6 @@ npm version major  # 0.1.0 -> 1.0.0
 
 ### Development Build
 ```bash
-cd ours-privacy-react-native
-
 # Install dependencies
 npm install
 
@@ -101,8 +98,6 @@ Since this package hasn't been published yet:
 
 1. **Prepare Package**:
    ```bash
-   cd ours-privacy-react-native
-   
    # Ensure package.json is correct
    cat package.json
    
@@ -116,13 +111,12 @@ Since this package hasn't been published yet:
    npm pack
    
    # Test in demo project
-   cd ../Demo
-   npm install ../ours-privacy-react-native/ours-privacy-react-native-0.1.0.tgz
+   cd Demo
+   npm install ../oursprivacy-react-native-0.1.0.tgz
    ```
 
 3. **Publish to npm**:
    ```bash
-   cd ours-privacy-react-native
    npm publish
    ```
 
@@ -258,7 +252,6 @@ npx react-native run-android
 
 1. **Prepare Release**:
    ```bash
-   cd ours-privacy-react-native
    git checkout main  # or dev
    git pull origin main
    
@@ -276,15 +269,15 @@ npx react-native run-android
    npm pack
    
    # Test in demo app
-   cd ../Demo
-   npm install ../ours-privacy-react-native/ours-privacy-react-native-*.tgz
+   cd Demo
+   npm install ../oursprivacy-react-native-*.tgz
    npx react-native run-ios  # Test iOS
    npx react-native run-android  # Test Android
    ```
 
 3. **Publish**:
    ```bash
-   cd ../ours-privacy-react-native
+   cd ..
    npm publish
    ```
 
@@ -304,9 +297,6 @@ Create `scripts/release.sh`:
 ```bash
 #!/usr/bin/env bash
 set -e
-
-# Navigate to package directory
-cd ours-privacy-react-native
 
 # Get current version
 CURRENT_VERSION=$(node -p "require('./package.json').version")
@@ -331,13 +321,13 @@ npm test
 npm pack
 
 echo "Testing in demo app..."
-cd ../Demo
-npm install ../ours-privacy-react-native/ours-privacy-react-native-*.tgz
+cd Demo
+npm install ../oursprivacy-react-native-*.tgz
 
 echo "Ready to publish? (y/n)"
 read -p "" CONFIRM
 if [ "$CONFIRM" = "y" ]; then
-  cd ../ours-privacy-react-native
+  cd ..
   npm publish
   
   # Git operations
@@ -414,10 +404,10 @@ npm run lint  # if configured
 
 # Test packaging
 npm pack
-tar -tf ours-privacy-react-native-*.tgz
+tar -tf oursprivacy-react-native-*.tgz
 
 # Test installation
-npm install ours-privacy-react-native
+npm install @oursprivacy/react-native
 ```
 
 ### React Native Specific
@@ -452,19 +442,13 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           
       - name: Install dependencies
-        run: |
-          cd ours-privacy-react-native
-          npm ci
+        run: npm ci
           
       - name: Run tests
-        run: |
-          cd ours-privacy-react-native
-          npm test
+        run: npm test
           
       - name: Publish to npm
-        run: |
-          cd ours-privacy-react-native
-          npm publish
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
@@ -472,7 +456,7 @@ jobs:
 ## Support
 
 - **Documentation**: https://docs.oursprivacy.com/docs/react-native-sdk#/
-- **npm Package**: https://www.npmjs.com/package/ours-privacy-react-native (once published)
+- **npm Package**: https://www.npmjs.com/package/@oursprivacy/react-native (once published)
 - **Issues**: https://github.com/with-ours/ours-privacy-react-native/issues
 - **Repository**: https://github.com/with-ours/ours-privacy-react-native
 
