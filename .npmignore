@@ -1,0 +1,75 @@
+# Development files
+__tests__/
+*.test.js
+.eslintrc.js
+.prettierrc.js
+.gitignore
+.gitattributes
+
+# Build and development artifacts
+node_modules/
+npm-debug.log
+yarn-error.log
+*.tgz
+logs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OSX
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+ios/build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+ios/project.xcworkspace
+
+# Android
+android/build/
+android/app/build/
+android/.idea
+android/.gradle
+android/.settings
+android/local.properties
+android/.classpath
+android/.project
+*.iml
+*.class
+
+# BUCK
+buck-out/
+\.buckd/
+*.keystore
+
+# Demo Apps and Samples - exclude from npm package
+Samples/
+*Demo*
+*demo*
+/OursPrivacyDemo
+
+# Documentation generation files
+generate_docs.sh
+release.py
+
+# Version control
+.git/
+.github/

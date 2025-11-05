@@ -1,35 +1,106 @@
-# IDE files
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS files
+# OSX
 .DS_Store
 .AppleDouble
 .LSOverride
 
-# Node.js
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.tgz
+.npm
+.yarn-integrity
+.pnp
+.pnp.js
 
-# Build outputs
-build/
-dist/
+# Xcode
+ios/build/
+ios/Pods/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+ios/project.xcworkspace
+*.xcworkspace
+*.dSYM.zip
+*.dSYM
+
+# Android
+android/build/
+android/app/build/
+android/bin/
+android/.gradle
+android/captures
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/*.keystore
+android/*.hprof
+.gradle
+*.idea
+*.settings
+*.classpath
+*.project
+*.iml
+*.class
+local.properties
+*.log
+
+
+# React Native specific
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
 .expo/
 .expo-shared/
 
-# Environment files
+# Testing
+coverage/
+.nyc_output
+
+# Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
 # Logs
 logs/
+**/logs/
 *.log
+
+# BUCK
+buck-out/
+\.buckd/
+*.keystore
+
+android/*.hprof
+ios/Pods/
