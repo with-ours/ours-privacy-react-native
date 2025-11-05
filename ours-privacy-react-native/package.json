@@ -1,6 +1,6 @@
 {
   "name": "ours-privacy-react-native",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Official React Native Tracking Library for OursPrivacy Analytics",
   "main": "index.js",
   "types": "index.d.ts",
@@ -12,7 +12,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oursprivacy/oursprivacy-react-native.git"
+    "url": "git+https://github.com/with-ours/ours-privacy-react-native.git"
   },
   "keywords": [
     "oursprivacy",
@@ -25,10 +25,9 @@
     "sdk"
   ],
   "bugs": {
-    "url": "https://github.com/oursprivacy/oursprivacy-react-native/issues"
+    "url": "https://github.com/with-ours/ours-privacy-react-native/issues"
   },
-  "TODO": "Change the git URL before publishing on npm",
-  "homepage": "https://github.com/oursprivacy/oursprivacy-react-native#readme",
+  "homepage": "https://github.com/with-ours/ours-privacy-react-native#readme",
   "metadata": {
     "mp_lib": "react-native"
   },
@@ -55,10 +54,7 @@
       "<rootDir>/__tests__/jest_setup.js"
     ],
     "verbose": true,
-    "preset": "react-native",
-    "transform": {
-      "^.+\\.js$": "<rootDir>/node_modules/react-native/jest/preprocessor.js"
-    }
+    "preset": "react-native"
   },
   "dependencies": {
     "@babel/runtime": "^7.0.0",
