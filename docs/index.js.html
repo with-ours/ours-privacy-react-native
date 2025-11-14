@@ -19,11 +19,11 @@
 
     <h1 class="page-title">Source: index.js</h1>
 
+    
 
 
 
-
-
+    
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>"use strict";
@@ -31,7 +31,7 @@
 import {Platform, NativeModules} from "react-native";
 import packageJson from "./package.json";
 const {OursPrivacyReactNative} = NativeModules;
-import OursPrivacyMain from "oursprivacy-react-native/javascript/oursprivacy-main"
+import OursPrivacyMain from "./javascript/oursprivacy-main"
 
 const DevicePlatform = {
   Unknown: "Unknown",
@@ -135,7 +135,7 @@ export class OursPrivacy {
       trackAutomaticEvents,
       optOutTrackingDefault,
       Helper.getMetaData(),
-      "https://api.oursprivacy.com"
+      "https://api.oursprivacy.com/api/v1"
     );
     return new OursPrivacy(token, trackAutomaticEvents);
   }
@@ -259,14 +259,14 @@ export class OursPrivacy {
    *     It does not return any value.
    *
    */
-  identify(distinctId) {
+  identify(distinctId, userProperties) {
     return new Promise((resolve, reject) => {
       if (!StringHelper.isValid(distinctId)) {
         StringHelper.raiseError(PARAMS.DISTINCT_ID);
         reject(new Error("Invalid distinctId"));
       }
       this.oursprivacyImpl
-        .identify(this.token, distinctId)
+        .identify(this.token, distinctId, userProperties)
         .then(() => {
           resolve();
         })
@@ -322,131 +322,6 @@ export class OursPrivacy {
       ...Helper.getMetaData(),
       ...properties,
     });
-  }
-
-  /**
-   * Returns a OursPrivacy People object that can be used to set and increment
-   * People Analytics properties.
-   *
-   * @return {People} an instance of People that you can use to update
-   *     records in OursPrivacy People Analytics
-   */
-  getPeople() {
-    if (this.people) {
-      return this.people;
-    } else {
-      this.people = new People(this.token, this.oursprivacyImpl);
-      return this.people;
-    }
-  }
-
-  /**
-   * Track an event with specific groups.
-   *
-   * &lt;p>Every call to track eventually results in a data point sent to OursPrivacy. These data points
-   * are what are measured, counted, and broken down to create your OursPrivacy reports. Events
-   * have a string name, and an optional set of name/value pairs that describe the properties of
-   * that event. Group key/value pairs are upserted into the property map before tracking.
-   *
-   * @param {string} eventName The name of the event to send
-   * @param {object} properties A Map containing the key value pairs of the properties to include in this event.
-   *                   Pass null if no extra properties exist.
-   * @param {object} groups A Map containing the group key value pairs for this event.
-   *
-   */
-  trackWithGroups(eventName, properties, groups) {
-    if (!StringHelper.isValid(eventName)) {
-      StringHelper.raiseError(PARAMS.EVENT_NAME);
-    }
-    if (!ObjectHelper.isValidOrUndefined(properties)) {
-      ObjectHelper.raiseError(PARAMS.PROPERTIES);
-    }
-    this.oursprivacyImpl.trackWithGroups(
-      this.token,
-      eventName,
-      {
-        ...Helper.getMetaData(),
-        ...properties,
-      },
-      groups
-    );
-  }
-
-  /**
-   * Set the group this user belongs to.
-   *
-   * @param {string} groupKey The property name associated with this group type (must already have been set up).
-   * @param {object} groupID The group the user belongs to.
-   */
-  setGroup(groupKey, groupID) {
-    if (!StringHelper.isValid(groupKey)) {
-      StringHelper.raiseError(PARAMS.GROUP_KEY);
-    }
-    this.oursprivacyImpl.setGroup(this.token, groupKey, groupID);
-  }
-
-  /**
-   * Returns a OursPrivacyGroup object that can be used to set and increment
-   * Group Analytics properties.
-   *
-   * @param {string} groupKey String identifying the type of group (must be already in use as a group key)
-   * @param {object} groupID Object identifying the specific group
-   * @return an instance of OursPrivacyGroup that you can use to update
-   *     records in OursPrivacy Group Analytics
-   */
-  getGroup(groupKey, groupID) {
-    if (this.group) {
-      return this.group;
-    } else {
-      this.group = new OursPrivacyGroup(
-        this.token,
-        groupKey,
-        groupID,
-        this.oursprivacyImpl
-      );
-      return this.group;
-    }
-  }
-
-  /**
-   * Add a group to this user's membership for a particular group key
-   *
-   * @param {string} groupKey The property name associated with this group type (must already have been set up).
-   * @param {object} groupID The new group the user belongs to.
-   */
-  addGroup(groupKey, groupID) {
-    if (!StringHelper.isValid(groupKey)) {
-      StringHelper.raiseError(PARAMS.GROUP_KEY);
-    }
-    this.oursprivacyImpl.addGroup(this.token, groupKey, groupID);
-  }
-
-  /**
-   * Remove a group from this user's membership for a particular group key
-   *
-   * @param {string} groupKey The property name associated with this group type (must already have been set up).
-   * @param {object} groupID The group value to remove.
-   */
-  removeGroup(groupKey, groupID) {
-    if (!StringHelper.isValid(groupKey)) {
-      StringHelper.raiseError(PARAMS.GROUP_KEY);
-    }
-    this.oursprivacyImpl.removeGroup(this.token, groupKey, groupID);
-  }
-
-  /**
-   * Permanently deletes this group's record from Group Analytics.
-   *
-   * @param {string} groupKey String identifying the type of group (must be already in use as a group key)
-   * @param {object} groupID Object identifying the specific group
-   * &lt;p>Calling deleteGroup deletes an entire record completely. Any future calls
-   * to Group Analytics using the same group value will create and store new values.
-   */
-  deleteGroup(groupKey, groupID) {
-    if (!StringHelper.isValid(groupKey)) {
-      StringHelper.raiseError(PARAMS.GROUP_KEY);
-    }
-    this.oursprivacyImpl.deleteGroup(this.token, groupKey, groupID);
   }
 
   /**
@@ -612,346 +487,6 @@ export class OursPrivacy {
   }
 }
 
-/**
- * Core class for using OursPrivacy People Analytics features.
- *
- * &lt;p>The People object is used to update properties in a user's People Analytics record,
- * and to manage the receipt of push notifications sent via OursPrivacy Engage.
- * For this reason, it's important to call identify(String) on the People
- * object before you work with it. Once you call identify, the user identity will
- * persist across stops and starts of your application, until you make another
- * call to identify using a different id.
- *
- */
-export class People {
-  constructor(token, oursprivacyImpl) {
-    if (!StringHelper.isValid(token)) {
-      StringHelper.raiseError(PARAMS.TOKEN);
-    }
-    this.token = token;
-    this.oursprivacyImpl = oursprivacyImpl;
-  }
-
-  /**
-   * Sets a single property with the given name and value for this user.
-   * The given name and value will be assigned to the user in OursPrivacy People Analytics,
-   * possibly overwriting an existing property with the same name.
-   *
-   * @param {string} prop The name of the OursPrivacy property. This must be a String, for example "Zip Code"
-   * @param {object} to The value of the OursPrivacy property. For "Zip Code", this value might be the String "90210"
-   */
-  set(prop, to) {
-    let properties = {};
-    if (ObjectHelper.isValid(prop)) {
-      properties = JSON.parse(JSON.stringify(prop || {}));
-    } else {
-      if (!StringHelper.isValid(prop)) {
-        StringHelper.raiseError(PARAMS.PROP);
-      }
-      properties[prop] = to;
-    }
-    this.oursprivacyImpl.set(this.token, properties);
-  }
-
-  /**
-   * Works just like set(), except it will not overwrite existing property values. This is useful for properties like "First login date".
-   *
-   * @param {string} prop The name of the OursPrivacy property. This must be a String, for example "Zip Code"
-   * @param {object} to The value of the OursPrivacy property. For "Zip Code", this value might be the String "90210"
-   */
-  setOnce(prop, to) {
-    let properties = {};
-    if (ObjectHelper.isValid(prop)) {
-      prop = prop || {};
-      properties = JSON.parse(JSON.stringify(prop));
-    } else {
-      if (!StringHelper.isValid(prop)) {
-        StringHelper.raiseError(PARAMS.PROP);
-      }
-      properties[prop] = to;
-    }
-    this.oursprivacyImpl.setOnce(this.token, properties);
-  }
-
-  /**
-   * Add the given amount to an existing property on the identified user. If the user does not already
-   * have the associated property, the amount will be added to zero. To reduce a property,
-   * provide a negative number for the value.
-   *
-   * @param {string} prop the People Analytics property that should have its value changed
-   * @param {number} by the amount to be added to the current value of the named property
-   *
-   */
-  increment(prop, by) {
-    var add = {};
-    if (ObjectHelper.isValid(prop)) {
-      Object.keys(prop).forEach(function (key) {
-        var val = prop[key];
-        if (isNaN(parseFloat(val))) {
-          throw new Error(
-            `${PARAMS.PROPERTY_VALUE}${ERROR_MESSAGE.REQUIRED_DOUBLE}`
-          );
-        }
-        add[key] = val;
-      });
-    } else {
-      by = by || 1;
-      if (isNaN(parseFloat(by))) {
-        throw new Error(
-          `${PARAMS.PROPERTY_VALUE}${ERROR_MESSAGE.REQUIRED_DOUBLE}`
-        );
-      }
-
-      if (!StringHelper.isValid(prop)) {
-        StringHelper.raiseError(PARAMS.NAME);
-      }
-
-      add[prop] = by;
-    }
-    this.oursprivacyImpl.increment(this.token, add);
-  }
-
-  /**
-   * Appends a value to a list-valued property. If the property does not currently exist,
-   * it will be created as a list of one element. If the property does exist and doesn't
-   * currently have a list value, the append will be ignored.
-   * @param {string} name the People Analytics property that should have it's value appended to
-   * @param {object} value the new value that will appear at the end of the property's list
-   */
-  append(name, value) {
-    let appendProp = {};
-    if (!StringHelper.isValid(name)) {
-      StringHelper.raiseError(PARAMS.NAME);
-    } else {
-      appendProp[name] = value;
-    }
-
-    if (DevicePlatform.iOS === Helper.getDevicePlatform()) {
-      this.oursprivacyImpl.append(this.token, appendProp);
-    } else {
-      this.oursprivacyImpl.append(this.token, name, value);
-    }
-  }
-
-  /**
-   * Adds values to a list-valued property only if they are not already present in the list.
-   * If the property does not currently exist, it will be created with the given list as it's value.
-   * If the property exists and is not list-valued, the union will be ignored.
-   *
-   * @param {string} name name of the list-valued property to set or modify
-   * @param {array} value an array of values to add to the property value if not already present
-   */
-  union(name, value) {
-    if (!StringHelper.isValid(name)) {
-      StringHelper.raiseError(PARAMS.NAME);
-    }
-
-    value = Array.isArray(value) ? value : [value];
-
-    if (DevicePlatform.iOS === Helper.getDevicePlatform()) {
-      this.oursprivacyImpl.union(this.token, {[name]: value});
-      this.oursprivacyImpl.union(this.token, {[name]: value});
-    } else {
-      this.oursprivacyImpl.union(this.token, name, value);
-    }
-  }
-
-  /**
-   * Remove value from a list-valued property only if they are already present in the list.
-   * If the property does not currently exist, the remove will be ignored.
-   * If the property exists and is not list-valued, the remove will be ignored.
-   * @param {string} name the People Analytics property that should have it's value removed from
-   * @param {object} value the value that will be removed from the property's list
-   */
-  remove(name, value) {
-    let removeProp = {};
-    if (!StringHelper.isValid(name)) {
-      StringHelper.raiseError(PARAMS.NAME);
-    } else {
-      removeProp[name] = value;
-    }
-
-    if (DevicePlatform.iOS === Helper.getDevicePlatform()) {
-      this.oursprivacyImpl.remove(this.token, removeProp);
-    } else {
-      this.oursprivacyImpl.remove(this.token, name, value);
-    }
-  }
-
-  /**
-   * permanently removes the property with the given name from the user's profile
-   * @param {string} name name of a property to unset
-   */
-  unset(name) {
-    if (!StringHelper.isValid(name)) {
-      StringHelper.raiseError(PARAMS.PROPERTY_NAME);
-    }
-    this.oursprivacyImpl.unset(this.token, name);
-  }
-
-  /**
-   * Track a revenue transaction for the identified people profile.
-   *
-   * @param {number} charge the amount of money exchanged. Positive amounts represent purchases or income from the customer, negative amounts represent refunds or payments to the customer.
-   * @param {object} properties an optional collection of properties to associate with this transaction.
-   */
-  trackCharge(charge, properties) {
-    if (isNaN(parseFloat(charge))) {
-      throw new Error(`${PARAMS.CHARGE}${ERROR_MESSAGE.REQUIRED_DOUBLE}`);
-    }
-
-    if (!ObjectHelper.isValidOrUndefined(properties)) {
-      ObjectHelper.raiseError(PARAMS.PROPERTIES);
-    }
-    this.oursprivacyImpl.trackCharge(this.token, charge, properties || {});
-  }
-
-  /**
-   * Permanently clear the whole transaction history for the identified people profile.
-   */
-  clearCharges() {
-    this.oursprivacyImpl.clearCharges(this.token);
-  }
-
-  /**
-   * Permanently deletes the identified user's record from People Analytics.
-   *
-   * &lt;p>Calling deleteUser deletes an entire record completely. Any future calls
-   * to People Analytics using the same distinct id will create and store new values.
-   */
-  deleteUser() {
-    this.oursprivacyImpl.deleteUser(this.token);
-  }
-}
-
-/**
- * Core class for using OursPrivacy Group Analytics features.
- *
- * &lt;p>The OursPrivacyGroup object is used to update properties in a group's Group Analytics record.
- */
-export class OursPrivacyGroup {
-  constructor(token, groupKey, groupID, oursprivacyImpl) {
-    if (!StringHelper.isValid(token)) {
-      StringHelper.raiseError(PARAMS.TOKEN);
-    }
-    this.token = token;
-    this.groupKey = groupKey;
-    this.groupID = groupID;
-    this.oursprivacyImpl = oursprivacyImpl;
-  }
-
-  /**
-   * Sets a single property with the given name and value for this group.
-   * The given name and value will be assigned to the user in OursPrivacy Group Analytics,
-   * possibly overwriting an existing property with the same name.
-   *
-   * @param {string} prop The name of the OursPrivacy property. This must be a String, for example "Zip Code"
-   * @param {string} to The value to set on the given property name. For "Zip Code", this value might be the String "90210"
-   */
-  set(prop, to) {
-    let properties = {};
-    if (ObjectHelper.isValid(prop)) {
-      properties = JSON.parse(JSON.stringify(prop || {}));
-    } else {
-      if (!StringHelper.isValid(prop)) {
-        StringHelper.raiseError(PARAMS.PROP);
-      }
-      properties[prop] = to;
-    }
-    this.oursprivacyImpl.groupSetProperties(
-      this.token,
-      this.groupKey,
-      this.groupID,
-      properties
-    );
-  }
-
-  /**
-   * Works just like groupSet() except it will not overwrite existing property values. This is useful for properties like "First login date".
-   *
-   * @param {string} prop The name of the OursPrivacy property. This must be a String, for example "Zip Code"
-   * @param {string} to The value to set on the given property name. For "Zip Code", this value might be the String "90210"
-   */
-  setOnce(prop, to) {
-    let properties = {};
-    if (ObjectHelper.isValid(prop)) {
-      properties = JSON.parse(JSON.stringify(prop || {}));
-    } else {
-      if (!StringHelper.isValid(prop)) {
-        StringHelper.raiseError(PARAMS.PROP);
-      }
-      properties[prop] = to;
-    }
-    this.oursprivacyImpl.groupSetPropertyOnce(
-      this.token,
-      this.groupKey,
-      this.groupID,
-      properties
-    );
-  }
-
-  /**
-   * Permanently removes the property with the given name from the group's profile
-   *
-   * @param {string} prop name of a property to unset
-   */
-  unset(prop) {
-    if (!StringHelper.isValid(prop)) {
-      StringHelper.raiseError(PARAMS.PROPERTY_NAME);
-    }
-    this.oursprivacyImpl.groupUnsetProperty(
-      this.token,
-      this.groupKey,
-      this.groupID,
-      prop
-    );
-  }
-
-  /**
-   * Remove value from a list-valued property only if it is already present in the list.
-   * If the property does not currently exist, the remove will be ignored.
-   * If the property exists and is not list-valued, the remove will be ignored.
-   *
-   * @param {string} name the Group Analytics list-valued property that should have a value removed
-   * @param {any} value the value that will be removed from the list
-   */
-  remove(name, value) {
-    if (!StringHelper.isValid(name)) {
-      StringHelper.raiseError(PARAMS.PROPERTY_NAME);
-    }
-
-    this.oursprivacyImpl.groupRemovePropertyValue(
-      this.token,
-      this.groupKey,
-      this.groupID,
-      name,
-      value
-    );
-  }
-
-  /**
-   * Adds values to a list-valued property only if they are not already present in the list.
-   * If the property does not currently exist, it will be created with the given list as its value.
-   * If the property exists and is not list-valued, the union will be ignored.
-   *
-   * @param {string} name name of the list-valued property to set or modify
-   * @param {array} value an array of values to add to the property value if not already present
-   */
-  union(name, value) {
-    if (!StringHelper.isValid(name)) {
-      StringHelper.raiseError(PARAMS.PROPERTY_NAME);
-    }
-    value = Array.isArray(value) ? value : [value];
-    this.oursprivacyImpl.groupUnionProperty(
-      this.token,
-      this.groupKey,
-      this.groupID,
-      name,
-      value
-    );
-  }
-}
-
 class Helper {
   /**
       Get the library data from package.json file.
@@ -1032,13 +567,13 @@ class ObjectHelper {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="OursPrivacy.html">OursPrivacy</a></li><li><a href="OursPrivacyGroup.html">OursPrivacyGroup</a></li><li><a href="People.html">People</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="OursPrivacy.html">OursPrivacy</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Tue May 14 2024 09:36:01 GMT-0700 (Pacific Daylight Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Wed Nov 05 2025 14:04:39 GMT-0600 (Central Standard Time)
 </footer>
 
 <script> prettyPrint(); </script>

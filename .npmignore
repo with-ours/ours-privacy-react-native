@@ -1,11 +1,28 @@
-# OSX
-.DS_Store
+# Development files
+__tests__/
+*.test.js
+.eslintrc.js
+.prettierrc.js
+.gitignore
+.gitattributes
 
-# node.js
+# Build and development artifacts
 node_modules/
 npm-debug.log
 yarn-error.log
 *.tgz
+logs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OSX
+.DS_Store
+.AppleDouble
+.LSOverride
 
 # Xcode
 ios/build/
@@ -43,5 +60,16 @@ buck-out/
 \.buckd/
 *.keystore
 
-# DemoApp
+# Demo Apps and Samples - exclude from npm package
+Samples/
+*Demo*
+*demo*
 /OursPrivacyDemo
+
+# Documentation generation files
+generate_docs.sh
+release.py
+
+# Version control
+.git/
+.github/
