@@ -28,7 +28,7 @@ import {
 
 import {v4} from "uuid"
 
-import { OursPrivacy } from 'ours-privacy-react-native';
+import { OursPrivacy } from '@oursprivacy/react-native';
 
 console.log("Test", NativeModules);
 if (__DEV__) {
