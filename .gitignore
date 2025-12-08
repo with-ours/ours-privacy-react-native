@@ -104,3 +104,6 @@ buck-out/
 
 android/*.hprof
 ios/Pods/
+
+# Generated documentation
+docs/
