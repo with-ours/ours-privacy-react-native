@@ -1,6 +1,6 @@
 {
   "name": "@oursprivacy/react-native",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Official React Native Tracking Library for OursPrivacy Analytics",
   "main": "index.js",
   "types": "index.d.ts",
@@ -58,7 +58,11 @@
     "verbose": true,
     "haste": {
       "defaultPlatform": "ios",
-      "platforms": ["android", "ios", "native"]
+      "platforms": [
+        "android",
+        "ios",
+        "native"
+      ]
     },
     "transform": {
       "^.+\\.(js|ts|tsx)$": "babel-jest"
