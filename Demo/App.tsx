@@ -26,14 +26,8 @@ import {
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 
-import {v4} from "uuid"
-
+import { OURSPRIVACY_TOKEN } from '@env';
 import { OursPrivacy } from '@oursprivacy/react-native';
-
-console.log("Test", NativeModules);
-if (__DEV__) {
-  require("./reactotron");
-}
 
 type SectionProps = PropsWithChildren<{
   title: string;
@@ -42,22 +36,27 @@ type SectionProps = PropsWithChildren<{
 let opInstance: OursPrivacy
 async function getOursPrivacy() {
   if (!opInstance) {
-    opInstance = await OursPrivacy.init("", false, false)
-    opInstance.setServerURL("https://dev-api.oursprivacy.com/api/v1")
+    opInstance = await OursPrivacy.init(OURSPRIVACY_TOKEN, false, false)
+    opInstance.setLoggingEnabled(true)
   }
   return opInstance
 }
 
 async function track(event: string) {
   try {
-    console.log('Calling native module...');
-    var distinctId = await (await getOursPrivacy()).getDistinctId();
-    await (await getOursPrivacy()).identify(distinctId)
-    var result  = (await getOursPrivacy()).track(event, { distinctId: distinctId });
-    (await getOursPrivacy()).flush();
-    console.log('Native result:', result);
+    const op = await getOursPrivacy();
+    const distinctId = await op.getDistinctId();
+    const deviceId = await op.getDeviceId();
+    console.log('[OursPrivacy] distinctId:', distinctId);
+    console.log('[OursPrivacy] deviceId:', deviceId);
+    await op.identify(distinctId);
+    const props = { distinctId };
+    console.log('[OursPrivacy] track:', event, 'props:', JSON.stringify(props));
+    op.track(event, props);
+    op.flush();
+    console.log('[OursPrivacy] flushed');
   } catch (err) {
-    console.error('Error calling native module:', err);
+    console.error('[OursPrivacy] Error:', err);
   }
 }
 
