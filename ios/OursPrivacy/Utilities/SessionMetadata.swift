@@ -33,10 +33,10 @@ class SessionMetadata {
     }
     
     func toDict(isEvent: Bool = true) -> InternalProperties {
-        let dict: [String: Any] = ["$mp_metadata": ["$mp_event_id": String.randomId(),
-                                                    "$mp_session_id": sessionID,
-                                                    "$mp_session_seq_id": (isEvent ? eventsCounter : peopleCounter),
-                                                    "$mp_session_start_sec": sessionStartEpoch] as [String : Any]]
+        let dict: [String: Any] = ["$op_metadata": ["$op_event_id": String.randomId(),
+                                                    "$op_session_id": sessionID,
+                                                    "$op_session_seq_id": (isEvent ? eventsCounter : peopleCounter),
+                                                    "$op_session_start_sec": sessionStartEpoch] as [String : Any]]
         isEvent ? (eventsCounter += 1) : (peopleCounter += 1)
         return dict
     }

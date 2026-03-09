@@ -49,34 +49,3 @@ export class OursPrivacy {
   getDeviceId(): Promise<string>;
   flush(): void;
 }
-
-export class People {
-  constructor(token: string, oursprivacyInstance: any);
-  set(prop: string, to: OursPrivacyType): void;
-  set(properties: OursPrivacyProperties): void;
-  setOnce(prop: string, to: OursPrivacyType): void;
-  setOnce(properties: OursPrivacyProperties): void;
-  increment(prop: string, by: number): void;
-  increment(properties: OursPrivacyProperties): void;
-  append(name: string, value: OursPrivacyType): void;
-  union(name: string, value: Array<OursPrivacyType>): void;
-  remove(name: string, value: OursPrivacyType): void;
-  unset(name: string): void;
-  trackCharge(charge: number, properties: OursPrivacyProperties): void;
-  clearCharges(): void;
-  deleteUser(): void;
-}
-
-export class OursPrivacyGroup {
-  constructor(
-    token: string,
-    groupKey: string,
-    groupID: OursPrivacyType,
-    oursprivacyInstance: any
-  );
-  set(prop: string, to: OursPrivacyType): void;
-  setOnce(prop: string, to: OursPrivacyType): void;
-  unset(prop: string): void;
-  remove(name: string, value: OursPrivacyType): void;
-  union(name: string, value: OursPrivacyType): void;
-}

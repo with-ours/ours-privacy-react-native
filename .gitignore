@@ -107,3 +107,7 @@ ios/Pods/
 
 # Generated documentation
 docs/
+
+# Claude Code configuration
+CLAUDE.md
+.claude/

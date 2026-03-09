@@ -3,17 +3,17 @@ import argparse
 import subprocess
 
 
-parser = argparse.ArgumentParser(description='Release Mixpanel Swift SDK')
+parser = argparse.ArgumentParser(description='Release Ours Privacy Swift SDK')
 parser.add_argument('--old', help='version for the release', action="store")
 parser.add_argument('--new', help='version for the release', action="store")
 args = parser.parse_args()
 
 def bump_version():
-    replace_version('Mixpanel-swift.podspec', args.old, args.new)
+    replace_version('OursPrivacy-swift.podspec', args.old, args.new)
     replace_version('Info.plist', args.old, args.new)
     replace_version('Sources/AutomaticProperties.swift', args.old, args.new)
     replace_version('./scripts/generate_docs.sh', args.old, args.new)
-    subprocess.call('git add Mixpanel-swift.podspec', shell=True)
+    subprocess.call('git add OursPrivacy-swift.podspec', shell=True)
     subprocess.call('git add Info.plist', shell=True)
     subprocess.call('git add Sources/AutomaticProperties.swift', shell=True)
     subprocess.call('git add ./scripts/generate_docs.sh', shell=True)
@@ -41,7 +41,7 @@ def add_tag():
 
 def pushPod():
     subprocess.call('sudo gem install cocoapods', shell=True)
-    subprocess.call('pod trunk push Mixpanel-swift.podspec --allow-warnings', shell=True)
+    subprocess.call('pod trunk push OursPrivacy-swift.podspec --allow-warnings', shell=True)
 
 def build_Carthage():
     subprocess.call('./scripts/carthage.sh', shell=True)

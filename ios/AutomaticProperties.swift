@@ -2,10 +2,9 @@
 //  AutomaticProperties.swift
 //  OursPrivacy
 //
-//  Copyright © 2025 Ours Wellness Inc.  All rights reserved.
+//  Copyright © 2025 Ours Wellness Inc. All rights reserved.
 //
 //  Created by Yarden Eitan on 7/8/16.
-//  Copyright © 2016 Mixpanel. All rights reserved.
 //
 
 import Foundation
@@ -78,7 +77,7 @@ class AutomaticProperties {
         p["$app_build_number"]     = infoDict["CFBundleVersion"] as? String ?? "Unknown"
         p["$app_version_string"]   = infoDict["CFBundleShortVersionString"] as? String ?? "Unknown"
 
-        p["mp_lib"]             = "swift"
+        p["op_lib"]             = "swift"
         p["$lib_version"]       = AutomaticProperties.libVersion()
         p["$manufacturer"]      = "Apple"
         p["$model"]             = AutomaticProperties.deviceModel()
@@ -159,7 +158,7 @@ class AutomaticProperties {
     }
 
     class func libVersion() -> String {
-        return "4.3.1"
+        return "1.0.0"
     }
 
 }

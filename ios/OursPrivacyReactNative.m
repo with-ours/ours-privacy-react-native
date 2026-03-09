@@ -62,47 +62,4 @@ RCT_EXTERN_METHOD(unregisterSuperProperty:(NSString *)token propertyName:(NSStri
 
 RCT_EXTERN_METHOD(clearSuperProperties:(NSString *)token resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 
-// MARK: - Storing User Profiles
-
-RCT_EXTERN_METHOD(set:(NSString *)token properties:(NSDictionary *)properties resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(setOnce:(NSString *)token properties:(NSDictionary *)properties resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(unset:(NSString *)token propertyName:(NSString *)propertyName resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(increment:(NSString *)token properties:(NSDictionary *)properties resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(append:(NSString *)token properties:(NSDictionary *)properties resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(remove:(NSString *)token properties:(NSDictionary *)properties resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(union:(NSString *)token properties:(NSDictionary *)properties resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(trackCharge:(NSString *)token amount:(double)amount properties:(NSDictionary *)properties resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(clearCharges:(NSString *)token resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(deleteUser:(NSString *)token resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-// MARK: - Group
-RCT_EXTERN_METHOD(trackWithGroups:(NSString *)token event:(NSString *)event properties:(NSDictionary *)properties groups:(NSDictionary *)groups resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(setGroup:(NSString *)token groupKey:(NSString *)groupKey groupID:(id)groupID resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(addGroup:(NSString *)token groupKey:(NSString *)groupKey groupID:(id)groupID resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(removeGroup:(NSString *)token groupKey:(NSString *)groupKey groupID:(id)groupID resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(deleteGroup:(NSString *)token groupKey:(NSString *)groupKey groupID:(id)groupID resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(groupSetProperties:(NSString *)token groupKey:(NSString *)groupKey groupID:(id)groupID properties:(NSDictionary *)properties resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(groupSetPropertyOnce:(NSString *)token groupKey:(NSString *)groupKey groupID:(id)groupID properties:(NSDictionary *)properties resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(groupUnsetProperty:(NSString *)token groupKey:(NSString *)groupKey groupID:(id)groupID propertyName:(NSString *)propertyName resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(groupRemovePropertyValue:(NSString *)token groupKey:(NSString *)groupKey groupID:(id)groupID name:(NSString *)name value:(id)value resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
-RCT_EXTERN_METHOD(groupUnionProperty:(NSString *)token groupKey:(NSString *)groupKey groupID:(id)groupID name:(NSString *)name values:(NSArray *)values resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-
 @end

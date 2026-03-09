@@ -70,7 +70,7 @@ export class OursPrivacy {
   async init(
     optOutTrackingDefault = DEFAULT_OPT_OUT,
     superProperties = {},
-    serverURL = "https://api.oursprivacy.com"
+    serverURL = "https://api.oursprivacy.com/api/v1"
   ) {
     await this.oursprivacyImpl.initialize(
       this.token,
