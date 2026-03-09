@@ -5,7 +5,7 @@ PODS:
   - FBLazyVector (0.79.2)
   - fmt (11.0.2)
   - glog (0.3.5)
-  - OursPrivacyReactNative (0.1.0):
+  - OursPrivacyReactNative (1.1.0):
     - React-Core
   - RCT-Folly (2024.11.18.00):
     - boost
@@ -1566,7 +1566,7 @@ DEPENDENCIES:
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - fmt (from `../node_modules/react-native/third-party-podspecs/fmt.podspec`)
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
-  - OursPrivacyReactNative (from `../node_modules/ours-privacy-react-native`)
+  - "OursPrivacyReactNative (from `../node_modules/@oursprivacy/react-native`)"
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCT-Folly/Fabric (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
@@ -1651,7 +1651,7 @@ EXTERNAL SOURCES:
   glog:
     :podspec: "../node_modules/react-native/third-party-podspecs/glog.podspec"
   OursPrivacyReactNative:
-    :path: "../node_modules/ours-privacy-react-native"
+    :path: "../node_modules/@oursprivacy/react-native"
   RCT-Folly:
     :podspec: "../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec"
   RCTDeprecation:
@@ -1784,7 +1784,7 @@ SPEC CHECKSUMS:
   FBLazyVector: 84b955f7b4da8b895faf5946f73748267347c975
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
-  OursPrivacyReactNative: 8d02aa520f3d9549a90e421e5b964ff81925d91a
+  OursPrivacyReactNative: ceab7c1f839bd177c8a9f147c53697c7d29ece18
   RCT-Folly: e78785aa9ba2ed998ea4151e314036f6c49e6d82
   RCTDeprecation: 83ffb90c23ee5cea353bd32008a7bca100908f8c
   RCTRequired: eb7c0aba998009f47a540bec9e9d69a54f68136e
@@ -1849,6 +1849,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: c758bfb934100bb4bf9cbaccb52557cee35e8bdf
 
-PODFILE CHECKSUM: 651121493b22b29fd2f35b8faab31836e9221a0e
+PODFILE CHECKSUM: b182f274821a7f87e7754a6ede1094726df78879
 
 COCOAPODS: 1.16.2
