@@ -1054,7 +1054,7 @@ public class OursPrivacyAPI {
      * This is only available if the android version is >= 16.
      *
      * This function is automatically called when the library is initialized unless you explicitly
-     * set com.oursprivacy.android.MPConfig.AutoShowOursPrivacyUpdates to false in your AndroidManifest.xml
+     * set com.oursprivacy.android.OPConfig.AutoShowOursPrivacyUpdates to false in your AndroidManifest.xml
      */
     @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     /* package */ void registerOursPrivacyActivityLifecycleCallbacks() {

@@ -1261,42 +1261,42 @@ public class OursPrivacyBasicTest {
 
         for (int i = 0; i < 4; i++) {
             JSONObject sessionMetadata = eventsMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getSessionMetadata();
-            assertTrue(sessionMetadata.has("$mp_event_id"));
-            assertTrue(sessionMetadata.has("$mp_session_id"));
-            assertTrue(sessionMetadata.has("$mp_session_start_sec"));
+            assertTrue(sessionMetadata.has("$op_event_id"));
+            assertTrue(sessionMetadata.has("$op_session_id"));
+            assertTrue(sessionMetadata.has("$op_session_start_sec"));
 
-            assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
+            assertEquals(i, sessionMetadata.getInt("$op_session_seq_id"));
         }
         eventsMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getSessionMetadata();
         assertNull(eventsMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
 
         for (int i = 0; i < 3; i++) {
-            JSONObject sessionMetadata = peopleMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getMessage().getJSONObject("$mp_metadata");
-            assertTrue(sessionMetadata.has("$mp_event_id"));
-            assertTrue(sessionMetadata.has("$mp_session_id"));
-            assertTrue(sessionMetadata.has("$mp_session_start_sec"));
+            JSONObject sessionMetadata = peopleMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getMessage().getJSONObject("$op_metadata");
+            assertTrue(sessionMetadata.has("$op_event_id"));
+            assertTrue(sessionMetadata.has("$op_session_id"));
+            assertTrue(sessionMetadata.has("$op_session_start_sec"));
 
-            assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
+            assertEquals(i, sessionMetadata.getInt("$op_session_seq_id"));
         }
         assertNull(peopleMessages.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
 
         for (int i = 0; i < 4; i++) {
-            JSONObject sessionMetadata = storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$mp_metadata");
-            assertTrue(sessionMetadata.has("$mp_event_id"));
-            assertTrue(sessionMetadata.has("$mp_session_id"));
-            assertTrue(sessionMetadata.has("$mp_session_start_sec"));
+            JSONObject sessionMetadata = storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$op_metadata");
+            assertTrue(sessionMetadata.has("$op_event_id"));
+            assertTrue(sessionMetadata.has("$op_session_id"));
+            assertTrue(sessionMetadata.has("$op_session_start_sec"));
 
-            assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
+            assertEquals(i, sessionMetadata.getInt("$op_session_seq_id"));
         }
-        storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$mp_metadata");
+        storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$op_metadata");
 
         for (int i = 0; i < 3; i++) {
-            JSONObject sessionMetadata = storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$mp_metadata");
-            assertTrue(sessionMetadata.has("$mp_event_id"));
-            assertTrue(sessionMetadata.has("$mp_session_id"));
-            assertTrue(sessionMetadata.has("$mp_session_start_sec"));
+            JSONObject sessionMetadata = storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS).getJSONObject("$op_metadata");
+            assertTrue(sessionMetadata.has("$op_event_id"));
+            assertTrue(sessionMetadata.has("$op_session_id"));
+            assertTrue(sessionMetadata.has("$op_session_start_sec"));
 
-            assertEquals(i, sessionMetadata.getInt("$mp_session_seq_id"));
+            assertEquals(i, sessionMetadata.getInt("$op_session_seq_id"));
         }
         assertNull(storedJsons.poll(POLL_WAIT_SECONDS, TimeUnit.SECONDS));
     }

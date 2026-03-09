@@ -3,7 +3,7 @@
 // //  OursPrivacyiOSTests
 // //
 // //  Created by Steve Krenek on 4/11/25.
-// //  Copyright © 2025 Mixpanel. All rights reserved.
+// //  Copyright © 2025 Ours Wellness Inc. All rights reserved.
 // //
 
 // import Testing

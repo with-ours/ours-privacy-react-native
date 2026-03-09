@@ -28,63 +28,63 @@ import javax.net.ssl.SSLSocketFactory;
  * OursPrivacy understands the following options:
  *
  * <dl>
- *     <dt>com.oursprivacy.android.MPConfig.EnableDebugLogging</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.EnableDebugLogging</dt>
  *     <dd>A boolean value. If true, emit more detailed log messages. Defaults to false</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.BulkUploadLimit</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.BulkUploadLimit</dt>
  *     <dd>An integer count of messages, the maximum number of messages to queue before an upload attempt. This value should be less than 50.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.FlushInterval</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.FlushInterval</dt>
  *     <dd>An integer number of milliseconds, the maximum time to wait before an upload if the bulk upload limit isn't reached.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.FlushBatchSize</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.FlushBatchSize</dt>
  *     <dd>Maximum number of events/updates to send in a single network request</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.FlushOnBackground</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.FlushOnBackground</dt>
  *     <dd>A boolean value. If false, the library will not flush the event and people queues when the app goes into the background. Defaults to true.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.DebugFlushInterval</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.DebugFlushInterval</dt>
  *     <dd>An integer number of milliseconds, the maximum time to wait before an upload if the bulk upload limit isn't reached in debug mode.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.DataExpiration</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.DataExpiration</dt>
  *     <dd>An integer number of milliseconds, the maximum age of records to send to OursPrivacy. Corresponds to OursPrivacy's server-side limit on record age.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.MinimumDatabaseLimit</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.MinimumDatabaseLimit</dt>
  *     <dd>An integer number of bytes. OursPrivacy attempts to limit the size of its persistent data
  *          queue based on the storage capacity of the device, but will always allow queuing below this limit. Higher values
  *          will take up more storage even when user storage is very full.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.MaximumDatabaseLimit</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.MaximumDatabaseLimit</dt>
  *     <dd>An integer number of bytes, the maximum size limit to the OursPrivacy database. </dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.ResourcePackageName</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.ResourcePackageName</dt>
  *     <dd>A string java package name. Defaults to the package name of the Application. Users should set if the package name of their R class is different from the application package name due to application id settings.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.DisableAppOpenEvent</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.DisableAppOpenEvent</dt>
  *     <dd>A boolean value. If true, do not send an "$app_open" event when the OursPrivacyAPI object is created for the first time. Defaults to true - the $app_open event will not be sent by default.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.DisableExceptionHandler</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.DisableExceptionHandler</dt>
  *     <dd>A boolean value. If true, do not automatically capture app crashes. "App Crashed" events won't show up on OursPrivacy. Defaults to false.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.EventsEndpoint</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.EventsEndpoint</dt>
  *     <dd>A string URL. If present, the library will attempt to send events to this endpoint rather than to the default OursPrivacy endpoint.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.PeopleEndpoint</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.PeopleEndpoint</dt>
  *     <dd>A string URL. If present, the library will attempt to send people updates to this endpoint rather than to the default OursPrivacy endpoint.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.GroupsEndpoint</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.GroupsEndpoint</dt>
  *     <dd>A string URL. If present, the library will attempt to send group updates to this endpoint rather than to the default OursPrivacy endpoint.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.MinimumSessionDuration</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.MinimumSessionDuration</dt>
  *     <dd>An integer number. The minimum session duration (ms) that is tracked in automatic events. Defaults to 10000 (10 seconds).</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.SessionTimeoutDuration</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.SessionTimeoutDuration</dt>
  *     <dd>An integer number. The maximum session duration (ms) that is tracked in automatic events. Defaults to Integer.MAX_VALUE (no maximum session duration).</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.UseIpAddressForGeolocation</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.UseIpAddressForGeolocation</dt>
  *     <dd>A boolean value. If true, OursPrivacy will automatically determine city, region and country data using the IP address of the client.Defaults to true.</dd>
  *
- *     <dt>com.oursprivacy.android.MPConfig.RemoveLegacyResidualFiles</dt>
+ *     <dt>com.oursprivacy.android.OPConfig.RemoveLegacyResidualFiles</dt>
  *     <dd>A boolean value. If true, OursPrivacy will remove the residual files from legacy versions such as images produced by deprecated Messages and Experiment features. Defaults to false.</dd>
  * </dl>
  *
@@ -99,23 +99,23 @@ public class OPConfig {
     /* package */ static final String REFERRER_PREFS_NAME = "com.oursprivacy.android.opmetrics.ReferralInfo";
 
     /**
-     * Retrieves a new instance of MPConfig with configuration settings loaded from the provided context.
+     * Retrieves a new instance of OPConfig with configuration settings loaded from the provided context.
      * This method creates a new instance each time it is called, allowing for multiple configurations
      * within the same application.
      *
-     * Since version 7.4.0, MPConfig is no longer a Singleton, in favor of supporting multiple,
+     * Since version 7.4.0, OPConfig is no longer a Singleton, in favor of supporting multiple,
      * distinct configurations for different OursPrivacy instances. This change allows greater flexibility
      * in scenarios where different parts of an application require different OursPrivacy configurations,
      * such as different endpoints or settings.
      *
-     * It's important for users of this method to manage the lifecycle of the returned MPConfig instances
+     * It's important for users of this method to manage the lifecycle of the returned OPConfig instances
      * themselves. Each call will result in a new configuration instance based on the application's
      * metadata, and it's the responsibility of the caller to maintain any necessary references to these
      * instances to use them later in their application.
      *
      * @param context The context used to load OursPrivacy configuration. It's recommended to provide
      *                an ApplicationContext to avoid potential memory leaks.
-     * @return A new instance of MPConfig with settings loaded from the context's application metadata.
+     * @return A new instance of OPConfig with settings loaded from the context's application metadata.
      */
     public static OPConfig getInstance(Context context, @Nullable String instanceName) {
         return readConfig(context.getApplicationContext(), instanceName);
@@ -129,7 +129,7 @@ public class OPConfig {
      *
      * {@code
      * <pre>
-     *     MPConfig.getInstance(context).setSSLSocketFactory(someCustomizedSocketFactory);
+     *     OPConfig.getInstance(context).setSSLSocketFactory(someCustomizedSocketFactory);
      * </pre>
      * }
      *
@@ -155,7 +155,7 @@ public class OPConfig {
      *
      * {@code
      * <pre>
-     *     MPConfig.getInstance(context).setOfflineMode(OfflineModeImplementation);
+     *     OPConfig.getInstance(context).setOfflineMode(OfflineModeImplementation);
      * </pre>
      * }
      *
@@ -188,31 +188,31 @@ public class OPConfig {
         }
         mSSLSocketFactory = foundSSLFactory;
         mInstanceName = instanceName;
-        DEBUG = metaData.getBoolean("com.oursprivacy.android.MPConfig.EnableDebugLogging", false);
+        DEBUG = metaData.getBoolean("com.oursprivacy.android.OPConfig.EnableDebugLogging", false);
         if (DEBUG) {
             OPLog.setLevel(OPLog.VERBOSE);
         }
 
-        if (metaData.containsKey("com.oursprivacy.android.MPConfig.DebugFlushInterval")) {
-            OPLog.w(LOGTAG, "We do not support com.oursprivacy.android.MPConfig.DebugFlushInterval anymore. There will only be one flush interval. Please, update your AndroidManifest.xml.");
+        if (metaData.containsKey("com.oursprivacy.android.OPConfig.DebugFlushInterval")) {
+            OPLog.w(LOGTAG, "We do not support com.oursprivacy.android.OPConfig.DebugFlushInterval anymore. There will only be one flush interval. Please, update your AndroidManifest.xml.");
         }
 
-        mBulkUploadLimit = metaData.getInt("com.oursprivacy.android.MPConfig.BulkUploadLimit", 40); // 40 records default
-        mFlushInterval = metaData.getInt("com.oursprivacy.android.MPConfig.FlushInterval", 60 * 1000); // one minute default
-        mFlushBatchSize = metaData.getInt("com.oursprivacy.android.MPConfig.FlushBatchSize", 50); // flush 50 events at a time by default
-        shouldGzipRequestPayload = metaData.getBoolean("com.oursprivacy.android.MPConfig.GzipRequestPayload", false);
-        mFlushOnBackground = metaData.getBoolean("com.oursprivacy.android.MPConfig.FlushOnBackground", true);
-        mMinimumDatabaseLimit = metaData.getInt("com.oursprivacy.android.MPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
-        mMaximumDatabaseLimit = metaData.getInt("com.oursprivacy.android.MPConfig.MaximumDatabaseLimit", Integer.MAX_VALUE); // 2 Gb
-        mResourcePackageName = metaData.getString("com.oursprivacy.android.MPConfig.ResourcePackageName"); // default is null
-        mDisableAppOpenEvent = metaData.getBoolean("com.oursprivacy.android.MPConfig.DisableAppOpenEvent", true);
-        mDisableExceptionHandler = metaData.getBoolean("com.oursprivacy.android.MPConfig.DisableExceptionHandler", false);
-        mMinSessionDuration = metaData.getInt("com.oursprivacy.android.MPConfig.MinimumSessionDuration", 10 * 1000); // 10 seconds
-        mSessionTimeoutDuration = metaData.getInt("com.oursprivacy.android.MPConfig.SessionTimeoutDuration", Integer.MAX_VALUE); // no timeout by default
-        mUseIpAddressForGeolocation = metaData.getBoolean("com.oursprivacy.android.MPConfig.UseIpAddressForGeolocation", true);
-        mRemoveLegacyResidualFiles = metaData.getBoolean("com.oursprivacy.android.MPConfig.RemoveLegacyResidualFiles", false);
+        mBulkUploadLimit = metaData.getInt("com.oursprivacy.android.OPConfig.BulkUploadLimit", 40); // 40 records default
+        mFlushInterval = metaData.getInt("com.oursprivacy.android.OPConfig.FlushInterval", 60 * 1000); // one minute default
+        mFlushBatchSize = metaData.getInt("com.oursprivacy.android.OPConfig.FlushBatchSize", 50); // flush 50 events at a time by default
+        shouldGzipRequestPayload = metaData.getBoolean("com.oursprivacy.android.OPConfig.GzipRequestPayload", false);
+        mFlushOnBackground = metaData.getBoolean("com.oursprivacy.android.OPConfig.FlushOnBackground", true);
+        mMinimumDatabaseLimit = metaData.getInt("com.oursprivacy.android.OPConfig.MinimumDatabaseLimit", 20 * 1024 * 1024); // 20 Mb
+        mMaximumDatabaseLimit = metaData.getInt("com.oursprivacy.android.OPConfig.MaximumDatabaseLimit", Integer.MAX_VALUE); // 2 Gb
+        mResourcePackageName = metaData.getString("com.oursprivacy.android.OPConfig.ResourcePackageName"); // default is null
+        mDisableAppOpenEvent = metaData.getBoolean("com.oursprivacy.android.OPConfig.DisableAppOpenEvent", true);
+        mDisableExceptionHandler = metaData.getBoolean("com.oursprivacy.android.OPConfig.DisableExceptionHandler", false);
+        mMinSessionDuration = metaData.getInt("com.oursprivacy.android.OPConfig.MinimumSessionDuration", 10 * 1000); // 10 seconds
+        mSessionTimeoutDuration = metaData.getInt("com.oursprivacy.android.OPConfig.SessionTimeoutDuration", Integer.MAX_VALUE); // no timeout by default
+        mUseIpAddressForGeolocation = metaData.getBoolean("com.oursprivacy.android.OPConfig.UseIpAddressForGeolocation", true);
+        mRemoveLegacyResidualFiles = metaData.getBoolean("com.oursprivacy.android.OPConfig.RemoveLegacyResidualFiles", false);
 
-        Object dataExpirationMetaData = metaData.get("com.oursprivacy.android.MPConfig.DataExpiration");
+        Object dataExpirationMetaData = metaData.get("com.oursprivacy.android.OPConfig.DataExpiration");
         long dataExpirationLong = 1000 * 60 * 60 * 24 * 5; // 5 days default
         if (dataExpirationMetaData != null) {
             try {
@@ -224,20 +224,20 @@ public class OPConfig {
                     throw new NumberFormatException(dataExpirationMetaData.toString() + " is not a number.");
                 }
             } catch (Exception e) {
-                OPLog.e(LOGTAG,"Error parsing com.oursprivacy.android.MPConfig.DataExpiration meta-data value", e);
+                OPLog.e(LOGTAG,"Error parsing com.oursprivacy.android.OPConfig.DataExpiration meta-data value", e);
             }
         }
         mDataExpiration = dataExpirationLong;
-        boolean noUseIpAddressForGeolocationSetting = !metaData.containsKey("com.oursprivacy.android.MPConfig.UseIpAddressForGeolocation");
+        boolean noUseIpAddressForGeolocationSetting = !metaData.containsKey("com.oursprivacy.android.OPConfig.UseIpAddressForGeolocation");
 
-        String eventsEndpoint = metaData.getString("com.oursprivacy.android.MPConfig.EventsEndpoint");
+        String eventsEndpoint = metaData.getString("com.oursprivacy.android.OPConfig.EventsEndpoint");
         if (eventsEndpoint != null) {
             setEventsEndpoint(noUseIpAddressForGeolocationSetting ? eventsEndpoint : getEndPointWithIpTrackingParam(eventsEndpoint, getUseIpAddressForGeolocation()));
         } else {
             setEventsEndpointWithBaseURL(OPConstants.URL.OURSPRIVACY_API);
         }
 
-        String identifyEndpoint = metaData.getString("com.mixpanel.android.MPConfig.IdentifyEndpoint");
+        String identifyEndpoint = metaData.getString("com.oursprivacy.android.OPConfig.IdentifyEndpoint");
         if (identifyEndpoint != null) {
             setIdentifyEndpoint(noUseIpAddressForGeolocationSetting ? identifyEndpoint : getEndPointWithIpTrackingParam(identifyEndpoint, getUseIpAddressForGeolocation()));
         } else {
@@ -379,7 +379,7 @@ public class OPConfig {
     //
     // As far as I can tell, the original package name is lost in the build
     // process in these cases, and must be specified by the developer using
-    // MPConfig meta-data.
+    // OPConfig meta-data.
     public String getResourcePackageName() {
         return mResourcePackageName;
     }

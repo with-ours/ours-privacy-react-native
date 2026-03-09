@@ -1,6 +1,4 @@
-import * as ReactNative from "react-native";
-
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-storage", () => {
+jest.mock("../javascript/oursprivacy-storage", () => {
   return {
     AsyncStorageAdapter: jest.fn().mockImplementation(() => ({
       getItem: jest.fn().mockResolvedValue(null),
@@ -19,68 +17,39 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
   removeItem: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.doMock("react-native", () => {
-  // Extend ReactNative
-  return Object.setPrototypeOf(
-    {
-      // Redefine an export, like a component
-      Button: "MockedButton",
-
-      // Mock out properties of an already mocked export
-      LayoutAnimation: {
-        ...ReactNative.LayoutAnimation,
-        configureNext: jest.fn(),
-      },
-
-      // Mock a native module
-      NativeModules: {
-        ...ReactNative.NativeModules,
-        OursPrivacyReactNative: {
-          initialize: jest.fn(),
-          setServerURL: jest.fn(),
-          setLoggingEnabled: jest.fn(),
-          setFlushOnBackground: jest.fn(),
-          setUseIpAddressForGeolocation: jest.fn(),
-          setFlushBatchSize: jest.fn(),
-          hasOptedOutTracking: jest.fn(),
-          optInTracking: jest.fn(),
-          optOutTracking: jest.fn(),
-          identify: jest.fn(),
-          alias: jest.fn(),
-          track: jest.fn(),
-          trackWithGroups: jest.fn(),
-          setGroup: jest.fn(),
-          getGroup: jest.fn(),
-          addGroup: jest.fn(),
-          removeGroup: jest.fn(),
-          deleteGroup: jest.fn(),
-          registerSuperProperties: jest.fn(),
-          registerSuperPropertiesOnce: jest.fn(),
-          unregisterSuperProperty: jest.fn(),
-          getSuperProperties: jest.fn(),
-          clearSuperProperties: jest.fn(),
-          timeEvent: jest.fn(),
-          eventElapsedTime: jest.fn(),
-          reset: jest.fn(),
-          getDistinctId: jest.fn(),
-          set: jest.fn(),
-          setOnce: jest.fn(),
-          increment: jest.fn(),
-          append: jest.fn(),
-          union: jest.fn(),
-          remove: jest.fn(),
-          unset: jest.fn(),
-          trackCharge: jest.fn(),
-          clearCharges: jest.fn(),
-          deleteUser: jest.fn(),
-          groupSetProperties: jest.fn(),
-          groupSetPropertyOnce: jest.fn(),
-          groupUnsetProperty: jest.fn(),
-          groupRemovePropertyValue: jest.fn(),
-          groupUnionProperty: jest.fn(),
-        },
-      },
+jest.mock("react-native", () => ({
+  Platform: { OS: "ios", select: jest.fn((obj) => obj.ios) },
+  NativeModules: {
+    OursPrivacyReactNative: {
+      initialize: jest.fn(),
+      setServerURL: jest.fn(),
+      setLoggingEnabled: jest.fn(),
+      setFlushOnBackground: jest.fn(),
+      setUseIpAddressForGeolocation: jest.fn(),
+      setFlushBatchSize: jest.fn(),
+      hasOptedOutTracking: jest.fn(),
+      optInTracking: jest.fn(),
+      optOutTracking: jest.fn(),
+      identify: jest.fn().mockResolvedValue(undefined),
+      alias: jest.fn(),
+      track: jest.fn(),
+      registerSuperProperties: jest.fn(),
+      registerSuperPropertiesOnce: jest.fn(),
+      unregisterSuperProperty: jest.fn(),
+      getSuperProperties: jest.fn(),
+      clearSuperProperties: jest.fn(),
+      timeEvent: jest.fn(),
+      eventElapsedTime: jest.fn(),
+      reset: jest.fn(),
+      getDistinctId: jest.fn(),
     },
-    ReactNative
-  );
-});
+  },
+  AppState: {
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    currentState: "active",
+  },
+  Dimensions: {
+    get: jest.fn().mockReturnValue({ width: 375, height: 812 }),
+  },
+}));

@@ -18,25 +18,25 @@ import java.util.UUID;
 public class OPConfigTest {
 
     public static final String TOKEN = "TOKEN";
-    public static final String DISABLE_VIEW_CRAWLER_METADATA_KEY = "com.oursprivacy.android.MPConfig.DisableViewCrawler";
+    public static final String DISABLE_VIEW_CRAWLER_METADATA_KEY = "com.oursprivacy.android.OPConfig.DisableViewCrawler";
 
     @Test
     public void testSetUseIpAddressForGeolocation() {
         final Bundle metaData = new Bundle();
-        metaData.putString("com.oursprivacy.android.MPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/?ip=1");
-        metaData.putString("com.oursprivacy.android.MPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/?ip=1");
+        metaData.putString("com.oursprivacy.android.OPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/?ip=1");
+        metaData.putString("com.oursprivacy.android.OPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/?ip=1");
 
-        OPConfig config = mpConfig(metaData);
+        OPConfig config = opConfig(metaData);
         final OursPrivacyAPI oursprivacyAPI = oursprivacyApi(config);
     }
 
     @Test
     public void testSetUseIpAddressForGeolocationOverwrite() {
         final Bundle metaData = new Bundle();
-        metaData.putString("com.oursprivacy.android.MPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/?ip=1");
-        metaData.putString("com.oursprivacy.android.MPConfig.PeopleEndpoint", "https://api.oursprivacy.com/api/v1/engage/?ip=1");
+        metaData.putString("com.oursprivacy.android.OPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/?ip=1");
+        metaData.putString("com.oursprivacy.android.OPConfig.PeopleEndpoint", "https://api.oursprivacy.com/api/v1/engage/?ip=1");
 
-        OPConfig config = mpConfig(metaData);
+        OPConfig config = opConfig(metaData);
         final OursPrivacyAPI oursprivacyAPI = oursprivacyApi(config);
         assertEquals("https://api.oursprivacy.com/api/v1/track/?ip=1", config.getEventsEndpoint());
 
@@ -44,10 +44,10 @@ public class OPConfigTest {
         assertEquals("https://api.oursprivacy.com/api/v1/track/?ip=0", config.getEventsEndpoint());
 
         final Bundle metaData2 = new Bundle();
-        metaData2.putString("com.oursprivacy.android.MPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/?ip=0");
-        metaData2.putString("com.oursprivacy.android.MPConfig.PeopleEndpoint", "https://api.oursprivacy.com/api/v1/engage/?ip=0");
+        metaData2.putString("com.oursprivacy.android.OPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/?ip=0");
+        metaData2.putString("com.oursprivacy.android.OPConfig.PeopleEndpoint", "https://api.oursprivacy.com/api/v1/engage/?ip=0");
 
-        OPConfig config2 = mpConfig(metaData2);
+        OPConfig config2 = opConfig(metaData2);
         final OursPrivacyAPI oursprivacyAPI2 = oursprivacyApi(config2);
         assertEquals("https://api.oursprivacy.com/api/v1/track/?ip=0", config2.getEventsEndpoint());
 
@@ -58,19 +58,19 @@ public class OPConfigTest {
     @Test
     public void testEndPointAndGeoSettingBothReadFromConfigTrue() {
         final Bundle metaData = new Bundle();
-        metaData.putString("com.oursprivacy.android.MPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/");
-        metaData.putString("com.oursprivacy.android.MPConfig.PeopleEndpoint", "https://api.oursprivacy.com/api/v1/engage/");
-        metaData.putString("com.oursprivacy.android.MPConfig.GroupsEndpoint", "https://api.oursprivacy.com/api/v1/groups/");
-        metaData.putBoolean("com.oursprivacy.android.MPConfig.UseIpAddressForGeolocation", true);
+        metaData.putString("com.oursprivacy.android.OPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/");
+        metaData.putString("com.oursprivacy.android.OPConfig.PeopleEndpoint", "https://api.oursprivacy.com/api/v1/engage/");
+        metaData.putString("com.oursprivacy.android.OPConfig.GroupsEndpoint", "https://api.oursprivacy.com/api/v1/groups/");
+        metaData.putBoolean("com.oursprivacy.android.OPConfig.UseIpAddressForGeolocation", true);
 
-        OPConfig config = mpConfig(metaData);
+        OPConfig config = opConfig(metaData);
         final OursPrivacyAPI oursprivacyAPI = oursprivacyApi(config);
         assertEquals("https://api.oursprivacy.com/api/v1/track/?ip=1", config.getEventsEndpoint());
     }
 
     public void testSetServerURL() throws Exception {
         final Bundle metaData = new Bundle();
-        OPConfig config = mpConfig(metaData);
+        OPConfig config = opConfig(metaData);
         final OursPrivacyAPI oursprivacyAPI = oursprivacyApi(config);
         // default OursPrivacy endpoint
         assertEquals("https://api.oursprivacy.com/api/v1/track/?ip=1", config.getEventsEndpoint());
@@ -82,12 +82,12 @@ public class OPConfigTest {
     @Test
     public void testEndPointAndGeoSettingBothReadFromConfigFalse() {
         final Bundle metaData = new Bundle();
-        metaData.putString("com.oursprivacy.android.MPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/");
-        metaData.putString("com.oursprivacy.android.MPConfig.PeopleEndpoint", "https://api.oursprivacy.com/api/v1/engage/");
-        metaData.putString("com.oursprivacy.android.MPConfig.GroupsEndpoint", "https://api.oursprivacy.com/api/v1/groups/");
-        metaData.putBoolean("com.oursprivacy.android.MPConfig.UseIpAddressForGeolocation", false);
+        metaData.putString("com.oursprivacy.android.OPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/");
+        metaData.putString("com.oursprivacy.android.OPConfig.PeopleEndpoint", "https://api.oursprivacy.com/api/v1/engage/");
+        metaData.putString("com.oursprivacy.android.OPConfig.GroupsEndpoint", "https://api.oursprivacy.com/api/v1/groups/");
+        metaData.putBoolean("com.oursprivacy.android.OPConfig.UseIpAddressForGeolocation", false);
 
-        OPConfig config = mpConfig(metaData);
+        OPConfig config = opConfig(metaData);
         final OursPrivacyAPI oursprivacyAPI = oursprivacyApi(config);
         assertEquals("https://api.oursprivacy.com/api/v1/track/?ip=0", config.getEventsEndpoint());
     }
@@ -95,12 +95,12 @@ public class OPConfigTest {
     @Test
     public void testEndPointAndGeoSettingBothReadFromConfigFalseOverwrite() {
         final Bundle metaData = new Bundle();
-        metaData.putString("com.oursprivacy.android.MPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/?ip=1");
-        metaData.putString("com.oursprivacy.android.MPConfig.PeopleEndpoint", "https://api.oursprivacy.com/api/v1/engage/?ip=1");
-        metaData.putString("com.oursprivacy.android.MPConfig.GroupsEndpoint", "https://api.oursprivacy.com/api/v1/groups/?ip=1");
-        metaData.putBoolean("com.oursprivacy.android.MPConfig.UseIpAddressForGeolocation", false);
+        metaData.putString("com.oursprivacy.android.OPConfig.EventsEndpoint", "https://api.oursprivacy.com/api/v1/track/?ip=1");
+        metaData.putString("com.oursprivacy.android.OPConfig.PeopleEndpoint", "https://api.oursprivacy.com/api/v1/engage/?ip=1");
+        metaData.putString("com.oursprivacy.android.OPConfig.GroupsEndpoint", "https://api.oursprivacy.com/api/v1/groups/?ip=1");
+        metaData.putBoolean("com.oursprivacy.android.OPConfig.UseIpAddressForGeolocation", false);
 
-        OPConfig config = mpConfig(metaData);
+        OPConfig config = opConfig(metaData);
         final OursPrivacyAPI oursprivacyAPI = oursprivacyApi(config);
         assertEquals("https://api.oursprivacy.com/api/v1/track/?ip=0", config.getEventsEndpoint());
     }
@@ -108,7 +108,7 @@ public class OPConfigTest {
     @Test
     public void testSetEnableLogging() throws Exception {
         final Bundle metaData = new Bundle();
-        OPConfig config = mpConfig(metaData);
+        OPConfig config = opConfig(metaData);
         final OursPrivacyAPI oursprivacyAPI = oursprivacyApi(config);
         oursprivacyAPI.setEnableLogging(true);
         assertTrue(config.DEBUG);
@@ -120,7 +120,7 @@ public class OPConfigTest {
     @Test
     public void testSetFlushBatchSize() {
         final Bundle metaData = new Bundle();
-        OPConfig config = mpConfig(metaData);
+        OPConfig config = opConfig(metaData);
         final OursPrivacyAPI oursprivacyAPI = oursprivacyApi(config);
         oursprivacyAPI.setFlushBatchSize(10);
         assertEquals(10, config.getFlushBatchSize());
@@ -131,8 +131,8 @@ public class OPConfigTest {
     @Test
     public void testSetFlushBatchSize2() {
         final Bundle metaData = new Bundle();
-        metaData.putInt("com.oursprivacy.android.MPConfig.FlushBatchSize", 5);
-        OPConfig config = mpConfig(metaData);
+        metaData.putInt("com.oursprivacy.android.OPConfig.FlushBatchSize", 5);
+        OPConfig config = opConfig(metaData);
         final OursPrivacyAPI oursprivacyAPI = oursprivacyApi(config);
         assertEquals(5, oursprivacyAPI.getFlushBatchSize());
     }
@@ -156,7 +156,7 @@ public class OPConfigTest {
     @Test
     public void testSetMaximumDatabaseLimit() {
         final Bundle metaData = new Bundle();
-        OPConfig config = mpConfig(metaData);
+        OPConfig config = opConfig(metaData);
         final OursPrivacyAPI oursprivacyAPI = oursprivacyApi(config);
         oursprivacyAPI.setMaximumDatabaseLimit(10000);
         assertEquals(10000, config.getMaximumDatabaseLimit());
@@ -165,8 +165,8 @@ public class OPConfigTest {
     @Test
     public void testSetMaximumDatabaseLimit2() {
         final Bundle metaData = new Bundle();
-        metaData.putInt("com.oursprivacy.android.MPConfig.MaximumDatabaseLimit", 100000000);
-        OPConfig config = mpConfig(metaData);
+        metaData.putInt("com.oursprivacy.android.OPConfig.MaximumDatabaseLimit", 100000000);
+        OPConfig config = opConfig(metaData);
         final OursPrivacyAPI oursprivacyAPI = oursprivacyApi(config);
         assertEquals(100000000, oursprivacyAPI.getMaximumDatabaseLimit());
     }
@@ -174,8 +174,8 @@ public class OPConfigTest {
     @Test
     public void testShouldGzipRequestPayload() {
         final Bundle metaData = new Bundle();
-        metaData.putBoolean("com.oursprivacy.android.MPConfig.GzipRequestPayload", true);
-        OPConfig OPConfig = mpConfig(metaData);
+        metaData.putBoolean("com.oursprivacy.android.OPConfig.GzipRequestPayload", true);
+        OPConfig OPConfig = opConfig(metaData);
         assertTrue(OPConfig.shouldGzipRequestPayload());
 
         OPConfig.setShouldGzipRequestPayload(false);
@@ -185,7 +185,7 @@ public class OPConfigTest {
         assertTrue(OPConfig.shouldGzipRequestPayload());
 
         // assert false by default
-        OPConfig OPConfig2 = mpConfig(new Bundle());
+        OPConfig OPConfig2 = opConfig(new Bundle());
         assertFalse(OPConfig2.shouldGzipRequestPayload());
 
         OursPrivacyAPI oursprivacyAPI = oursprivacyApi(OPConfig);
@@ -197,7 +197,7 @@ public class OPConfigTest {
 
     }
 
-    private OPConfig mpConfig(final Bundle metaData) {
+    private OPConfig opConfig(final Bundle metaData) {
         return new OPConfig(metaData, InstrumentationRegistry.getInstrumentation().getContext(), null);
     }
 

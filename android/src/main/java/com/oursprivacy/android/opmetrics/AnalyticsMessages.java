@@ -62,7 +62,7 @@ import javax.net.ssl.SSLSocketFactory;
      * @param messageContext should be the Main Activity of the application
      *     associated with these messages.
      *
-     * @param config The MPConfig configuration settings for the AnalyticsMessages instance.
+     * @param config The OPConfig configuration settings for the AnalyticsMessages instance.
      *
      */
     public static AnalyticsMessages getInstance(final Context messageContext, OPConfig config) {
@@ -518,7 +518,7 @@ import javax.net.ssl.SSLSocketFactory;
                     throws JSONException {
                 final JSONObject ret = new JSONObject();
 
-                ret.put("mp_lib", "android");
+                ret.put("op_lib", "android");
                 ret.put("$lib_version", OPConfig.VERSION);
 
                 // For querying together with data from other libraries

@@ -61,15 +61,28 @@ buck-out/
 *.keystore
 
 # Demo Apps and Samples - exclude from npm package
+Demo/
 Samples/
 *Demo*
 *demo*
 /OursPrivacyDemo
 
+# Claude / internal docs
+.claude/
+CLAUDE.md
+
+# Android test files
+android/src/androidTest/
+
 # Documentation generation files
 generate_docs.sh
 release.py
+PUBLISHING.md
 
 # Version control
 .git/
 .github/
+
+# Misc
+babel.config.js
+.nvmrc

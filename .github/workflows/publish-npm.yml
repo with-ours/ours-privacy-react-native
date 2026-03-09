@@ -1,0 +1,101 @@
+name: Publish NPM
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [dev]
+
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g., 1.1.0)"
+        required: true
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.pull_request.merged == true &&
+       startsWith(github.event.pull_request.title, 'release:'))
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Extract version from PR title or input
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            TITLE="${{ github.event.pull_request.title }}"
+            VERSION=$(echo "$TITLE" | grep -oP '\d+\.\d+\.\d+')
+          fi
+
+          if [ -z "$VERSION" ]; then
+            echo "❌ Could not extract version"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Publishing version: $VERSION"
+
+      - name: Bump version everywhere
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # package.json + package-lock.json
+          npm version "$VERSION" --no-git-tag-version
+
+          # iOS: AutomaticProperties.swift (SDK version sent in events)
+          sed -i 's/return "[0-9]*\.[0-9]*\.[0-9]*"/return "'"$VERSION"'"/' \
+            ios/AutomaticProperties.swift
+
+          # iOS: Info.plist (bundle version)
+          sed -i 's/<string>[0-9]*\.[0-9]*\.[0-9]*<\/string>/<string>'"$VERSION"'<\/string>/' \
+            ios/Info.plist
+
+          # iOS: OursPrivacy-swift.podspec
+          sed -i "s/s\.version = '[0-9]*\.[0-9]*\.[0-9]*'/s.version = '$VERSION'/" \
+            ios/OursPrivacy-swift.podspec
+
+          # Android: build.gradle versionName
+          sed -i 's/versionName "[0-9]*\.[0-9]*[^"]*"/versionName "'"$VERSION"'"/' \
+            android/build.gradle
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
+          git push
+
+      - run: npm ci
+
+      - run: npm test
+
+      - run: npx tsc --noEmit
+
+      - name: Publish
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create git tag and GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v${{ steps.version.outputs.version }}"
+          git tag "$VERSION"
+          git push origin "$VERSION"
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --generate-notes

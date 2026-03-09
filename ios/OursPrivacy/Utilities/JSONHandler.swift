@@ -2,10 +2,9 @@
 //  JSONHandler.swift
 //  OursPrivacy
 //
-//  Copyright © 2025 Ours Wellness Inc.  All rights reserved.
+//  Copyright © 2025 Ours Wellness Inc. All rights reserved.
 //
 //  Created by Yarden Eitan on 6/3/16.
-//  Copyright © 2016 Mixpanel. All rights reserved.
 //
 
 import Foundation

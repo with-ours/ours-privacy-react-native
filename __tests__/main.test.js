@@ -1,6 +1,4 @@
 import {OursPrivacyType} from "oursprivacy-react-native/javascript/oursprivacy-constants";
-import {exp} from "react-native/Libraries/Animated/src/Easing";
-import {get} from "react-native/Libraries/Utilities/PixelRatio";
 
 jest.mock("oursprivacy-react-native/javascript/oursprivacy-core", () => ({
   OursPrivacyCore: jest.fn().mockImplementation(() => ({

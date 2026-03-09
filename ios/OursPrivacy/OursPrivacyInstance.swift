@@ -2,10 +2,9 @@
 //  OursPrivacyInstance.swift
 //  OursPrivacy
 //
-//  Copyright © 2025 Ours Wellness Inc.  All rights reserved.
+//  Copyright © 2025 Ours Wellness Inc. All rights reserved.
 //
 //  Created by Yarden Eitan on 6/2/16.
-//  Copyright © 2016 Mixpanel. All rights reserved.
 //
 
 import Foundation
@@ -204,8 +203,8 @@ open class OursPrivacyInstance: CustomDebugStringConvertible, FlushDelegate, AED
             }
 #if DEBUG
             var trackProps: Properties = ["OursPrivacyLogging Enabled": loggingEnabled]
-            if (superProperties["mp_lib"] != nil) {
-                trackProps["mp_lib"] = self.superProperties["mp_lib"] as! String
+            if (superProperties["op_lib"] != nil) {
+                trackProps["op_lib"] = self.superProperties["op_lib"] as! String
             }
             if (superProperties["$lib_version"] != nil) {
                 trackProps["$lib_version"] = self.superProperties["$lib_version"] as! String
@@ -517,7 +516,7 @@ open class OursPrivacyInstance: CustomDebugStringConvertible, FlushDelegate, AED
         taskId = sharedApplication.beginBackgroundTask(expirationHandler: completionHandler)
 
         // Ensure that any session replay ID is cleared when the app enters the background
-        unregisterSuperProperty("$mp_replay_id")
+        unregisterSuperProperty("$op_replay_id")
 
         if flushOnBackground {
             flush(performFullFlush: true, completion: completionHandler)

@@ -2,10 +2,9 @@
 //  Track.swift
 //  OursPrivacy
 //
-//  Copyright © 2025 Ours Wellness Inc.  All rights reserved.
+//  Copyright © 2025 Ours Wellness Inc. All rights reserved.
 //
 //  Created by Yarden Eitan on 6/3/16.
-//  Copyright © 2016 Mixpanel. All rights reserved.
 //
 
 import Foundation
@@ -78,8 +77,8 @@ class Track {
             p += properties
         }
 
+        metadata.toDict().forEach { (k, v) in p[k] = v }
         var trackEvent: InternalProperties = ["event": ev, "token": apiToken, "userId": oursprivacyIdentity.userId as Any, "eventProperties": p]
-        metadata.toDict().forEach { (k, v) in trackEvent[k] = v }
         
         self.oursprivacyPersistence.saveEntity(trackEvent, type: .events)
         OursPrivacyPersistence.saveTimedEvents(timedEvents: shadowTimedEvents, instanceName: instanceName)

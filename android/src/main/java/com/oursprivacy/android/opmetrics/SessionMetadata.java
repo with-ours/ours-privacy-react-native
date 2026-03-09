@@ -37,10 +37,10 @@ import static com.oursprivacy.android.opmetrics.ConfigurationChecker.LOGTAG;
     private JSONObject getNewMetadata(boolean isEvent) {
         JSONObject metadataJson = new JSONObject();
         try {
-            metadataJson.put("$mp_event_id", Long.toHexString(mRandom.nextLong()));
-            metadataJson.put("$mp_session_id", mSessionID);
-            metadataJson.put("$mp_session_seq_id", isEvent ? mEventsCounter : mPeopleCounter);
-            metadataJson.put("$mp_session_start_sec", mSessionStartEpoch);
+            metadataJson.put("$op_event_id", Long.toHexString(mRandom.nextLong()));
+            metadataJson.put("$op_session_id", mSessionID);
+            metadataJson.put("$op_session_seq_id", isEvent ? mEventsCounter : mPeopleCounter);
+            metadataJson.put("$op_session_start_sec", mSessionStartEpoch);
             if (isEvent) {
                 mEventsCounter++;
             } else {

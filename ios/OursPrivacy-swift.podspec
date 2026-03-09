@@ -6,8 +6,8 @@ Pod::Spec.new do |s|
   s.summary = 'Ours Privacy tracking library for iOS (Swift)'
   s.swift_version = '5.0'
   s.homepage = 'https://oursprivacy.com'
-  s.author       = { 'Ours Wellness, Inc' => 'support@mixpanel.com' }
-  s.source       = { :git => 'https://github.com/mixpanel/mixpanel-swift.git',
+  s.author       = { 'Ours Wellness, Inc' => 'support@oursprivacy.com' }
+  s.source       = { :git => 'https://github.com/with-ours/ours-privacy-react-native.git',
                      :tag => "v#{s.version}" }
   s.resource_bundles = {'OursPrivacy' => ['Sources/OursPrivacy/PrivacyInfo.xcprivacy']}
   s.ios.deployment_target = '15.6'

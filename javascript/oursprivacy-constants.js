@@ -4,18 +4,18 @@ export const OursPrivacyType = {
   GROUPS: "/groups/",
 };
 
-export const getQueueKey = (token, type) => `MIXPANEL_${token}_${type}_QUEUE`;
+export const getQueueKey = (token, type) => `OURSPRIVACY_${token}_${type}_QUEUE`;
 
-export const getDeviceIdKey = (token) => `MIXPANEL_${token}_DEVICE_ID`;
-export const getDistinctIdKey = (token) => `MIXPANEL_${token}_DISTINCT_ID`;
-export const getUserIdKey = (token) => `MIXPANEL_${token}_USER_ID`;
+export const getDeviceIdKey = (token) => `OURSPRIVACY_${token}_DEVICE_ID`;
+export const getDistinctIdKey = (token) => `OURSPRIVACY_${token}_DISTINCT_ID`;
+export const getUserIdKey = (token) => `OURSPRIVACY_${token}_USER_ID`;
 
-export const getOptedOutKey = (token) => `MIXPANEL_${token}_OPT_OUT`;
+export const getOptedOutKey = (token) => `OURSPRIVACY_${token}_OPT_OUT`;
 export const getSuperPropertiesKey = (token) =>
-  `MIXPANEL_${token}_SUPER_PROPERTIES`;
-export const getTimeEventsKey = (token) => `MIXPANEL_${token}_TIME_EVENTS`;
+  `OURSPRIVACY_${token}_SUPER_PROPERTIES`;
+export const getTimeEventsKey = (token) => `OURSPRIVACY_${token}_TIME_EVENTS`;
 export const getAppHasOpenedBeforeKey = (token) =>
-  `MIXPANEL_${token}_APP_HAS_OPENED_BEFORE`;
+  `OURSPRIVACY_${token}_APP_HAS_OPENED_BEFORE`;
 
 export const defaultServerURL = `https://api.oursprivacy.com`;
 export const defaultBatchSize = 50;

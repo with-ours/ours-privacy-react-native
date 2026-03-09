@@ -2,10 +2,9 @@
 //  FlushRequest.swift
 //  Ours Privacy
 //
-//  Copyright © 2025 Ours Wellness Inc.  All rights reserved.
+//  Copyright © 2025 Ours Wellness Inc. All rights reserved.
 //
 //  Created by Yarden Eitan on 7/8/16.
-//  Copyright © 2016 Mixpanel. All rights reserved.
 //
 
 import Foundation

@@ -18,14 +18,14 @@ export class SessionMetadata {
 
   toDict(type) {
     const dict = {
-      $mp_metadata: {
-        $mp_event_id: SessionMetadata.randomId(),
-        $mp_session_id: this.sessionID,
-        $mp_session_seq_id:
+      $op_metadata: {
+        $op_event_id: SessionMetadata.randomId(),
+        $op_session_id: this.sessionID,
+        $op_session_seq_id:
           type === OursPrivacyType.EVENTS
             ? this.eventsCounter
             : this.peopleCounter,
-        $mp_session_start_sec: this.sessionStartEpoch,
+        $op_session_start_sec: this.sessionStartEpoch,
       },
     };
     if (type === OursPrivacyType.EVENTS) {
