@@ -57,6 +57,9 @@
     ],
     "verbose": true,
     "preset": "react-native",
+    "transformIgnorePatterns": [
+      "node_modules/(?!(react-native|@react-native|@react-native-async-storage)/)"
+    ],
     "moduleNameMapper": {
       "^oursprivacy-react-native/(.*)$": "<rootDir>/$1",
       "^oursprivacy-react-native$": "<rootDir>/index.js"
