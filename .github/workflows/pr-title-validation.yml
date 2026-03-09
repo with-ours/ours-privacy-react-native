@@ -1,0 +1,61 @@
+name: PR Title Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-title-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR Title Format
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: |
+          echo "PR Title: $PR_TITLE"
+          echo "Base Branch: $BASE_BRANCH"
+
+          # Extract the prefix part (everything before the first colon)
+          PREFIX_PART=$(echo "$PR_TITLE" | cut -d: -f1)
+
+          # Check for scoped format: prefix(scope)
+          if [[ $PREFIX_PART == *"("*")"* ]]; then
+            BASE_PREFIX="${PREFIX_PART%%(*}"
+          else
+            BASE_PREFIX="$PREFIX_PART"
+          fi
+
+          # Validate prefix
+          case "$BASE_PREFIX" in
+            fix|feat|chore|docs|test|refactor|perf|ci|build|revert|release)
+              ;;
+            *)
+              echo "❌ PR title must start with a valid prefix"
+              echo "Current title: $PR_TITLE"
+              echo "Valid prefixes: fix:, feat:, chore:, docs:, test:, refactor:, perf:, ci:, build:, revert:, release:"
+              echo "Also supports scoped format: fix(deps):, feat(ios):, etc."
+              exit 1
+              ;;
+          esac
+
+          # Ensure space after colon
+          if [[ ! $PR_TITLE =~ ^[a-z]+(\([a-z]+\))?:[[:space:]] ]]; then
+            echo "❌ PR title must have a space after the colon"
+            echo "Current title: $PR_TITLE"
+            exit 1
+          fi
+
+          # For release PRs, require semver version in title
+          if [[ $BASE_PREFIX == "release" ]]; then
+            if [[ ! $PR_TITLE =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
+              echo "❌ Release PR title must include a semver version (e.g., release: 1.1.0)"
+              echo "Current title: $PR_TITLE"
+              exit 1
+            fi
+          fi
+
+          echo "✅ PR title format is valid"
