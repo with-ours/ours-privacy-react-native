@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name = 'OursPrivacy-swift'
-  s.version = '1.0.0'
+  s.version = '1.1.0'
   s.module_name = 'OursPrivacy'
   s.license = 'Apache License, Version 2.0'
   s.summary = 'Ours Privacy tracking library for iOS (Swift)'
