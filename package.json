@@ -56,9 +56,15 @@
       "<rootDir>/__tests__/jest_setup.js"
     ],
     "verbose": true,
-    "preset": "react-native",
+    "haste": {
+      "defaultPlatform": "ios",
+      "platforms": ["android", "ios", "native"]
+    },
+    "transform": {
+      "^.+\\.(js|ts|tsx)$": "babel-jest"
+    },
     "transformIgnorePatterns": [
-      "node_modules/(?!(react-native|@react-native|@react-native-async-storage)/)"
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-native-async-storage)/)"
     ],
     "moduleNameMapper": {
       "^oursprivacy-react-native/(.*)$": "<rootDir>/$1",
