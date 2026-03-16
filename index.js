@@ -83,8 +83,8 @@ export class OursPrivacy {
   }
 
   /**
-   * Control whether OursPrivacy flushes queued events when the app enters the
-   * background on iOS. Enabled by default.
+   * Compatibility API retained from the earlier native-backed SDK surface.
+   * In the current JavaScript runtime this is a safe no-op.
    *
    * @param {boolean} flushOnBackground
    */

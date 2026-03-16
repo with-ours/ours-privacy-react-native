@@ -3,6 +3,7 @@ import {OursPrivacyCore} from "./oursprivacy-core";
 import {OursPrivacyType} from "./oursprivacy-constants";
 import {OursPrivacyConfig} from "./oursprivacy-config";
 import {OursPrivacyPersistent} from "./oursprivacy-persistent";
+import {OursPrivacyQueueManager} from "./oursprivacy-queue";
 import {OursPrivacyLogger} from "./oursprivacy-logger";
 import packageJson from "../package.json";
 import uuid from "uuid";
@@ -30,35 +31,15 @@ export default class OursPrivacyMain {
     OursPrivacyLogger.log(token, `Initializing OursPrivacy`);
 
     await this.oursprivacyPersistent.initializationCompletePromise(token);
-    if (optOutTrackingDefault) {
-      await this.optOutTracking(token);
-      return;
-    } else {
-      await this._setOptedOutTrackingFlag(token, false);
-    }
 
     this.setServerURL(token, serverURL);
+    await this._applyInitializationOptions(token, options);
 
-    if (options && typeof options === "object") {
-      if (options.default_event_properties) {
-        this.updateDefaultEventProperties(token, options.default_event_properties);
-      }
-      if (options.default_user_custom_properties) {
-        this.updateDefaultUserCustomProperties(token, options.default_user_custom_properties);
-      }
-      if (options.default_user_consent_properties) {
-        this.updateDefaultUserConsentProperties(token, options.default_user_consent_properties);
-      }
-      if (options.visitor_id) {
-        this.config.setIsManuallySetId(token, true);
-        // Override the stable visitor UUID with the caller-supplied ID so that
-        // visitor_id on all subsequent events reflects the provided value.
-        this.oursprivacyPersistent.updateDeviceId(token, options.visitor_id);
-        this.oursprivacyPersistent.updateDistinctId(token, options.visitor_id);
-        await this.oursprivacyPersistent.persistDeviceId(token);
-        await this.oursprivacyPersistent.persistDistinctId(token);
-      }
+    if (optOutTrackingDefault) {
+      await this._setOptedOutTrackingFlag(token, true);
+      return;
     }
+    await this._setOptedOutTrackingFlag(token, false);
   }
 
   getDefaultProperties() {
@@ -144,12 +125,20 @@ export default class OursPrivacyMain {
     this.config.setFlushBatchSize(token, flushBatchSize);
   }
 
+  setFlushOnBackground(token, flushOnBackground) {
+    OursPrivacyLogger.log(
+      token,
+      `setFlushOnBackground(${String(flushOnBackground)}) is ignored in JavaScript mode.`
+    );
+  }
+
   flush(token) {
     this.core.flush(token);
   }
 
   async optOutTracking(token) {
     await this._setOptedOutTrackingFlag(token, true);
+    await OursPrivacyQueueManager.clearQueue(token, OursPrivacyType.EVENTS);
     OursPrivacyLogger.log(token, "User has opted out of tracking");
     await this.oursprivacyPersistent.reset(token);
   }
@@ -166,7 +155,7 @@ export default class OursPrivacyMain {
   }
 
   hasOptedOutTracking(token) {
-    return this.oursprivacyPersistent.getOptOut(token);
+    return this.oursprivacyPersistent.getOptedOut(token);
   }
 
   async identify(token, newDistinctId, userProperties) {
@@ -242,5 +231,30 @@ export default class OursPrivacyMain {
       ...(this._defaultUserConsentProperties[token] || {}),
       ...properties,
     };
+  }
+
+  async _applyInitializationOptions(token, options) {
+    if (!options || typeof options !== "object") {
+      return;
+    }
+
+    if (options.default_event_properties) {
+      this.updateDefaultEventProperties(token, options.default_event_properties);
+    }
+    if (options.default_user_custom_properties) {
+      this.updateDefaultUserCustomProperties(token, options.default_user_custom_properties);
+    }
+    if (options.default_user_consent_properties) {
+      this.updateDefaultUserConsentProperties(token, options.default_user_consent_properties);
+    }
+    if (options.visitor_id) {
+      this.config.setIsManuallySetId(token, true);
+      // Override the stable visitor UUID with the caller-supplied ID so that
+      // visitor_id on all subsequent events reflects the provided value.
+      this.oursprivacyPersistent.updateDeviceId(token, options.visitor_id);
+      this.oursprivacyPersistent.updateDistinctId(token, options.visitor_id);
+      await this.oursprivacyPersistent.persistDeviceId(token);
+      await this.oursprivacyPersistent.persistDistinctId(token);
+    }
   }
 }

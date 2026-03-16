@@ -9,6 +9,16 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-core", () => ({
   })),
 }));
 
+jest.mock("oursprivacy-react-native/javascript/oursprivacy-queue", () => ({
+  OursPrivacyQueueManager: {
+    initialize: jest.fn(),
+    enqueue: jest.fn(),
+    getQueue: jest.fn().mockReturnValue([]),
+    spliceQueue: jest.fn(),
+    clearQueue: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 jest.mock("oursprivacy-react-native/javascript/oursprivacy-network", () => ({
   OursPrivacyNetwork: {
     sendRequest: jest.fn(),
@@ -140,6 +150,37 @@ describe("OursPrivacyMain", () => {
     expect(oursprivacyMain.oursprivacyPersistent.persistDistinctId).toHaveBeenCalledWith(token);
   });
 
+  it("should preserve init options when starting opted out", async () => {
+    await oursprivacyMain.initialize(
+      token,
+      false,
+      true,
+      {
+        visitor_id: "preset-visitor-123",
+        default_event_properties: {platform: "mobile"},
+        default_user_custom_properties: {plan: "pro"},
+        default_user_consent_properties: {marketing: true},
+      },
+      "https://api.oursprivacy.com"
+    );
+
+    expect(oursprivacyMain.config.setServerURL).toHaveBeenCalledWith(
+      token,
+      "https://api.oursprivacy.com"
+    );
+    expect(oursprivacyMain.oursprivacyPersistent.updateOptedOut).toHaveBeenCalledWith(
+      token,
+      true
+    );
+    expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).toHaveBeenCalledWith(
+      token,
+      "preset-visitor-123"
+    );
+    expect(oursprivacyMain._defaultEventProperties[token]).toEqual({platform: "mobile"});
+    expect(oursprivacyMain._defaultUserCustomProperties[token]).toEqual({plan: "pro"});
+    expect(oursprivacyMain._defaultUserConsentProperties[token]).toEqual({marketing: true});
+  });
+
   it("should not track if initialize with optOutTrackingDefault being true", async () => {
     const trackAutomaticEvents = false;
     const optOutTrackingDefault = true;
@@ -226,6 +267,26 @@ describe("OursPrivacyMain", () => {
     OursPrivacyConfig.getInstance().getLoggingEnabled.mockReturnValueOnce(true);
     await oursprivacyMain.track(token, "test-event");
     expect(console.log).toHaveBeenCalled();
+  });
+
+  it("hasOptedOutTracking should read the persisted opt-out flag", () => {
+    oursprivacyMain.oursprivacyPersistent.getOptedOut.mockReturnValue(true);
+    expect(oursprivacyMain.hasOptedOutTracking(token)).toBe(true);
+    expect(oursprivacyMain.oursprivacyPersistent.getOptedOut).toHaveBeenCalledWith(token);
+  });
+
+  it("optOutTracking should clear queued events before resetting identity", async () => {
+    await oursprivacyMain.optOutTracking(token);
+
+    expect(OursPrivacyQueueManager.clearQueue).toHaveBeenCalledWith(
+      token,
+      OursPrivacyType.EVENTS
+    );
+    expect(oursprivacyMain.oursprivacyPersistent.reset).toHaveBeenCalledWith(token);
+  });
+
+  it("setFlushOnBackground should be a safe no-op in JavaScript mode", () => {
+    expect(() => oursprivacyMain.setFlushOnBackground(token, false)).not.toThrow();
   });
 
   it("should update the identity properties on identify", async () => {
