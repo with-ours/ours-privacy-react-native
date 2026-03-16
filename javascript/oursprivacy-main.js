@@ -131,13 +131,6 @@ export default class OursPrivacyMain {
     this.config.setServerURL(token, serverURL);
   }
 
-  setUseIpAddressForGeolocation(token, useIpAddressForGeolocation) {
-    this.config.setUseIpAddressForGeolocation(
-      token,
-      useIpAddressForGeolocation
-    );
-  }
-
   setFlushBatchSize(token, flushBatchSize) {
     this.config.setFlushBatchSize(token, flushBatchSize);
   }

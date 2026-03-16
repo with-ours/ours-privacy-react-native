@@ -53,24 +53,6 @@ export class OursPrivacyConfig {
     );
   }
 
-  setUseIpAddressForGeolocation(token, useIpAddressForGeolocation) {
-    this._config[token] = {
-      ...this._config[token],
-      useIpAddressForGeolocation,
-    };
-    OursPrivacyLogger.log(
-      token,
-      `Set useIpAddressForGeolocation: ${useIpAddressForGeolocation}`
-    );
-  }
-
-  getUseIpAddressForGeolocation(token) {
-    return (
-      (this._config[token] && this._config[token].useIpAddressForGeolocation) ||
-      true
-    );
-  }
-
   setFlushBatchSize(token, batchSize) {
     this._config[token] = {
       ...this._config[token],

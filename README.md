@@ -410,22 +410,6 @@ op.setFlushOnBackground(false);
 
 ---
 
-#### `op.setUseIpAddressForGeolocation(useIpAddressForGeolocation)`
-
-Control whether the client IP address is sent with events for geolocation. Enabled by default.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useIpAddressForGeolocation` | `boolean` | Yes | Whether to include IP for geolocation |
-
-**Returns:** `void`
-
-```js
-op.setUseIpAddressForGeolocation(false);
-```
-
----
-
 #### `op.setFlushBatchSize(flushBatchSize)`
 
 Set the maximum number of events sent in a single network request. Maximum value is 50; values above 50 are clamped to 50.

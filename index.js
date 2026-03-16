@@ -111,21 +111,6 @@ export class OursPrivacy {
     }
   }
 
-  /**
-   * This controls whether to automatically send the client IP Address as part of event tracking.
-   * With an IP address, geo-location is possible down to neighborhoods within a city,
-   * although the OursPrivacy Dashboard will just show you city level location specificity.
-   *
-   * @param {boolean} useIpAddressForGeolocation whether to automatically send the client IP Address.
-   * Defaults to true.
-   *
-   */
-  setUseIpAddressForGeolocation(useIpAddressForGeolocation) {
-    this.oursprivacyImpl.setUseIpAddressForGeolocation(
-      this.token,
-      useIpAddressForGeolocation
-    );
-  }
 
   /**
    * Set the number of events sent in a single network request to the OursPrivacy server.

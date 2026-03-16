@@ -30,7 +30,6 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-config", () => ({
       getFlushInterval: jest.fn().mockReturnValue(1000),
       getFlushBatchSize: jest.fn().mockReturnValue(50),
       getServerURL: jest.fn(),
-      getUseIpAddressForGeolocation: jest.fn(),
       getIsManuallySetId: jest.fn().mockReturnValue(false),
     }),
   },

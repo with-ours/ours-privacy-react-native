@@ -43,14 +43,6 @@ test(`it calls OursPrivacyReactNative setLoggingEnabled`, async () => {
   );
 });
 
-test(`it calls OursPrivacyReactNative setUseIpAddressForGeolocation`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.setUseIpAddressForGeolocation(true);
-  expect(
-    NativeModules.OursPrivacyReactNative.setUseIpAddressForGeolocation
-  ).toBeCalledWith("token", true);
-});
-
 test(`it calls OursPrivacyReactNative setFlushBatchSize`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
   oursprivacy.setFlushBatchSize(20);
