@@ -1,15 +1,11 @@
 /**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
+ * Ours Privacy React Native SDK Demo
  */
 
 import React from 'react';
 import type {PropsWithChildren} from 'react';
 import {
   Button,
-  NativeModules,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -20,54 +16,84 @@ import {
 
 import {
   Colors,
-  DebugInstructions,
   Header,
-  LearnMoreLinks,
-  ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 
 import { OURSPRIVACY_TOKEN } from '@env';
 import { OursPrivacy } from '@oursprivacy/react-native';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+type SectionProps = PropsWithChildren<{ title: string }>;
 
-let opInstance: OursPrivacy
-async function getOursPrivacy() {
-  if (!opInstance) {
-    opInstance = await OursPrivacy.init(OURSPRIVACY_TOKEN, false, false)
-    opInstance.setLoggingEnabled(true)
-  }
-  return opInstance
+function Section({ children, title }: SectionProps): React.JSX.Element {
+  const isDarkMode = useColorScheme() === 'dark';
+  return (
+    <View style={styles.sectionContainer}>
+      <Text style={[styles.sectionTitle, { color: isDarkMode ? Colors.white : Colors.black }]}>
+        {title}
+      </Text>
+      <Text style={[styles.sectionDescription, { color: isDarkMode ? Colors.light : Colors.dark }]}>
+        {children}
+      </Text>
+    </View>
+  );
 }
 
-async function track(event: string) {
-  try {
-    const op = await getOursPrivacy();
-    const distinctId = await op.getDistinctId();
-    const deviceId = await op.getDeviceId();
-    console.log('[OursPrivacy] distinctId:', distinctId);
-    console.log('[OursPrivacy] deviceId:', deviceId);
-    await op.identify(distinctId);
-    const props = { distinctId };
-    console.log('[OursPrivacy] track:', event, 'props:', JSON.stringify(props));
-    op.track(event, props);
-    op.flush();
-    console.log('[OursPrivacy] flushed');
-  } catch (err) {
-    console.error('[OursPrivacy] Error:', err);
-  }
-}
+// Initialize SDK once using instance pattern
+const oursprivacy = new OursPrivacy(OURSPRIVACY_TOKEN, false, false);
+
+oursprivacy.init(false, {
+  default_event_properties: { demo_app: true },
+  default_user_custom_properties: { test_user: true },
+}).then(() => {
+  oursprivacy.setLoggingEnabled(true);
+  console.log('[OursPrivacy] initialized. visitor_id:', oursprivacy.getVisitorId());
+});
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+  const backgroundStyle = { backgroundColor: isDarkMode ? Colors.darker : Colors.lighter };
+  const safePadding = '5%';
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const handleTrack = () => {
+    console.log('[OursPrivacy] visitor_id:', oursprivacy.getVisitorId());
+    oursprivacy.track('button_pressed', { button: 'Track Green' });
+    oursprivacy.flush();
+    console.log('[OursPrivacy] tracked + flushed');
   };
 
-  const safePadding = '5%';
+  const handleIdentify = () => {
+    oursprivacy.identify('demo-user@example.com', {
+      email: 'demo-user@example.com',
+      external_id: 'demo-user-123',
+      custom_properties: { plan: 'demo' },
+    });
+    oursprivacy.flush();
+    console.log('[OursPrivacy] identified + flushed');
+  };
+
+  const handleUpdateDefaults = () => {
+    oursprivacy.updateDefaultEventProperties({ last_action: 'update_defaults' });
+    oursprivacy.updateDefaultUserConsentProperties({ marketing: true, analytics: true });
+    oursprivacy.track('defaults_updated');
+    oursprivacy.flush();
+    console.log('[OursPrivacy] defaults updated + tracked + flushed');
+  };
+
+  const handleOptOut = () => {
+    oursprivacy.optOutTracking();
+    console.log('[OursPrivacy] opted out');
+  };
+
+  const handleOptIn = () => {
+    oursprivacy.optInTracking();
+    oursprivacy.flush();
+    console.log('[OursPrivacy] opted in + flushed ($opt_in event sent)');
+  };
+
+  const handleReset = () => {
+    oursprivacy.reset();
+    console.log('[OursPrivacy] reset. new visitor_id:', oursprivacy.getVisitorId());
+  };
 
   return (
     <View style={backgroundStyle}>
@@ -75,23 +101,41 @@ function App(): React.JSX.Element {
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={backgroundStyle.backgroundColor}
       />
-      <ScrollView
-        style={backgroundStyle}>
-        <View style={{paddingRight: safePadding}}>
-          <Header/>
+      <ScrollView style={backgroundStyle}>
+        <View style={{ paddingRight: safePadding }}>
+          <Header />
         </View>
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-            paddingHorizontal: safePadding,
-            paddingBottom: safePadding,
-          }}>
-            <Button
-              onPress={() => track("Green")}
-              title="Track Green"
-              color="#841584"
-              accessibilityLabel="Track Green Test"
-            />
+        <View style={{
+          backgroundColor: isDarkMode ? Colors.black : Colors.white,
+          paddingHorizontal: safePadding,
+          paddingBottom: safePadding,
+          gap: 12,
+        }}>
+          <Section title="Track Event">
+            Calls track('button_pressed') + flush(). Check console for visitor_id.
+          </Section>
+          <Button onPress={handleTrack} title="Track Event" color="#841584" />
+
+          <Section title="Identify">
+            Calls identify with email, external_id, and custom_properties.
+          </Section>
+          <Button onPress={handleIdentify} title="Identify User" color="#1a73e8" />
+
+          <Section title="Update Default Properties">
+            Updates default event + consent properties, then tracks an event.
+          </Section>
+          <Button onPress={handleUpdateDefaults} title="Update Defaults + Track" color="#0f9d58" />
+
+          <Section title="Privacy Controls">
+            Opt out stops all tracking. Opt in resumes and sends $opt_in event.
+          </Section>
+          <Button onPress={handleOptOut} title="Opt Out" color="#ea4335" />
+          <Button onPress={handleOptIn} title="Opt In" color="#0f9d58" />
+
+          <Section title="Reset">
+            Clears identity and default properties. Generates new visitor_id.
+          </Section>
+          <Button onPress={handleReset} title="Reset" color="#f4a637" />
         </View>
       </ScrollView>
     </View>
@@ -100,20 +144,17 @@ function App(): React.JSX.Element {
 
 const styles = StyleSheet.create({
   sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+    marginTop: 16,
+    paddingHorizontal: 0,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: '600',
   },
   sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
+    marginTop: 4,
+    fontSize: 13,
     fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
   },
 });
 

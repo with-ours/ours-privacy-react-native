@@ -8,7 +8,7 @@ jest.mock("../javascript/oursprivacy-storage", () => {
   };
 });
 jest.mock("uuid", () => ({
-  v4: jest.fn(),
+  v4: jest.fn().mockReturnValue("mock-uuid-v4"),
 }));
 
 jest.mock("@react-native-async-storage/async-storage", () => ({
@@ -31,17 +31,12 @@ jest.mock("react-native", () => ({
       optInTracking: jest.fn(),
       optOutTracking: jest.fn(),
       identify: jest.fn().mockResolvedValue(undefined),
-      alias: jest.fn(),
       track: jest.fn(),
-      registerSuperProperties: jest.fn(),
-      registerSuperPropertiesOnce: jest.fn(),
-      unregisterSuperProperty: jest.fn(),
-      getSuperProperties: jest.fn(),
-      clearSuperProperties: jest.fn(),
-      timeEvent: jest.fn(),
-      eventElapsedTime: jest.fn(),
       reset: jest.fn(),
-      getDistinctId: jest.fn(),
+      getVisitorId: jest.fn().mockReturnValue("mock-visitor-id"),
+      updateDefaultEventProperties: jest.fn(),
+      updateDefaultUserCustomProperties: jest.fn(),
+      updateDefaultUserConsentProperties: jest.fn(),
     },
   },
   AppState: {

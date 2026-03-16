@@ -99,4 +99,12 @@ export class OursPrivacyConfig {
       defaultFlushInterval
     );
   }
+
+  setIsManuallySetId(token, isManuallySetId) {
+    this._config[token] = {...this._config[token], isManuallySetId};
+  }
+
+  getIsManuallySetId(token) {
+    return (this._config[token] && this._config[token].isManuallySetId) || false;
+  }
 }

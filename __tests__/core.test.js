@@ -31,6 +31,7 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-config", () => ({
       getFlushBatchSize: jest.fn().mockReturnValue(50),
       getServerURL: jest.fn(),
       getUseIpAddressForGeolocation: jest.fn(),
+      getIsManuallySetId: jest.fn().mockReturnValue(false),
     }),
   },
 }));
@@ -131,5 +132,38 @@ describe("OursPrivacyQueueManager", () => {
     });
     await OursPrivacyCore().flush(token);
     expect(OursPrivacyNetwork.sendRequest).toHaveBeenCalledTimes(0);
+  });
+
+  it("passes isManuallySetId from config to sendRequest", async () => {
+    const { OursPrivacyConfig } = require("oursprivacy-react-native/javascript/oursprivacy-config");
+    OursPrivacyConfig.getInstance().getIsManuallySetId.mockReturnValueOnce(true);
+    OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
+    OursPrivacyQueueManager.getQueue.mockImplementation(() => [data]);
+
+    await OursPrivacyCore().flush(token);
+
+    expect(OursPrivacyNetwork.sendRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ isManuallySetId: true })
+    );
+  });
+
+  it("enqueues event data without adding session metadata", async () => {
+    OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
+    const eventData = {
+      event: "Purchase",
+      visitor_id: "uuid-123",
+      distinct_id: "per-event-uuid",
+      eventProperties: { price: 99 },
+      userProperties: null,
+      defaultProperties: { device_type: "mobile" },
+    };
+
+    await OursPrivacyCore().addToOursPrivacyQueue(token, type, eventData);
+
+    expect(OursPrivacyQueueManager.enqueue).toHaveBeenCalledWith(
+      token,
+      type,
+      eventData
+    );
   });
 });

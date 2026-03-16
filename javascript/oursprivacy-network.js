@@ -13,41 +13,48 @@ export const OursPrivacyNetwork = (() => {
     endpoint,
     data,
     serverURL,
-    useIPAddressForGeoLocation,
+    isManuallySetId = false,
     retryCount = 0,
   }) => {
     retryCount = retryCount || 0;
-    const url = `${serverURL}${endpoint}?ip=${+useIPAddressForGeoLocation}`;
+    const url = `${serverURL}${endpoint}`;
     OursPrivacyLogger.log(token, `Sending request to: ${url}`);
 
     try {
       const response = await fetch(url, {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
         },
-        body: `data=${encodeURIComponent(JSON.stringify(data))}`,
+        body: JSON.stringify({
+          token,
+          is_manually_set_id: isManuallySetId,
+          data,
+        }),
       });
 
-      const responseBody = await response.json();
-      if (response.status !== 200) {
+      let responseBody;
+      try {
+        responseBody = await response.json();
+      } catch (_) {
+        responseBody = {};
+      }
+
+      if (!response.ok) {
         throw new OursPrivacyHttpError(
           `HTTP error! status: ${response.status}`,
           response.status
         );
       }
 
-      const message =
-        responseBody === 0
-          ? `${url} api rejected some items`
-          : `OursPrivacy batch sent successfully, endpoint: ${endpoint}, data: ${JSON.stringify(
-              data
-            )}`;
+      OursPrivacyLogger.log(
+        token,
+        `OursPrivacy batch sent successfully, endpoint: ${endpoint}`
+      );
 
-      OursPrivacyLogger.log(token, message);
+      return responseBody;
     } catch (error) {
       if (error.code === 400) {
-        // This indicates that the data was invalid and we should not retry
         throw new OursPrivacyHttpError(
           `HTTP error! status: ${error.code}`,
           error.code
@@ -58,7 +65,7 @@ export const OursPrivacyNetwork = (() => {
         `API request to ${url} has failed with reason: ${error.message}`
       );
       const maxRetries = 5;
-      const backoff = Math.min(2 ** retryCount * 2000, 60000); // Exponential backoff
+      const backoff = Math.min(2 ** retryCount * 2000, 60000);
       if (retryCount < maxRetries) {
         OursPrivacyLogger.log(token, `Retrying in ${backoff / 1000} seconds...`);
         await new Promise((resolve) => setTimeout(resolve, backoff));
@@ -67,7 +74,7 @@ export const OursPrivacyNetwork = (() => {
           endpoint,
           data,
           serverURL,
-          useIPAddressForGeoLocation,
+          isManuallySetId,
           retryCount: retryCount + 1,
         });
       } else {

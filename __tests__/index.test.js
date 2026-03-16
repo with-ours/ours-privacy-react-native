@@ -2,35 +2,31 @@ import {OursPrivacy} from "oursprivacy-react-native";
 import {NativeModules} from "react-native";
 
 test(`it calls OursPrivacyReactNative initialize`, async () => {
-  const oursprivacy = await OursPrivacy.init("token", true);
+  const oursprivacy = new OursPrivacy("token", true);
+  await oursprivacy.init();
   expect(NativeModules.OursPrivacyReactNative.initialize).toBeCalledWith(
     "token",
     true,
     false,
-    {$lib_version: expect.any(String), op_lib: "react-native"},
-    "https://api.oursprivacy.com/api/v1"
+    {},
+    "https://cdn.oursprivacy.com"
   );
 });
 
-test(`it calls OursPrivacyReactNative initialize with optOut and superProperties`, async () => {
+test(`it calls OursPrivacyReactNative initialize with optOut and options`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init(true, {super: "property"});
+  await oursprivacy.init(true, {default_event_properties: {prop: "value"}});
   expect(NativeModules.OursPrivacyReactNative.initialize).toBeCalledWith(
     "token",
     true,
     true,
-    {
-      $lib_version: expect.any(String),
-      op_lib: "react-native",
-      super: "property",
-    },
-    "https://api.oursprivacy.com/api/v1"
+    {default_event_properties: {prop: "value"}},
+    "https://cdn.oursprivacy.com"
   );
 });
 
 test(`it calls OursPrivacyReactNative setServerURL`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
   oursprivacy.setServerURL("https://api-eu.oursprivacy.com");
   expect(NativeModules.OursPrivacyReactNative.setServerURL).toBeCalledWith(
     "token",
@@ -40,7 +36,6 @@ test(`it calls OursPrivacyReactNative setServerURL`, async () => {
 
 test(`it calls OursPrivacyReactNative setLoggingEnabled`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
   oursprivacy.setLoggingEnabled(true);
   expect(NativeModules.OursPrivacyReactNative.setLoggingEnabled).toBeCalledWith(
     "token",
@@ -50,7 +45,6 @@ test(`it calls OursPrivacyReactNative setLoggingEnabled`, async () => {
 
 test(`it calls OursPrivacyReactNative setUseIpAddressForGeolocation`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
   oursprivacy.setUseIpAddressForGeolocation(true);
   expect(
     NativeModules.OursPrivacyReactNative.setUseIpAddressForGeolocation
@@ -59,7 +53,6 @@ test(`it calls OursPrivacyReactNative setUseIpAddressForGeolocation`, async () =
 
 test(`it calls OursPrivacyReactNative setFlushBatchSize`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
   oursprivacy.setFlushBatchSize(20);
   expect(NativeModules.OursPrivacyReactNative.setFlushBatchSize).toBeCalledWith(
     "token",
@@ -69,7 +62,6 @@ test(`it calls OursPrivacyReactNative setFlushBatchSize`, async () => {
 
 test(`it calls OursPrivacyReactNative hasOptedOutTracking`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
   oursprivacy.hasOptedOutTracking();
   expect(NativeModules.OursPrivacyReactNative.hasOptedOutTracking).toBeCalledWith(
     "token"
@@ -78,7 +70,6 @@ test(`it calls OursPrivacyReactNative hasOptedOutTracking`, async () => {
 
 test(`it calls OursPrivacyReactNative optInTracking`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
   oursprivacy.optInTracking();
   expect(NativeModules.OursPrivacyReactNative.optInTracking).toBeCalledWith(
     "token"
@@ -87,7 +78,6 @@ test(`it calls OursPrivacyReactNative optInTracking`, async () => {
 
 test(`it calls OursPrivacyReactNative optOutTracking`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
   oursprivacy.optOutTracking();
   expect(NativeModules.OursPrivacyReactNative.optOutTracking).toBeCalledWith(
     "token"
@@ -96,28 +86,26 @@ test(`it calls OursPrivacyReactNative optOutTracking`, async () => {
 
 test(`it calls OursPrivacyReactNative identify`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.identify("distinct_id");
+  oursprivacy.identify("user@example.com");
   expect(NativeModules.OursPrivacyReactNative.identify).toBeCalledWith(
     "token",
-    "distinct_id",
+    "user@example.com",
     undefined
   );
 });
 
-test(`it calls OursPrivacyReactNative alias`, async () => {
+test(`it calls OursPrivacyReactNative identify with userProperties`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.alias("alias", "distinct_id");
-  expect(NativeModules.OursPrivacyReactNative.alias).toBeCalledWith(
+  oursprivacy.identify("user@example.com", {email: "user@example.com", external_id: "123"});
+  expect(NativeModules.OursPrivacyReactNative.identify).toBeCalledWith(
     "token",
-    "alias",
-    "distinct_id"
+    "user@example.com",
+    {email: "user@example.com", external_id: "123"}
   );
 });
 
 test(`it calls OursPrivacyReactNative track`, async () => {
-  const oursprivacy = await OursPrivacy.init("token", true);
+  const oursprivacy = new OursPrivacy("token", true);
   oursprivacy.track("event name", {
     "Cool Property": "Property Value",
   });
@@ -126,102 +114,39 @@ test(`it calls OursPrivacyReactNative track`, async () => {
     "event name",
     {
       "Cool Property": "Property Value",
-      $lib_version: expect.any(String),
-      op_lib: "react-native",
     }
-  );
-});
-
-test(`it calls OursPrivacyReactNative registerSuperProperties`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.registerSuperProperties({
-    "super property": "super property value",
-    "super property1": "super property value1",
-  });
-  expect(
-    NativeModules.OursPrivacyReactNative.registerSuperProperties
-  ).toBeCalledWith("token", {
-    "super property": "super property value",
-    "super property1": "super property value1",
-  });
-});
-
-test(`it calls OursPrivacyReactNative registerSuperPropertiesOnce`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.registerSuperPropertiesOnce({
-    "super property": "super property value",
-    "super property1": "super property value1",
-  });
-  expect(
-    NativeModules.OursPrivacyReactNative.registerSuperProperties
-  ).toBeCalledWith("token", {
-    "super property": "super property value",
-    "super property1": "super property value1",
-  });
-});
-
-test(`it calls OursPrivacyReactNative unregisterSuperProperty`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.unregisterSuperProperty("super property");
-  expect(
-    NativeModules.OursPrivacyReactNative.unregisterSuperProperty
-  ).toBeCalledWith("token", "super property");
-});
-
-test(`it calls OursPrivacyReactNative getSuperProperties`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.getSuperProperties();
-  expect(NativeModules.OursPrivacyReactNative.getSuperProperties).toBeCalledWith(
-    "token"
-  );
-});
-
-test(`it calls OursPrivacyReactNative clearSuperProperties`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.clearSuperProperties();
-  expect(NativeModules.OursPrivacyReactNative.clearSuperProperties).toBeCalledWith(
-    "token"
-  );
-});
-
-test(`it calls OursPrivacyReactNative timeEvent`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.timeEvent("Timed Event");
-  expect(NativeModules.OursPrivacyReactNative.timeEvent).toBeCalledWith(
-    "token",
-    "Timed Event"
-  );
-});
-
-test(`it calls OursPrivacyReactNative eventElapsedTime`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.eventElapsedTime("Timed Event");
-  expect(NativeModules.OursPrivacyReactNative.eventElapsedTime).toBeCalledWith(
-    "token",
-    "Timed Event"
   );
 });
 
 test(`it calls OursPrivacyReactNative reset`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
   oursprivacy.reset();
   expect(NativeModules.OursPrivacyReactNative.reset).toBeCalledWith("token");
 });
 
-test(`it calls OursPrivacyReactNative getDistinctId`, async () => {
+test(`it calls OursPrivacyReactNative updateDefaultEventProperties`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.getDistinctId();
-  expect(NativeModules.OursPrivacyReactNative.getDistinctId).toBeCalledWith(
-    "token"
+  oursprivacy.updateDefaultEventProperties({tier: "pro"});
+  expect(NativeModules.OursPrivacyReactNative.updateDefaultEventProperties).toBeCalledWith(
+    "token",
+    {tier: "pro"}
   );
 });
 
+test(`it calls OursPrivacyReactNative updateDefaultUserCustomProperties`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.updateDefaultUserCustomProperties({plan: "enterprise"});
+  expect(NativeModules.OursPrivacyReactNative.updateDefaultUserCustomProperties).toBeCalledWith(
+    "token",
+    {plan: "enterprise"}
+  );
+});
+
+test(`it calls OursPrivacyReactNative updateDefaultUserConsentProperties`, async () => {
+  const oursprivacy = new OursPrivacy("token", true);
+  oursprivacy.updateDefaultUserConsentProperties({marketing: true});
+  expect(NativeModules.OursPrivacyReactNative.updateDefaultUserConsentProperties).toBeCalledWith(
+    "token",
+    {marketing: true}
+  );
+});

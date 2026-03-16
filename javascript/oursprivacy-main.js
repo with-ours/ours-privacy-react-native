@@ -5,6 +5,7 @@ import {OursPrivacyConfig} from "./oursprivacy-config";
 import {OursPrivacyPersistent} from "./oursprivacy-persistent";
 import {OursPrivacyLogger} from "./oursprivacy-logger";
 import packageJson from "../package.json";
+import uuid from "uuid";
 
 export default class OursPrivacyMain {
   constructor(token, trackAutomaticEvents, storage) {
@@ -14,14 +15,17 @@ export default class OursPrivacyMain {
     this.core.initialize(token);
     this.core.startProcessingQueue(token);
     this.oursprivacyPersistent = OursPrivacyPersistent.getInstance();
+    this._defaultEventProperties = {};
+    this._defaultUserCustomProperties = {};
+    this._defaultUserConsentProperties = {};
   }
 
   async initialize(
     token,
     trackAutomaticEvents = false,
     optOutTrackingDefault = false,
-    superProperties = null,
-    serverURL = "https://api.oursprivacy.com/api/v1"
+    options = {},
+    serverURL = "https://cdn.oursprivacy.com"
   ) {
     OursPrivacyLogger.log(token, `Initializing OursPrivacy`);
 
@@ -34,40 +38,48 @@ export default class OursPrivacyMain {
     }
 
     this.setServerURL(token, serverURL);
-    await this.registerSuperProperties(token, {
-      ...superProperties,
-    });
+
+    if (options && typeof options === "object") {
+      if (options.default_event_properties) {
+        this.updateDefaultEventProperties(token, options.default_event_properties);
+      }
+      if (options.default_user_custom_properties) {
+        this.updateDefaultUserCustomProperties(token, options.default_user_custom_properties);
+      }
+      if (options.default_user_consent_properties) {
+        this.updateDefaultUserConsentProperties(token, options.default_user_consent_properties);
+      }
+      if (options.user_id) {
+        this.config.setIsManuallySetId(token, true);
+      }
+    }
   }
 
-  getMetaData() {
+  getDefaultProperties() {
     const {OS, Version, constants} = Platform;
-    const {Brand, Manufacturer, Model} = constants || {};
+    const {Model, Manufacturer, Brand} = constants || {};
 
-    let metadata = {
-      $os: OS,
-      $os_version: Version,
-      ...JSON.parse(JSON.stringify(packageJson.metadata)),
-      $lib_version: packageJson.version,
+    const props = {
+      device_type: "mobile",
+      os_name: OS === "ios" ? "iOS" : OS === "android" ? "Android" : OS,
+      os_version: String(Version),
+      version: packageJson.version,
     };
     if (OS === "ios") {
-      metadata = {
-        ...metadata,
-        $manufacturer: "Apple",
-      };
+      props.device_vendor = "Apple";
+      if (Model) props.device_model = Model;
     } else if (OS === "android") {
-      metadata = {
-        ...metadata,
-        $android_brand: Brand,
-        $android_manufacturer: Manufacturer,
-        $android_model: Model,
-      };
+      props.device_vendor = Manufacturer || Brand || undefined;
+      if (Model) props.device_model = Model;
     }
-
-    return metadata;
+    return props;
   }
 
   async reset(token) {
     await this.oursprivacyPersistent.reset(token);
+    this._defaultEventProperties[token] = {};
+    this._defaultUserCustomProperties[token] = {};
+    this._defaultUserConsentProperties[token] = {};
   }
 
   async track(token, eventName, properties) {
@@ -84,36 +96,30 @@ export default class OursPrivacyMain {
       `Track '${eventName}' with properties`,
       properties
     );
-    const superProperties = this.oursprivacyPersistent.getSuperProperties(token);
-    const identityProps = {
-      distinct_id: this.oursprivacyPersistent.getDistinctId(token),
-      $device_id: this.oursprivacyPersistent.getDeviceId(token),
-      $user_id: this.oursprivacyPersistent.getUserId(token),
-    };
-    const eventElapsedTime = await this.eventElapsedTime(token, eventName);
-    const eventProperties = Object.freeze({
-      token,
-      time: Date.now(),
-      ...this.getMetaData(),
-      ...superProperties,
+
+    const visitorId = this.oursprivacyPersistent.getDeviceId(token);
+    const distinctId = uuid.v4();
+
+    const rawEventProps = {
+      ...(this._defaultEventProperties[token] || {}),
       ...properties,
-      ...identityProps,
-      ...(eventElapsedTime !== null && {
-        $duration: eventElapsedTime,
-      }),
-    });
+    };
 
-    const eventData = Object.freeze({
+    const customProps = this._defaultUserCustomProperties[token] || {};
+    const consentProps = this._defaultUserConsentProperties[token] || {};
+    const userProps = {};
+    if (Object.keys(customProps).length > 0) userProps.custom_properties = {...customProps};
+    if (Object.keys(consentProps).length > 0) userProps.consent = {...consentProps};
+
+    const eventData = {
       event: eventName,
-      properties: eventProperties,
-    });
+      visitor_id: visitorId,
+      distinct_id: distinctId,
+      eventProperties: Object.keys(rawEventProps).length > 0 ? rawEventProps : null,
+      userProperties: Object.keys(userProps).length > 0 ? userProps : null,
+      defaultProperties: this.getDefaultProperties(),
+    };
 
-    if (eventElapsedTime !== null) {
-      let timeEvents = this.oursprivacyPersistent.getTimeEvents(token);
-      delete timeEvents[eventName];
-      this.oursprivacyPersistent.updateTimeEvents(token, timeEvents);
-      await this.oursprivacyPersistent.persistTimeEvents(token);
-    }
     await this.core.addToOursPrivacyQueue(token, OursPrivacyType.EVENTS, eventData);
   }
 
@@ -161,7 +167,7 @@ export default class OursPrivacyMain {
     return this.oursprivacyPersistent.getOptOut(token);
   }
 
-  async identify(token, newDistinctId) {
+  async identify(token, newDistinctId, userProperties) {
     OursPrivacyLogger.log(token, `Identify '${newDistinctId}'`);
     const oldDistinctId = this.oursprivacyPersistent.getDistinctId(token);
     if (oldDistinctId === newDistinctId) {
@@ -173,389 +179,66 @@ export default class OursPrivacyMain {
     }
     this.oursprivacyPersistent.updateDistinctId(token, newDistinctId);
     this.oursprivacyPersistent.updateUserId(token, newDistinctId);
-    const deviceId = this.oursprivacyPersistent.getDeviceId(token);
     await this.oursprivacyPersistent.persistIdentity(token);
-    await this.track(token, "$identify", {
-      distinctId: newDistinctId,
-      $user_id: newDistinctId,
-      $anon_distinct_id: oldDistinctId,
-      $device_id: deviceId,
-    });
-  }
 
-  async alias(token, alias, distinctId) {
-    OursPrivacyLogger.log(token, `Alias '${alias}' to '${distinctId}'`);
-    await this.track(token, "$create_alias", {
-      alias,
+    const visitorId = this.oursprivacyPersistent.getDeviceId(token);
+    const distinctId = uuid.v4();
+
+    const customProps = this._defaultUserCustomProperties[token] || {};
+    const consentProps = this._defaultUserConsentProperties[token] || {};
+
+    const identifyUserProps = {
+      external_id: newDistinctId,
+      ...(userProperties || {}),
+    };
+
+    if (Object.keys(customProps).length > 0) {
+      identifyUserProps.custom_properties = {
+        ...customProps,
+        ...(userProperties && userProperties.custom_properties ? userProperties.custom_properties : {}),
+      };
+    }
+    if (Object.keys(consentProps).length > 0) {
+      identifyUserProps.consent = {
+        ...consentProps,
+        ...(userProperties && userProperties.consent ? userProperties.consent : {}),
+      };
+    }
+
+    const eventData = {
+      event: "$identify",
+      visitor_id: visitorId,
       distinct_id: distinctId,
-    });
-    await this.identify(token, distinctId);
+      eventProperties: null,
+      userProperties: identifyUserProps,
+      defaultProperties: this.getDefaultProperties(),
+    };
+
+    await this.core.addToOursPrivacyQueue(token, OursPrivacyType.EVENTS, eventData);
   }
 
-  async getDeviceId(token) {
-    if (!this.oursprivacyPersistent.getDeviceId(token)) {
-      await this.oursprivacyPersistent.loadIdentity(token);
-    }
-    return this.identity[token].deviceId;
+  getVisitorId(token) {
+    return this.oursprivacyPersistent.getDeviceId(token);
   }
 
-  async getDistinctId(token) {
-    if (!this.oursprivacyPersistent.getDistinctId(token)) {
-      await this.oursprivacyPersistent.loadIdentity(token);
-    }
-    return this.oursprivacyPersistent.getDistinctId(token);
-  }
-
-  async _updateSuperProperties(token, properties) {
-    this.oursprivacyPersistent.updateSuperProperties(token, properties);
-    await this.oursprivacyPersistent.persistSuperProperties(token);
-  }
-
-  async registerSuperProperties(token, properties) {
-    OursPrivacyLogger.log(token, `Register super properties:`, properties);
-    const currentSuperProperties = this.oursprivacyPersistent.getSuperProperties(
-      token
-    );
-    OursPrivacyLogger.log(
-      token,
-      `Current Super Properties:`,
-      currentSuperProperties
-    );
-    const updatedSuperProperties = {
-      ...currentSuperProperties,
+  updateDefaultEventProperties(token, properties) {
+    this._defaultEventProperties[token] = {
+      ...(this._defaultEventProperties[token] || {}),
       ...properties,
     };
-
-    this._updateSuperProperties(token, updatedSuperProperties);
-    OursPrivacyLogger.log(
-      token,
-      `Updated Super Properties:`,
-      updatedSuperProperties
-    );
   }
 
-  async registerSuperPropertiesOnce(token, properties) {
-    OursPrivacyLogger.log(token, `Register super properties once`, properties);
-    const currentSuperProperties = this.oursprivacyPersistent.getSuperProperties(
-      token
-    );
-
-    const updatedSuperProperties = {
+  updateDefaultUserCustomProperties(token, properties) {
+    this._defaultUserCustomProperties[token] = {
+      ...(this._defaultUserCustomProperties[token] || {}),
       ...properties,
-      ...currentSuperProperties,
     };
-
-    this._updateSuperProperties(token, updatedSuperProperties);
-    OursPrivacyLogger.log(
-      token,
-      `Updated Super Properties:`,
-      updatedSuperProperties
-    );
   }
 
-  async unregisterSuperProperty(token, propertyName) {
-    OursPrivacyLogger.log(token, `Unregister super property '${propertyName}'`);
-    let superProperties = this.oursprivacyPersistent.getSuperProperties(token);
-    delete superProperties[propertyName];
-    this._updateSuperProperties(token, superProperties);
-    OursPrivacyLogger.log(token, `Updated Super Properties:`, superProperties);
-  }
-
-  async getSuperProperties(token) {
-    if (!this.oursprivacyPersistent.getSuperProperties(token)) {
-      await this.oursprivacyPersistent.loadSuperProperties(token);
-    }
-    return this.oursprivacyPersistent.getSuperProperties(token);
-  }
-
-  async clearSuperProperties(token) {
-    OursPrivacyLogger.log(token, `Clear super properties`);
-    this._updateSuperProperties(token, {});
-    OursPrivacyLogger.log(token, `Updated Super Properties:`, {});
-  }
-
-  async timeEvent(token, eventName) {
-    const currentTime = Math.round(Date.now() / 1000);
-    OursPrivacyLogger.log(
-      token,
-      `Add time event '${eventName}' at`,
-      new Date(currentTime * 1000).toLocaleString()
-    );
-    this.oursprivacyPersistent.updateTimeEvents(token, {
-      ...this.oursprivacyPersistent.getTimeEvents(token),
-      [eventName]: currentTime,
-    });
-    await this.oursprivacyPersistent.persistTimeEvents(token);
-  }
-
-  async eventElapsedTime(token, eventName) {
-    if (!this.oursprivacyPersistent.getTimeEvents(token)) {
-      await this.oursprivacyPersistent.loadTimeEvents(token);
-    }
-    const timeEvents = this.oursprivacyPersistent.getTimeEvents(token);
-    const startTime = timeEvents ? timeEvents[eventName] : undefined;
-
-    if (startTime) {
-      const duration = Math.round(Date.now() / 1000) - startTime;
-      return duration;
-    }
-    return null;
-  }
-
-  async sendProfileDataToOursPrivacy(token, action) {
-    const profileData = {
-      $token: token,
-      $time: Date.now(),
-      ...action,
-      $distinct_id: this.oursprivacyPersistent.getDistinctId(token),
-      $device_id: this.oursprivacyPersistent.getDeviceId(token),
-      $user_id: this.oursprivacyPersistent.getUserId(token),
+  updateDefaultUserConsentProperties(token, properties) {
+    this._defaultUserConsentProperties[token] = {
+      ...(this._defaultUserConsentProperties[token] || {}),
+      ...properties,
     };
-    await this.core.addToOursPrivacyQueue(token, OursPrivacyType.USER, profileData);
-  }
-
-  async sendGroupDataToOursPrivacy({token, groupKey, groupID, action}) {
-    const profileData = {
-      $token: token,
-      $time: Date.now(),
-      $group_key: groupKey,
-      $group_id: groupID,
-      ...action,
-    };
-    await this.core.addToOursPrivacyQueue(token, OursPrivacyType.GROUPS, profileData);
-  }
-
-  async set(token, properties) {
-    OursPrivacyLogger.log(token, `Set properties: `, properties);
-    await this.sendProfileDataToOursPrivacy(token, {$set: properties});
-  }
-
-  async setOnce(token, properties) {
-    OursPrivacyLogger.log(token, `Set once properties: `, properties);
-    await this.sendProfileDataToOursPrivacy(token, {$set_once: properties});
-  }
-
-  async increment(token, properties) {
-    OursPrivacyLogger.log(token, `Increment properties: `, properties);
-    await this.sendProfileDataToOursPrivacy(token, {$add: properties});
-  }
-
-  async append(token, nameOrProperties, value) {
-    if (typeof nameOrProperties === "string" && value !== undefined) {
-      OursPrivacyLogger.log(token, `Append properties: `, {
-        [nameOrProperties]: value,
-      });
-      await this.sendProfileDataToOursPrivacy(token, {
-        $append: {[nameOrProperties]: value},
-      });
-    } else if (typeof nameOrProperties === "object") {
-      OursPrivacyLogger.log(token, `Append properties: `, nameOrProperties);
-      await this.sendProfileDataToOursPrivacy(token, {
-        $append: nameOrProperties,
-      });
-    }
-  }
-
-  async union(token, nameOrProperties, value) {
-    if (typeof nameOrProperties === "string" && value !== undefined) {
-      OursPrivacyLogger.log(token, `Union properties: `, {
-        [nameOrProperties]: value,
-      });
-      await this.sendProfileDataToOursPrivacy(token, {
-        $union: {[nameOrProperties]: value},
-      });
-    } else if (typeof nameOrProperties === "object") {
-      OursPrivacyLogger.log(token, `Union properties: `, nameOrProperties);
-      await this.sendProfileDataToOursPrivacy(token, {$union: nameOrProperties});
-    }
-  }
-
-  async remove(token, nameOrProperties, value) {
-    if (typeof nameOrProperties === "string" && value !== undefined) {
-      OursPrivacyLogger.log(token, `Remove properties: `, {
-        [nameOrProperties]: value,
-      });
-      await this.sendProfileDataToOursPrivacy(token, {
-        $remove: {[nameOrProperties]: value},
-      });
-    } else if (typeof nameOrProperties === "object") {
-      OursPrivacyLogger.log(token, `Remove properties: `, nameOrProperties);
-      await this.sendProfileDataToOursPrivacy(token, {
-        $remove: nameOrProperties,
-      });
-    }
-  }
-
-  async trackCharge(token, charge, properties) {
-    OursPrivacyLogger.log(token, `Track charge: `, charge, properties);
-    await this.append(token, {
-      $transactions: {$amount: charge, $time: Date.now(), ...properties},
-    });
-  }
-
-  async clearCharges(token) {
-    OursPrivacyLogger.log(token, `Clear charges`);
-    await this.set(token, {
-      $transactions: [],
-    });
-  }
-
-  async unset(token, property) {
-    OursPrivacyLogger.log(token, `Unset property: `, property);
-    await this.sendProfileDataToOursPrivacy(token, {$unset: [property]});
-  }
-
-  async deleteUser(token) {
-    OursPrivacyLogger.log(token, `Delete user`);
-    await this.sendProfileDataToOursPrivacy(token, {$delete: "null"});
-  }
-
-  async groupSetProperties(token, groupKey, groupID, properties) {
-    OursPrivacyLogger.log(
-      token,
-      `Group set properties: `,
-      groupKey,
-      groupID,
-      properties
-    );
-    await this.sendGroupDataToOursPrivacy({
-      token,
-      groupKey,
-      groupID,
-      action: {
-        $set: properties,
-      },
-    });
-  }
-
-  async groupSetPropertyOnce(token, groupKey, groupID, properties) {
-    OursPrivacyLogger.log(
-      token,
-      `Group set once properties: `,
-      groupKey,
-      groupID,
-      properties
-    );
-    await this.sendGroupDataToOursPrivacy({
-      token,
-      groupKey,
-      groupID,
-      action: {
-        $set_once: properties,
-      },
-    });
-  }
-
-  async groupUnsetProperty(token, groupKey, groupID, prop) {
-    OursPrivacyLogger.log(
-      token,
-      `Group unset property: `,
-      groupKey,
-      groupID,
-      prop
-    );
-    await this.sendGroupDataToOursPrivacy({
-      token,
-      groupKey,
-      groupID,
-      action: {
-        $unset: [prop],
-      },
-    });
-  }
-
-  async groupRemovePropertyValue(token, groupKey, groupID, name, value) {
-    OursPrivacyLogger.log(
-      token,
-      `Group remove property value: `,
-      groupKey,
-      groupID,
-      name,
-      value
-    );
-    await this.sendGroupDataToOursPrivacy({
-      token,
-      groupKey,
-      groupID,
-      action: {
-        $remove: {[name]: value},
-      },
-    });
-  }
-
-  async groupUnionProperty(token, groupKey, groupID, name, value) {
-    OursPrivacyLogger.log(
-      token,
-      `Group union property: `,
-      groupKey,
-      groupID,
-      name,
-      value
-    );
-    await this.sendGroupDataToOursPrivacy({
-      token,
-      groupKey,
-      groupID,
-      action: {
-        $union: {[name]: value},
-      },
-    });
-  }
-
-  async trackWithGroups(token, eventName, properties, groups) {
-    OursPrivacyLogger.log(
-      token,
-      `Track with groups: `,
-      eventName,
-      properties,
-      groups
-    );
-    await this.track(token, eventName, {...properties, ...groups});
-  }
-
-  async setGroup(token, groupKey, groupID) {
-    OursPrivacyLogger.log(token, `Set group: `, groupKey, groupID);
-    const properties = {[groupKey]: [groupID]};
-    await this.registerSuperProperties(token, properties);
-    await this.set(token, properties);
-  }
-
-  async addGroup(token, groupKey, groupID) {
-    OursPrivacyLogger.log(token, `Add group: `, groupKey, groupID);
-    const superProperties = this.oursprivacyPersistent.getSuperProperties(token);
-    const groupArray = superProperties[groupKey] || [];
-    if (!groupArray.includes(groupID)) {
-      this.registerSuperProperties(token, {
-        [groupKey]: [...groupArray, groupID],
-      });
-    }
-    await this.union(token, {[groupKey]: [groupID]});
-  }
-
-  async removeGroup(token, groupKey, groupID) {
-    OursPrivacyLogger.log(token, `Remove group: `, groupKey, groupID);
-    const superProperties = this.oursprivacyPersistent.getSuperProperties(token);
-    if (superProperties && superProperties[groupKey]) {
-      const filteredGroup = superProperties[groupKey].filter(
-        (id) => id !== groupID
-      );
-      this.registerSuperProperties(token, {[groupKey]: filteredGroup});
-      if (filteredGroup.length === 0) {
-        this.unregisterSuperProperty(token, groupKey);
-      }
-    }
-    await this.remove(token, {[groupKey]: groupID});
-  }
-
-  async deleteGroup(token, groupKey, groupID) {
-    OursPrivacyLogger.log(token, `Delete group: `, groupKey, groupID);
-    await this.sendGroupDataToOursPrivacy({
-      token,
-      groupKey,
-      groupID,
-      action: {
-        $delete: "null",
-      },
-    });
   }
 }

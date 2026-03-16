@@ -1,6 +1,5 @@
 import {OursPrivacyQueueManager} from "./oursprivacy-queue";
 import {OursPrivacyNetwork} from "./oursprivacy-network";
-import {SessionMetadata} from "./oursprivacy-utils";
 import {OursPrivacyType} from "./oursprivacy-constants";
 import {OursPrivacyConfig} from "./oursprivacy-config";
 import {OursPrivacyPersistent} from "./oursprivacy-persistent";
@@ -38,8 +37,6 @@ export const OursPrivacyCore = (storage) => {
     processQueueInterval = setInterval(async () => {
       clearInterval(processQueueInterval);
       await processQueue(token, OursPrivacyType.EVENTS);
-      await processQueue(token, OursPrivacyType.USER);
-      await processQueue(token, OursPrivacyType.GROUPS);
 
       isProcessingQueue = false;
       startProcessingQueue(token);
@@ -71,19 +68,10 @@ export const OursPrivacyCore = (storage) => {
       );
       return;
     }
-    const sessionMetadata = new SessionMetadata();
-    await OursPrivacyQueueManager.enqueue(token, type, {
-      ...sessionMetadata.toDict(type),
-      ...data,
-    });
+    await OursPrivacyQueueManager.enqueue(token, type, data);
     OursPrivacyLogger.log(
       token,
-      `The oursprivacy payload is added to the OursPrivacy queue. Payload: '${JSON.stringify(
-        {
-          ...sessionMetadata.toDict(type),
-          ...data,
-        }
-      )}' Type: '${type}' `
+      `Event added to queue. Payload: '${JSON.stringify(data)}'`
     );
   };
 
@@ -96,8 +84,6 @@ export const OursPrivacyCore = (storage) => {
       return;
     }
     await processQueue(token, OursPrivacyType.EVENTS);
-    await processQueue(token, OursPrivacyType.USER);
-    await processQueue(token, OursPrivacyType.GROUPS);
   };
 
   const processQueue = async (token, type) => {
@@ -118,8 +104,7 @@ export const OursPrivacyCore = (storage) => {
             data: batch,
             endpoint: type,
             serverURL: config.getServerURL(token),
-            useIPAddressForGeoLocation:
-              config.getUseIpAddressForGeolocation(token),
+            isManuallySetId: config.getIsManuallySetId(token),
           });
           await OursPrivacyQueueManager.spliceQueue(token, type, 0, batch.length);
           // Process the next batch if there are more events in the queue

@@ -1,34 +1,19 @@
 "use strict";
 
 import {Platform, NativeModules} from "react-native";
-import packageJson from "./package.json";
 const {OursPrivacyReactNative} = NativeModules;
 import OursPrivacyMain from "./javascript/oursprivacy-main"
-
-const DevicePlatform = {
-  Unknown: "Unknown",
-  Android: "android",
-  iOS: "ios",
-};
 
 const ERROR_MESSAGE = {
   INVALID_OBJECT: " is not a valid json object",
   INVALID_STRING: " is not a valid string",
-  REQUIRED_DOUBLE: " is not a valid number",
 };
 
 const PARAMS = {
   TOKEN: "token",
   DISTINCT_ID: "distinctId",
-  ALIAS: "alias",
   EVENT_NAME: "eventName",
-  GROUP_KEY: "groupKey",
   PROPERTIES: "properties",
-  PROPERTY_NAME: "propertyName",
-  PROP: "prop",
-  NAME: "name",
-  CHARGE: "charge",
-  PROPERTY_VALUE: "property value",
 };
 
 const DEFAULT_OPT_OUT = false;
@@ -63,58 +48,31 @@ export class OursPrivacy {
    * Initializes OursPrivacy
    *
    * @param {boolean} optOutTrackingDefault Optional Whether or not OursPrivacy can start tracking by default. See optOutTracking()
-   * @param {object} superProperties  Optional A Map containing the key value pairs of the super properties to register
-   * @param {string} serverURL Optional Set the base URL used for OursPrivacy API requests. See setServerURL()
+   * @param {object} options Optional Options object. Supports:
+   *   - serverURL: string
+   *   - user_id: string
+   *   - default_event_properties: object
+   *   - default_user_custom_properties: object
+   *   - default_user_consent_properties: object
    *
    */
   async init(
     optOutTrackingDefault = DEFAULT_OPT_OUT,
-    superProperties = {},
-    serverURL = "https://api.oursprivacy.com/api/v1"
+    options = {}
   ) {
+    const serverURL = (options && options.serverURL) || "https://cdn.oursprivacy.com";
     await this.oursprivacyImpl.initialize(
       this.token,
       this.trackAutomaticEvents,
       optOutTrackingDefault,
-      {...Helper.getMetaData(), ...superProperties},
+      options,
       serverURL
     );
   }
 
   /**
-   * @deprecated since version 1.3.0. To initialize OursPrivacy, please use the instance method `init` instead. See the example below:
-   *
-   * <pre><code>
-   * const trackAutomaticEvents = true;
-   * const oursprivacy = new OursPrivacy('your project token', trackAutomaticEvents);
-   * oursprivacy.init();
-   * </code></pre>
-   *
-   * Initializes OursPrivacy and return an instance of OursPrivacy the given project token.
-   *
-   * @param {string} token your project token.
-   * @param {boolean} trackAutomaticEvents Whether or not to automatically track common mobile events
-   * @param {boolean} Optional Whether or not OursPrivacy can start tracking by default. See optOutTracking()
-   *
-   */
-  static async init(
-    token,
-    trackAutomaticEvents,
-    optOutTrackingDefault = DEFAULT_OPT_OUT
-  ) {
-    await OursPrivacyReactNative.initialize(
-      token,
-      trackAutomaticEvents,
-      optOutTrackingDefault,
-      Helper.getMetaData(),
-      "https://api.oursprivacy.com/api/v1"
-    );
-    return new OursPrivacy(token, trackAutomaticEvents);
-  }
-
-  /**
    * Set the base URL used for OursPrivacy API requests.
-   * Useful if you need to proxy OursPrivacy requests. Defaults to https://api.oursprivacy.com.
+   * Useful if you need to proxy OursPrivacy requests. Defaults to https://cdn.oursprivacy.com.
    * To route data to OursPrivacy's EU servers, set to https://api-eu.oursprivacy.com
    *
    * @param {string} serverURL the base URL used for OursPrivacy API requests
@@ -215,20 +173,9 @@ export class OursPrivacy {
    * Associate all future calls to track() with the user identified by
    * the given distinct id.
    *
-   * <p>Calls to track() made before corresponding calls to identify
-   * will use an anonymous locally generated distinct id, which means it is best to call identify
-   * early to ensure that your OursPrivacy funnels and retention analytics can continue to track the
-   * user throughout their lifetime. We recommend calling identify when the user authenticates.
-   *
-   * <p>Once identify is called, the local distinct id persists across restarts of
-   * your application.
-   *
-   * @param {string} distinctId a string uniquely identifying this user. Events sent to
-   *     OursPrivacy using the same disinct_id will be considered associated with the
-   *     same visitor/customer for retention and funnel reporting, so be sure that the given
-   *     value is globally unique for each individual user you intend to track.
+   * @param {string} distinctId a string uniquely identifying this user.
+   * @param {object} userProperties Optional user properties to set on identify.
    * @returns {Promise} A promise that resolves when the identify is successful.
-   *     It does not return any value.
    *
    */
   identify(distinctId, userProperties) {
@@ -249,35 +196,7 @@ export class OursPrivacy {
   }
 
   /**
-   * @deprecated The alias method creates an alias which OursPrivacy will use to remap one id to another.
-   * Multiple aliases can point to the same identifier.
-   *
-   *  `mixpane.alias("New ID", mixpane.distinctId)`
-   *  `mixpane.alias("Newer ID", mixpane.distinctId)`
-   *
-   * <p>This call does not identify the user after. You must still call identify()
-   *  if you wish the new alias to be used for Events and People.
-   *
-   * @param {string} alias A unique identifier that you want to use as an identifier for this user.
-   * @param {string} distinctId the current distinct_id that alias will be mapped to.
-   */
-  alias(alias, distinctId) {
-    if (!StringHelper.isValid(alias)) {
-      StringHelper.raiseError(PARAMS.ALIAS);
-    }
-    if (!StringHelper.isValid(distinctId)) {
-      StringHelper.raiseError(PARAMS.DISTINCT_ID);
-    }
-    this.oursprivacyImpl.alias(this.token, alias, distinctId);
-  }
-
-  /**
    * Track an event.
-   *
-   * <p>Every call to track eventually results in a data point sent to OursPrivacy. These data points
-   * are what are measured, counted, and broken down to create your OursPrivacy reports. Events
-   * have a string name, and an optional set of name/value pairs that describe the properties of
-   * that event.
    *
    * @param {string} eventName The name of the event to send
    * @param {object} properties A Map containing the key value pairs of the properties to include in this event.
@@ -290,197 +209,67 @@ export class OursPrivacy {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.oursprivacyImpl.track(this.token, eventName, {
-      ...Helper.getMetaData(),
-      ...properties,
-    });
+    this.oursprivacyImpl.track(this.token, eventName, properties);
   }
 
   /**
-   * Register properties that will be sent with every subsequent call to track().
-   *
-   * <p>SuperProperties are a collection of properties that will be sent with every event to OursPrivacy,
-   * and persist beyond the lifetime of your application.
-   *
-   * <p>Setting a superProperty with registerSuperProperties will store a new superProperty,
-   * possibly overwriting any existing superProperty with the same name (to set a
-   * superProperty only if it is currently unset, use registerSuperPropertiesOnce())
-   *
-   * <p>SuperProperties will persist even if your application is taken completely out of memory.
-   * to remove a superProperty, call unregisterSuperProperty() or clearSuperProperties()
-   *
-   * @param {object} properties A Map containing super properties to register
+   * Generates a new random visitor id for this instance.
+   * Useful for clearing data when a user logs out.
    */
-  registerSuperProperties(properties) {
-    if (!ObjectHelper.isValidOrUndefined(properties)) {
-      ObjectHelper.raiseError(PARAMS.PROPERTIES);
-    }
-    this.oursprivacyImpl.registerSuperProperties(this.token, properties || {});
-  }
-
-  /**
-   * Register super properties for events, only if no other super property with the
-   * same names has already been registered.
-   *
-   * <p>Calling registerSuperPropertiesOnce will never overwrite existing properties.
-   *
-   * @param {object} properties A Map containing the super properties to register.
-   */
-  registerSuperPropertiesOnce(properties) {
-    if (!ObjectHelper.isValidOrUndefined(properties)) {
-      ObjectHelper.raiseError(PARAMS.PROPERTIES);
-    }
-    this.oursprivacyImpl.registerSuperPropertiesOnce(this.token, properties || {});
-  }
-
-  /**
-   * Remove a single superProperty, so that it will not be sent with future calls to track().
-   *
-   * <p>If there is a superProperty registered with the given name, it will be permanently
-   * removed from the existing superProperties.
-   * To clear all superProperties, use clearSuperProperties()
-   *
-   * @param {string} propertyName name of the property to unregister
-   */
-  unregisterSuperProperty(propertyName) {
-    if (!StringHelper.isValid(propertyName)) {
-      StringHelper.raiseError(PARAMS.PROPERTY_NAME);
-    }
-    this.oursprivacyImpl.unregisterSuperProperty(this.token, propertyName);
-  }
-
-  /**
-   * Returns a json object of the user's current super properties
-   *
-   *<p>SuperProperties are a collection of properties that will be sent with every event to OursPrivacy,
-   * and persist beyond the lifetime of your application.
-   *
-   * @return {Promise<object>} Super properties for this OursPrivacy instance.
-   */
-  getSuperProperties() {
-    return this.oursprivacyImpl.getSuperProperties(this.token);
-  }
-
-  /**
-   * Erase all currently registered superProperties.
-   *
-   * <p>Future tracking calls to OursPrivacy will not contain the specific
-   * superProperties registered before the clearSuperProperties method was called.
-   *
-   * <p>To remove a single superProperty, use unregisterSuperProperty()
-   */
-  clearSuperProperties() {
-    this.oursprivacyImpl.clearSuperProperties(this.token);
-  }
-
-  /**
-   * Begin timing of an event. Calling timeEvent("Thing") will not send an event, but
-   * when you eventually call track("Thing"), your tracked event will be sent with a "$duration"
-   * property, representing the number of seconds between your calls.
-   *
-   * @param {string} eventName the name of the event to track with timing.
-   */
-  timeEvent(eventName) {
-    if (!StringHelper.isValid(eventName)) {
-      StringHelper.raiseError(PARAMS.EVENT_NAME);
-    }
-    this.oursprivacyImpl.timeEvent(this.token, eventName);
-  }
-
-  /**
-   * Retrieves the time elapsed for the named event since timeEvent() was called.
-   *
-   * @param {string} eventName the name of the event to be tracked that was previously called with timeEvent()
-   *
-   * @return {Promise<number>} Time elapsed since timeEvent(String) was called for the given eventName.
-   */
-  eventElapsedTime(eventName) {
-    if (!StringHelper.isValid(eventName)) {
-      StringHelper.raiseError(PARAMS.EVENT_NAME);
-    }
-    return this.oursprivacyImpl.eventElapsedTime(this.token, eventName);
-  }
-
-  /**
-      Clear super properties and generates a new random distinctId for this instance.
-      Useful for clearing data when a user logs out.
-     */
   reset() {
     this.oursprivacyImpl.reset(this.token);
   }
 
   /**
-   * Returns the current distinct id of the user.
-   * This is either the id automatically generated by the library or the id that has been passed by a call to identify().
+   * Returns the visitor id (stable device UUID, no prefix).
    *
-   * example of usage:
-   * <pre>
-   * <code>
-   * const distinctId = await oursprivacy.getDistinctId();
-   * </code>
-   * </pre>
-   *
-   * @return {Promise<string>} A Promise to the distinct id associated with OursPrivacy event and People Analytics
-   *
+   * @return {string|null} The visitor id
    */
-  getDistinctId() {
-    return this.oursprivacyImpl.getDistinctId(this.token);
+  getVisitorId() {
+    return this.oursprivacyImpl.getVisitorId(this.token);
   }
 
   /**
-   * Returns the current device id of the device.
-   * This id automatically generated by the library and regenerated when logout or reset is called.
+   * Update properties that will be included in defaultProperties.eventProperties for every event.
    *
-   * example of usage:
-   * <pre>
-   * <code>
-   * const deviceId = await oursprivacy.getDeviceId();
-   * </code>
-   * </pre>
-   *
-   * @return {Promise<string>} A Promise to the device id
-   *
+   * @param {object} properties Key/value pairs to merge into default event properties.
    */
-  getDeviceId() {
-    return this.oursprivacyImpl.getDeviceId(this.token);
+  updateDefaultEventProperties(properties) {
+    if (!ObjectHelper.isValidOrUndefined(properties)) {
+      ObjectHelper.raiseError(PARAMS.PROPERTIES);
+    }
+    this.oursprivacyImpl.updateDefaultEventProperties(this.token, properties || {});
   }
 
   /**
-   * Push all queued OursPrivacy events and People Analytics changes to OursPrivacy servers.
+   * Update user custom properties sent with every event in userProperties.custom_properties.
    *
-   * <p>Events and People messages are pushed gradually throughout
-   * the lifetime of your application. This means that to ensure that all messages
-   * are sent to OursPrivacy when your application is shut down, you will
-   * need to call flush() to let the OursPrivacy library know it should
-   * send all remaining messages to the server.
+   * @param {object} properties Key/value pairs to merge into default user custom properties.
+   */
+  updateDefaultUserCustomProperties(properties) {
+    if (!ObjectHelper.isValidOrUndefined(properties)) {
+      ObjectHelper.raiseError(PARAMS.PROPERTIES);
+    }
+    this.oursprivacyImpl.updateDefaultUserCustomProperties(this.token, properties || {});
+  }
+
+  /**
+   * Update user consent properties sent with every event in userProperties.consent.
+   *
+   * @param {object} properties Key/value pairs to merge into default user consent properties.
+   */
+  updateDefaultUserConsentProperties(properties) {
+    if (!ObjectHelper.isValidOrUndefined(properties)) {
+      ObjectHelper.raiseError(PARAMS.PROPERTIES);
+    }
+    this.oursprivacyImpl.updateDefaultUserConsentProperties(this.token, properties || {});
+  }
+
+  /**
+   * Push all queued OursPrivacy events to OursPrivacy servers.
    */
   flush() {
     this.oursprivacyImpl.flush(this.token);
-  }
-}
-
-class Helper {
-  /**
-      Get the library data from package.json file.
-     */
-  static getMetaData() {
-    let metadata = JSON.parse(JSON.stringify(packageJson.metadata));
-    metadata["$lib_version"] = packageJson.version;
-    return metadata;
-  }
-
-  /**
-      Get current device platform.
-     */
-  static getDevicePlatform() {
-    switch (Platform.OS) {
-      case "android":
-        return DevicePlatform.Android;
-      case "ios":
-        return DevicePlatform.iOS;
-      default:
-        return DevicePlatform.Unknown;
-    }
   }
 }
 
