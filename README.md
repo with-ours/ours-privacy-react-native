@@ -22,9 +22,7 @@ Privacy-first analytics for React Native. Wraps native iOS and Android SDKs with
   - [Default Properties](#default-properties)
   - [Configuration](#configuration)
   - [Identity](#identity)
-  - [Timing](#timing)
   - [Privacy Controls](#privacy-controls)
-  - [Deprecated Methods](#deprecated-methods)
 - [Payload Structure](#payload-structure)
 - [Migration from Mixpanel](#migration-from-mixpanel)
 - [FAQ](#faq)
@@ -459,74 +457,6 @@ console.log(visitorId); // e.g. "550e8400-e29b-41d4-a716-446655440000"
 
 ---
 
-#### `op.getDistinctId()`
-
-⚠️ **Deprecated** — Use `getVisitorId()` instead.
-
-Returns the current distinct ID. For anonymous users, this is the same as the visitor ID.
-
-**Returns:** `Promise<string>`
-
-```js
-const id = await op.getDistinctId();
-```
-
----
-
-#### `op.getDeviceId()`
-
-⚠️ **Deprecated** — Use `getVisitorId()` instead.
-
-Returns the device ID.
-
-**Returns:** `Promise<string>`
-
-```js
-const deviceId = await op.getDeviceId();
-```
-
----
-
-### Timing
-
-#### `op.timeEvent(eventName)`
-
-Begin timing an event. When you later call `track()` with the same event name, the event will include a `$duration` property (in seconds).
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `eventName` | `string` | Yes | Name of the event to time |
-
-**Returns:** `void`
-
-```js
-op.timeEvent('Video Watched');
-
-// ... later:
-op.track('Video Watched', { video_id: 'abc123' }); // includes $duration
-```
-
----
-
-#### `op.eventElapsedTime(eventName)`
-
-Get the elapsed time in seconds since `timeEvent()` was called for the given event, without sending the event.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `eventName` | `string` | Yes | Name of the previously timed event |
-
-**Returns:** `Promise<number>` — elapsed seconds
-
-```js
-op.timeEvent('Checkout');
-// ... later:
-const elapsed = await op.eventElapsedTime('Checkout');
-console.log(`Checkout has been open for ${elapsed}s`);
-```
-
----
-
 ### Privacy Controls
 
 #### `op.optOutTracking()`
@@ -566,115 +496,6 @@ const hasOptedOut = await op.hasOptedOutTracking();
 if (hasOptedOut) {
   console.log('User has opted out');
 }
-```
-
----
-
-### Deprecated Methods
-
-The following methods are kept for backwards compatibility but should not be used in new code.
-
-#### ⚠️ `op.registerSuperProperties(properties)`
-
-**Deprecated** — Use `updateDefaultEventProperties()` instead.
-
-Register properties that will be sent with every future `track()` call.
-
-```js
-// Deprecated
-op.registerSuperProperties({ plan: 'pro' });
-
-// Use instead
-op.updateDefaultEventProperties({ plan: 'pro' });
-```
-
----
-
-#### ⚠️ `op.registerSuperPropertiesOnce(properties)`
-
-**Deprecated** — Use `updateDefaultEventProperties()` instead.
-
-Register super properties only if those keys have not already been registered.
-
-```js
-// Deprecated
-op.registerSuperPropertiesOnce({ first_open: true });
-```
-
----
-
-#### ⚠️ `op.getSuperProperties()`
-
-**Deprecated** — Use `updateDefaultEventProperties()` instead.
-
-Returns the currently registered super properties.
-
-**Returns:** `Promise<object>`
-
-```js
-// Deprecated
-const props = await op.getSuperProperties();
-```
-
----
-
-#### ⚠️ `op.unregisterSuperProperty(propertyName)`
-
-**Deprecated** — Use `updateDefaultEventProperties()` instead.
-
-Remove a single super property so it is no longer sent with future events.
-
-```js
-// Deprecated
-op.unregisterSuperProperty('experiment_group');
-```
-
----
-
-#### ⚠️ `op.clearSuperProperties()`
-
-**Deprecated** — Use `updateDefaultEventProperties()` instead.
-
-Remove all registered super properties.
-
-```js
-// Deprecated
-op.clearSuperProperties();
-```
-
----
-
-#### ⚠️ `op.alias(alias, distinctId)`
-
-**Deprecated.** Creates an alias mapping one ID to another.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `alias` | `string` | The new alias identifier |
-| `distinctId` | `string` | The existing distinct ID to map to |
-
-**Returns:** `void`
-
-```js
-// Deprecated
-op.alias('user-123', op.getVisitorId());
-```
-
----
-
-#### ⚠️ `OursPrivacy.init(token, trackAutomaticEvents, optOutTrackingDefault?)` (static)
-
-**Deprecated** — Use `new OursPrivacy(...).init()` instead.
-
-The static `init` method was the original initialization pattern. It bypasses the JavaScript fallback path and only works with native modules.
-
-```js
-// Deprecated (static form)
-const op = await OursPrivacy.init('YOUR_API_TOKEN', false);
-
-// Use instead (instance form)
-const op = new OursPrivacy('YOUR_API_TOKEN', false);
-await op.init();
 ```
 
 ---
@@ -769,33 +590,26 @@ const op = new OursPrivacy('TOKEN', false);
 await op.init();
 ```
 
-### Super properties → Default properties
+### Default properties
 
-The `registerSuperProperties` family of methods is deprecated in favor of the new default properties API, which maps directly to the Ours Privacy event schema:
+Replace `registerSuperProperties` with the Ours Privacy default properties API:
 
 ```js
-// Before (Mixpanel-style super properties)
-op.registerSuperProperties({ plan: 'pro', environment: 'production' });
-
-// After (Ours Privacy default event properties)
+// Event properties sent with every track() call
 op.updateDefaultEventProperties({ plan: 'pro', environment: 'production' });
 
-// New: per-user custom properties sent on every event
+// Per-user custom properties sent on every event
 op.updateDefaultUserCustomProperties({ tier: 'enterprise' });
 
-// New: consent state sent on every event
+// Consent state sent on every event
 op.updateDefaultUserConsentProperties({ marketing: true, analytics: true });
 ```
 
-### Distinct ID
+### Visitor ID
 
-Mixpanel's distinct ID could include a device-prefix (e.g. `$device:uuid`). Ours Privacy uses a clean UUID with no prefix:
+Use `getVisitorId()` instead of `getDistinctId()` — it returns a clean UUID synchronously:
 
 ```js
-// Before (may return "$device:uuid" string)
-const id = await op.getDistinctId();
-
-// After (returns clean UUID)
 const id = op.getVisitorId();
 ```
 
@@ -828,10 +642,6 @@ await op.init(false, { serverURL: 'https://api-eu.oursprivacy.com' });
 // or
 op.setServerURL('https://api-eu.oursprivacy.com');
 ```
-
-**What is the difference between `getVisitorId()` and `getDistinctId()`?**
-
-`getVisitorId()` returns a clean UUID with no prefix and is synchronous. `getDistinctId()` is asynchronous and may return a prefixed string on older SDK versions. Use `getVisitorId()` for all new code.
 
 ---
 
