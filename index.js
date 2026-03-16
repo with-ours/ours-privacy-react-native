@@ -33,7 +33,13 @@ export class OursPrivacy {
     this.trackAutomaticEvents = trackAutomaticEvents;
 
     if (useNative && OursPrivacyReactNative) {
+      this._isNative = true;
       this.oursprivacyImpl = OursPrivacyReactNative;
+      // JS-side state for methods the native bridge doesn't export
+      this._visitorId = null;
+      this._isManuallySetId = false;
+      this._defaultUserCustomProperties = {};
+      this._defaultUserConsentProperties = {};
       return;
     } else if (useNative) {
       console.warn(
@@ -41,6 +47,7 @@ export class OursPrivacy {
       );
     }
 
+    this._isNative = false;
     this.oursprivacyImpl = new OursPrivacyMain(token, trackAutomaticEvents, storage);
   }
 
@@ -61,13 +68,49 @@ export class OursPrivacy {
     options = {}
   ) {
     const serverURL = (options && options.serverURL) || "https://cdn.oursprivacy.com";
-    await this.oursprivacyImpl.initialize(
-      this.token,
-      this.trackAutomaticEvents,
-      optOutTrackingDefault,
-      options,
-      serverURL
-    );
+    if (this._isNative) {
+      // Native bridge initialize() expects a flat super-properties map as the 4th
+      // argument. Passing our options object directly would send keys like
+      // default_event_properties as literal super-properties and silently ignore
+      // user_id. Pass an empty map and handle each option explicitly below.
+      await this.oursprivacyImpl.initialize(
+        this.token,
+        this.trackAutomaticEvents,
+        optOutTrackingDefault,
+        {},
+        serverURL
+      );
+      if (options) {
+        if (options.default_event_properties) {
+          await this.oursprivacyImpl.registerSuperProperties(
+            this.token,
+            options.default_event_properties
+          );
+        }
+        if (options.user_id) {
+          this._isManuallySetId = true;
+          this._visitorId = options.user_id;
+        }
+        if (options.default_user_custom_properties) {
+          Object.assign(this._defaultUserCustomProperties, options.default_user_custom_properties);
+        }
+        if (options.default_user_consent_properties) {
+          Object.assign(this._defaultUserConsentProperties, options.default_user_consent_properties);
+        }
+      }
+      // Cache the native device ID so getVisitorId() can return synchronously
+      if (!this._visitorId) {
+        this._visitorId = await this.oursprivacyImpl.getDeviceId(this.token);
+      }
+    } else {
+      await this.oursprivacyImpl.initialize(
+        this.token,
+        this.trackAutomaticEvents,
+        optOutTrackingDefault,
+        options,
+        serverURL
+      );
+    }
   }
 
   /**
@@ -202,20 +245,31 @@ export class OursPrivacy {
    * Useful for clearing data when a user logs out.
    */
   reset() {
+    if (this._isNative) {
+      this._visitorId = null;
+      this._isManuallySetId = false;
+      this._defaultUserCustomProperties = {};
+      this._defaultUserConsentProperties = {};
+    }
     this.oursprivacyImpl.reset(this.token);
   }
 
   /**
-   * Returns the visitor id (stable device UUID, no prefix).
+   * Returns the stable device UUID (visitor id) for this install. No prefix.
+   * On the native path this value is cached during init(); call init() before reading it.
    *
    * @return {string|null} The visitor id
    */
   getVisitorId() {
+    if (this._isNative) {
+      return this._visitorId;
+    }
     return this.oursprivacyImpl.getVisitorId(this.token);
   }
 
   /**
-   * Update properties that will be included in defaultProperties.eventProperties for every event.
+   * Update properties merged into eventProperties on every track() call.
+   * On native, delegates to registerSuperProperties() on the native bridge.
    *
    * @param {object} properties Key/value pairs to merge into default event properties.
    */
@@ -223,11 +277,16 @@ export class OursPrivacy {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.oursprivacyImpl.updateDefaultEventProperties(this.token, properties || {});
+    if (this._isNative) {
+      this.oursprivacyImpl.registerSuperProperties(this.token, properties || {});
+    } else {
+      this.oursprivacyImpl.updateDefaultEventProperties(this.token, properties || {});
+    }
   }
 
   /**
-   * Update user custom properties sent with every event in userProperties.custom_properties.
+   * Update properties sent with every event in userProperties.custom_properties.
+   * On native, stored JS-side only (native bridge has no userProperties concept).
    *
    * @param {object} properties Key/value pairs to merge into default user custom properties.
    */
@@ -235,11 +294,16 @@ export class OursPrivacy {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.oursprivacyImpl.updateDefaultUserCustomProperties(this.token, properties || {});
+    if (this._isNative) {
+      Object.assign(this._defaultUserCustomProperties, properties || {});
+    } else {
+      this.oursprivacyImpl.updateDefaultUserCustomProperties(this.token, properties || {});
+    }
   }
 
   /**
-   * Update user consent properties sent with every event in userProperties.consent.
+   * Update consent properties sent with every event in userProperties.consent.
+   * On native, stored JS-side only (native bridge has no userProperties concept).
    *
    * @param {object} properties Key/value pairs to merge into default user consent properties.
    */
@@ -247,7 +311,11 @@ export class OursPrivacy {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.oursprivacyImpl.updateDefaultUserConsentProperties(this.token, properties || {});
+    if (this._isNative) {
+      Object.assign(this._defaultUserConsentProperties, properties || {});
+    } else {
+      this.oursprivacyImpl.updateDefaultUserConsentProperties(this.token, properties || {});
+    }
   }
 
   /**

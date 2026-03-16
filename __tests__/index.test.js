@@ -13,15 +13,21 @@ test(`it calls OursPrivacyReactNative initialize`, async () => {
   );
 });
 
-test(`it calls OursPrivacyReactNative initialize with optOut and options`, async () => {
+test(`it calls OursPrivacyReactNative initialize with optOut, passing empty props map to bridge`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
   await oursprivacy.init(true, {default_event_properties: {prop: "value"}});
+  // Native bridge gets {} as properties (not the raw options object)
   expect(NativeModules.OursPrivacyReactNative.initialize).toBeCalledWith(
     "token",
     true,
     true,
-    {default_event_properties: {prop: "value"}},
+    {},
     "https://cdn.oursprivacy.com"
+  );
+  // default_event_properties are forwarded via registerSuperProperties
+  expect(NativeModules.OursPrivacyReactNative.registerSuperProperties).toBeCalledWith(
+    "token",
+    {prop: "value"}
   );
 });
 
@@ -116,29 +122,23 @@ test(`it calls OursPrivacyReactNative reset`, async () => {
   expect(NativeModules.OursPrivacyReactNative.reset).toBeCalledWith("token");
 });
 
-test(`it calls OursPrivacyReactNative updateDefaultEventProperties`, async () => {
+test(`updateDefaultEventProperties delegates to registerSuperProperties on native`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
   oursprivacy.updateDefaultEventProperties({tier: "pro"});
-  expect(NativeModules.OursPrivacyReactNative.updateDefaultEventProperties).toBeCalledWith(
+  expect(NativeModules.OursPrivacyReactNative.registerSuperProperties).toBeCalledWith(
     "token",
     {tier: "pro"}
   );
 });
 
-test(`it calls OursPrivacyReactNative updateDefaultUserCustomProperties`, async () => {
+test(`updateDefaultUserCustomProperties stores JS-side on native (no bridge equivalent)`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
   oursprivacy.updateDefaultUserCustomProperties({plan: "enterprise"});
-  expect(NativeModules.OursPrivacyReactNative.updateDefaultUserCustomProperties).toBeCalledWith(
-    "token",
-    {plan: "enterprise"}
-  );
+  expect(oursprivacy._defaultUserCustomProperties).toEqual({plan: "enterprise"});
 });
 
-test(`it calls OursPrivacyReactNative updateDefaultUserConsentProperties`, async () => {
+test(`updateDefaultUserConsentProperties stores JS-side on native (no bridge equivalent)`, async () => {
   const oursprivacy = new OursPrivacy("token", true);
   oursprivacy.updateDefaultUserConsentProperties({marketing: true});
-  expect(NativeModules.OursPrivacyReactNative.updateDefaultUserConsentProperties).toBeCalledWith(
-    "token",
-    {marketing: true}
-  );
+  expect(oursprivacy._defaultUserConsentProperties).toEqual({marketing: true});
 });

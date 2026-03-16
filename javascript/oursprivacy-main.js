@@ -51,6 +51,12 @@ export default class OursPrivacyMain {
       }
       if (options.user_id) {
         this.config.setIsManuallySetId(token, true);
+        // Override the stable device UUID with the caller-supplied ID so that
+        // visitor_id on all subsequent events reflects the provided value.
+        this.oursprivacyPersistent.updateDeviceId(token, options.user_id);
+        this.oursprivacyPersistent.updateDistinctId(token, options.user_id);
+        await this.oursprivacyPersistent.persistDeviceId(token);
+        await this.oursprivacyPersistent.persistDistinctId(token);
       }
     }
   }
@@ -97,6 +103,9 @@ export default class OursPrivacyMain {
       properties
     );
 
+    // visitor_id: stable UUID for this device/install (persisted in AsyncStorage).
+    // distinct_id: a new UUID generated per-event — it is a unique ID for this
+    //   specific event occurrence, NOT a user ID. Do not confuse with visitor_id.
     const visitorId = this.oursprivacyPersistent.getDeviceId(token);
     const distinctId = uuid.v4();
 

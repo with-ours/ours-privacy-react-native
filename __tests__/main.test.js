@@ -72,7 +72,6 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-config", () => ({
       getFlushInterval: jest.fn().mockReturnValue(1000),
       getFlushBatchSize: jest.fn().mockReturnValue(50),
       getServerURL: jest.fn(),
-      getUseIpAddressForGeolocation: jest.fn(),
       setLoggingEnabled: jest.fn(),
       getLoggingEnabled: jest.fn().mockReturnValue(true),
       setServerURL: jest.fn(),
@@ -131,6 +130,14 @@ describe("OursPrivacyMain", () => {
     );
 
     expect(oursprivacyMain.core.initialize).toHaveBeenCalledWith(token);
+  });
+
+  it("should override persistent visitor_id when user_id is provided in options", async () => {
+    await oursprivacyMain.initialize(token, false, false, { user_id: "explicit-user-id" }, "https://cdn.oursprivacy.com");
+    expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).toHaveBeenCalledWith(token, "explicit-user-id");
+    expect(oursprivacyMain.oursprivacyPersistent.updateDistinctId).toHaveBeenCalledWith(token, "explicit-user-id");
+    expect(oursprivacyMain.oursprivacyPersistent.persistDeviceId).toHaveBeenCalledWith(token);
+    expect(oursprivacyMain.oursprivacyPersistent.persistDistinctId).toHaveBeenCalledWith(token);
   });
 
   it("should not track if initialize with optOutTrackingDefault being true", async () => {

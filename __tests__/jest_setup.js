@@ -32,10 +32,9 @@ jest.mock("react-native", () => ({
       identify: jest.fn().mockResolvedValue(undefined),
       track: jest.fn(),
       reset: jest.fn(),
-      getVisitorId: jest.fn().mockReturnValue("mock-visitor-id"),
-      updateDefaultEventProperties: jest.fn(),
-      updateDefaultUserCustomProperties: jest.fn(),
-      updateDefaultUserConsentProperties: jest.fn(),
+      getDeviceId: jest.fn().mockResolvedValue("mock-visitor-id"),
+      registerSuperProperties: jest.fn().mockResolvedValue(undefined),
+      flush: jest.fn(),
     },
   },
   AppState: {
