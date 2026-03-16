@@ -132,10 +132,10 @@ describe("OursPrivacyMain", () => {
     expect(oursprivacyMain.core.initialize).toHaveBeenCalledWith(token);
   });
 
-  it("should override persistent visitor_id when user_id is provided in options", async () => {
-    await oursprivacyMain.initialize(token, false, false, { user_id: "explicit-user-id" }, "https://cdn.oursprivacy.com");
-    expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).toHaveBeenCalledWith(token, "explicit-user-id");
-    expect(oursprivacyMain.oursprivacyPersistent.updateDistinctId).toHaveBeenCalledWith(token, "explicit-user-id");
+  it("should override persistent visitor_id when visitor_id is provided in options", async () => {
+    await oursprivacyMain.initialize(token, false, false, { visitor_id: "preset-visitor-123" }, "https://cdn.oursprivacy.com");
+    expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).toHaveBeenCalledWith(token, "preset-visitor-123");
+    expect(oursprivacyMain.oursprivacyPersistent.updateDistinctId).toHaveBeenCalledWith(token, "preset-visitor-123");
     expect(oursprivacyMain.oursprivacyPersistent.persistDeviceId).toHaveBeenCalledWith(token);
     expect(oursprivacyMain.oursprivacyPersistent.persistDistinctId).toHaveBeenCalledWith(token);
   });

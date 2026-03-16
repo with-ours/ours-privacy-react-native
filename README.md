@@ -121,17 +121,11 @@ export default function App() {
 
 ## Expo / React Native Web
 
-The SDK falls back to a pure JavaScript implementation when native modules aren't available.
+The SDK uses a JavaScript implementation backed by `@react-native-async-storage/async-storage`. No native module setup is required.
 
 ```js
-const op = new OursPrivacy('YOUR_API_TOKEN', false, false);
+const op = new OursPrivacy('YOUR_API_TOKEN', false);
 await op.init();
-```
-
-This requires `@react-native-async-storage/async-storage`:
-
-```bash
-npm install @react-native-async-storage/async-storage
 ```
 
 You can also provide a custom storage implementation:
@@ -149,15 +143,14 @@ The storage adapter must implement `getItem`, `setItem`, and `removeItem` (same 
 
 ### Initialization
 
-#### `new OursPrivacy(token, useNative?, storage?)`
+#### `new OursPrivacy(token, storage?)`
 
 Creates an OursPrivacy instance. You must call `.init()` before tracking.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `token` | `string` | Yes | Your project token |
-| `useNative` | `boolean` | No | Use native iOS/Android modules (default: `true`). Set to `false` for Expo/web |
-| `storage` | `OursPrivacyAsyncStorage` | No | Custom storage adapter (only used when `useNative` is `false`) |
+| `storage` | `OursPrivacyAsyncStorage` | No | Custom AsyncStorage adapter |
 
 **Returns:** `OursPrivacy` instance (call `.init()` to complete setup)
 
@@ -181,7 +174,7 @@ Initializes the SDK. Must be called before tracking.
 | Field | Type | Description |
 |-------|------|-------------|
 | `serverURL` | `string` | Override the default API endpoint |
-| `user_id` | `string` | Pre-set a visitor ID; sets `is_manually_set_id: true` on all events |
+| `visitor_id` | `string` | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events |
 | `default_event_properties` | `object` | Properties merged into `eventProperties` on every `track()` call |
 | `default_user_custom_properties` | `object` | Properties merged into `userProperties.custom_properties` on every event |
 | `default_user_consent_properties` | `object` | Properties merged into `userProperties.consent` on every event |
@@ -195,7 +188,7 @@ await op.init();
 // With options
 await op.init(false, {
   serverURL: 'https://api-eu.oursprivacy.com',
-  user_id: 'pre-known-id',
+  visitor_id: 'pre-known-id',
   default_event_properties: { platform: 'mobile', app_version: '2.0.0' },
   default_user_custom_properties: { tier: 'pro' },
   default_user_consent_properties: { marketing: true },
@@ -223,13 +216,13 @@ op.track('Page View', { page: '/home', referrer: 'google' });
 
 ---
 
-#### `op.identify(distinctId, userProperties?)`
+#### `op.identify(id, userProperties?)`
 
-Associate all future `track()` calls with the given user ID. Call this after a user logs in.
+Associate all future `track()` calls with the given user identity. Call this after a user logs in.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `distinctId` | `string` | Yes | A string uniquely identifying this user |
+| `id` | `string` | Yes | The user's known identifier (e.g. email or external ID) |
 | `userProperties` | `OursPrivacyUserProperties` | No | User properties to attach |
 
 **`OursPrivacyUserProperties` shape:**
@@ -430,7 +423,7 @@ op.setFlushBatchSize(25);
 
 #### `op.getVisitorId()`
 
-Returns the stable visitor UUID for this device. This is the preferred method for retrieving a user identifier — it returns a clean UUID with no prefix.
+Returns the stable visitor UUID for this install. Synchronous. No prefix.
 
 **Returns:** `string | null`
 
@@ -528,10 +521,10 @@ The SDK sends a JSON body to `POST /api/v1/track`. Understanding this structure 
 | Field | Description |
 |-------|-------------|
 | `token` | Your project token |
-| `is_manually_set_id` | `true` when `user_id` was passed in `init()` options |
+| `is_manually_set_id` | `true` when `visitor_id` was passed in `init()` options |
 | `data` | Array of event objects in this batch |
 | `event` | Event name |
-| `visitor_id` | Stable device UUID (no prefix) |
+| `visitor_id` | Stable visitor UUID for this install (no prefix) |
 | `distinct_id` | Per-event UUID, same as `visitor_id` for anonymous users |
 | `eventProperties` | Properties from `track()` merged with default event properties |
 | `userProperties.custom_properties` | From `identify()` and `updateDefaultUserCustomProperties()` |

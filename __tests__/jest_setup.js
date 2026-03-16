@@ -19,24 +19,7 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 
 jest.mock("react-native", () => ({
   Platform: { OS: "ios", select: jest.fn((obj) => obj.ios) },
-  NativeModules: {
-    OursPrivacyReactNative: {
-      initialize: jest.fn(),
-      setServerURL: jest.fn(),
-      setLoggingEnabled: jest.fn(),
-      setFlushOnBackground: jest.fn(),
-      setFlushBatchSize: jest.fn(),
-      hasOptedOutTracking: jest.fn(),
-      optInTracking: jest.fn(),
-      optOutTracking: jest.fn(),
-      identify: jest.fn().mockResolvedValue(undefined),
-      track: jest.fn(),
-      reset: jest.fn(),
-      getDeviceId: jest.fn().mockResolvedValue("mock-visitor-id"),
-      registerSuperProperties: jest.fn().mockResolvedValue(undefined),
-      flush: jest.fn(),
-    },
-  },
+  NativeModules: {},
   AppState: {
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),

@@ -49,12 +49,12 @@ export default class OursPrivacyMain {
       if (options.default_user_consent_properties) {
         this.updateDefaultUserConsentProperties(token, options.default_user_consent_properties);
       }
-      if (options.user_id) {
+      if (options.visitor_id) {
         this.config.setIsManuallySetId(token, true);
-        // Override the stable device UUID with the caller-supplied ID so that
+        // Override the stable visitor UUID with the caller-supplied ID so that
         // visitor_id on all subsequent events reflects the provided value.
-        this.oursprivacyPersistent.updateDeviceId(token, options.user_id);
-        this.oursprivacyPersistent.updateDistinctId(token, options.user_id);
+        this.oursprivacyPersistent.updateDeviceId(token, options.visitor_id);
+        this.oursprivacyPersistent.updateDistinctId(token, options.visitor_id);
         await this.oursprivacyPersistent.persistDeviceId(token);
         await this.oursprivacyPersistent.persistDistinctId(token);
       }

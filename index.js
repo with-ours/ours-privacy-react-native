@@ -1,7 +1,6 @@
 "use strict";
 
-import {Platform, NativeModules} from "react-native";
-const {OursPrivacyReactNative} = NativeModules;
+import {Platform} from "react-native";
 import OursPrivacyMain from "./javascript/oursprivacy-main"
 
 const ERROR_MESSAGE = {
@@ -11,7 +10,7 @@ const ERROR_MESSAGE = {
 
 const PARAMS = {
   TOKEN: "token",
-  DISTINCT_ID: "distinctId",
+  ID: "id",
   EVENT_NAME: "eventName",
   PROPERTIES: "properties",
 };
@@ -20,6 +19,10 @@ const DEFAULT_OPT_OUT = false;
 
 /**
  * The primary class for integrating OursPrivacy with your app.
+ *
+ * Always uses the JavaScript implementation regardless of the useNative argument.
+ * The native iOS/Android modules (forked from Mixpanel) generate a payload format
+ * that does not match the Ours Privacy ingest schema, so they are not used.
  */
 export class OursPrivacy {
   constructor(token, trackAutomaticEvents, useNative = true, storage) {
@@ -31,122 +34,63 @@ export class OursPrivacy {
     }
     this.token = token;
     this.trackAutomaticEvents = trackAutomaticEvents;
-
-    if (useNative && OursPrivacyReactNative) {
-      this._isNative = true;
-      this.oursprivacyImpl = OursPrivacyReactNative;
-      // JS-side state for methods the native bridge doesn't export
-      this._visitorId = null;
-      this._isManuallySetId = false;
-      this._defaultUserCustomProperties = {};
-      this._defaultUserConsentProperties = {};
-      return;
-    } else if (useNative) {
-      console.warn(
-        "OursPrivacyReactNative is not available; using JavaScript mode. If you prefer not to use the JavaScript mode, please follow the guide in the GitHub repository: https://github.com/oursprivacy/oursprivacy-react-native."
-      );
-    }
-
-    this._isNative = false;
     this.oursprivacyImpl = new OursPrivacyMain(token, trackAutomaticEvents, storage);
   }
 
   /**
-   * Initializes OursPrivacy
+   * Initializes OursPrivacy.
    *
-   * @param {boolean} optOutTrackingDefault Optional Whether or not OursPrivacy can start tracking by default. See optOutTracking()
-   * @param {object} options Optional Options object. Supports:
-   *   - serverURL: string
-   *   - user_id: string
-   *   - default_event_properties: object
-   *   - default_user_custom_properties: object
-   *   - default_user_consent_properties: object
-   *
+   * @param {boolean} optOutTrackingDefault Whether to start tracking opted-out. Defaults to false.
+   * @param {object} options Optional configuration:
+   *   - serverURL: string — override the ingest endpoint
+   *   - visitor_id: string — pre-set the visitor ID (sets is_manually_set_id: true)
+   *   - default_event_properties: object — merged into every track() call
+   *   - default_user_custom_properties: object — merged into userProperties.custom_properties
+   *   - default_user_consent_properties: object — merged into userProperties.consent
    */
   async init(
     optOutTrackingDefault = DEFAULT_OPT_OUT,
     options = {}
   ) {
     const serverURL = (options && options.serverURL) || "https://cdn.oursprivacy.com";
-    if (this._isNative) {
-      // Native bridge initialize() expects a flat super-properties map as the 4th
-      // argument. Passing our options object directly would send keys like
-      // default_event_properties as literal super-properties and silently ignore
-      // user_id. Pass an empty map and handle each option explicitly below.
-      await this.oursprivacyImpl.initialize(
-        this.token,
-        this.trackAutomaticEvents,
-        optOutTrackingDefault,
-        {},
-        serverURL
-      );
-      if (options) {
-        if (options.default_event_properties) {
-          await this.oursprivacyImpl.registerSuperProperties(
-            this.token,
-            options.default_event_properties
-          );
-        }
-        if (options.user_id) {
-          this._isManuallySetId = true;
-          this._visitorId = options.user_id;
-        }
-        if (options.default_user_custom_properties) {
-          Object.assign(this._defaultUserCustomProperties, options.default_user_custom_properties);
-        }
-        if (options.default_user_consent_properties) {
-          Object.assign(this._defaultUserConsentProperties, options.default_user_consent_properties);
-        }
-      }
-      // Cache the native device ID so getVisitorId() can return synchronously
-      if (!this._visitorId) {
-        this._visitorId = await this.oursprivacyImpl.getDeviceId(this.token);
-      }
-    } else {
-      await this.oursprivacyImpl.initialize(
-        this.token,
-        this.trackAutomaticEvents,
-        optOutTrackingDefault,
-        options,
-        serverURL
-      );
-    }
+    await this.oursprivacyImpl.initialize(
+      this.token,
+      this.trackAutomaticEvents,
+      optOutTrackingDefault,
+      options,
+      serverURL
+    );
   }
 
   /**
    * Set the base URL used for OursPrivacy API requests.
-   * Useful if you need to proxy OursPrivacy requests. Defaults to https://cdn.oursprivacy.com.
-   * To route data to OursPrivacy's EU servers, set to https://api-eu.oursprivacy.com
+   * Defaults to https://cdn.oursprivacy.com.
+   * To route data to OursPrivacy's EU servers, set to https://api-eu.oursprivacy.com.
    *
    * @param {string} serverURL the base URL used for OursPrivacy API requests
-   *
    */
   setServerURL(serverURL) {
     this.oursprivacyImpl.setServerURL(this.token, serverURL);
   }
 
   /**
-   * This allows enabling or disabling of all OursPrivacy logs at run time.
-   * All logging is disabled by default. Usually, this is only required if
-   * you are running into issues with the SDK that you want to debug
+   * Enable or disable debug logging at run time. Disabled by default.
    *
    * @param {boolean} loggingEnabled whether to enable logging
-   *
    */
   setLoggingEnabled(loggingEnabled) {
     this.oursprivacyImpl.setLoggingEnabled(this.token, loggingEnabled);
   }
 
   /**
-   * This allows enabling or disabling whether or not OursPrivacy flushes events
-   * when the app enters the background on iOS. This is set to true by default.
+   * Control whether OursPrivacy flushes queued events when the app enters the
+   * background on iOS. Enabled by default.
    *
-   * @param {boolean} flushOnBackground whether to enable logging
-   *
+   * @param {boolean} flushOnBackground
    */
   setFlushOnBackground(flushOnBackground) {
     if (Platform.OS === "ios") {
-      OursPrivacyReactNative.setFlushOnBackground(this.token, flushOnBackground);
+      this.oursprivacyImpl.setFlushOnBackground(this.token, flushOnBackground);
     } else {
       console.warn(
         "OursPrivacy setFlushOnBackground was called and ignored because this method only works on iOS."
@@ -154,66 +98,57 @@ export class OursPrivacy {
     }
   }
 
-
   /**
-   * Set the number of events sent in a single network request to the OursPrivacy server.
-   * By configuring this value, you can optimize network usage and manage the frequency of communication between the client and the server. The maximum size is 50; any value over 50 will default to 50.
+   * Set the maximum number of events sent in a single network request.
+   * Values above 50 are clamped to 50.
    *
-   * @param {integer} flushBatchSize whether to automatically send the client IP Address.
-   * Defaults to true.
-   *
+   * @param {integer} flushBatchSize
    */
   setFlushBatchSize(flushBatchSize) {
     this.oursprivacyImpl.setFlushBatchSize(this.token, flushBatchSize);
   }
 
   /**
-   * Will return true if the user has opted out from tracking.
+   * Returns true if the visitor has opted out from tracking.
    *
-   * @return {Promise<boolean>} true if user has opted out from tracking. Defaults to false.
+   * @return {Promise<boolean>}
    */
   hasOptedOutTracking() {
     return this.oursprivacyImpl.hasOptedOutTracking(this.token);
   }
 
   /**
-   * Use this method to opt-in an already opted-out user from tracking. People updates and track
-   * calls will be sent to OursPrivacy after using this method.
-   * This method will internally track an opt-in event to your project.
-   *
+   * Resume tracking after optOutTracking(). Also sends a $opt_in event.
    */
   optInTracking() {
     this.oursprivacyImpl.optInTracking(this.token);
   }
 
   /**
-   * Use this method to opt-out a user from tracking. Events and people updates that haven't been
-   * flushed yet will be deleted. Use flush() before calling this method if you want
-   * to send all the queues to OursPrivacy before.
-   *
-   * This method will also remove any user-related information from the device.
+   * Stop all tracking immediately. Queued events that have not been flushed
+   * are discarded. Call flush() first to preserve them.
    */
   optOutTracking() {
     this.oursprivacyImpl.optOutTracking(this.token);
   }
 
   /**
-   * Associate all future calls to track() with the user identified by
-   * the given distinct id.
+   * Link this anonymous visitor to a known user identity.
+   * Call this after login. Sends a $identify event with the provided ID and
+   * user properties.
    *
-   * @param {string} distinctId a string uniquely identifying this user.
-   * @param {object} userProperties Optional user properties to set on identify.
-   * @returns {Promise} A promise that resolves when the identify is successful.
-   *
+   * @param {string} id The user's known identifier (e.g. email or external ID).
+   * @param {object} userProperties Optional properties to attach to this identity.
+   * @returns {Promise}
    */
-  identify(distinctId, userProperties) {
+  identify(id, userProperties) {
     return new Promise((resolve, reject) => {
-      if (!StringHelper.isValid(distinctId)) {
-        StringHelper.raiseError(PARAMS.DISTINCT_ID);
-        reject(new Error("Invalid distinctId"));
+      if (!StringHelper.isValid(id)) {
+        StringHelper.raiseError(PARAMS.ID);
+        reject(new Error("Invalid id"));
       }
       this.oursprivacyImpl
-        .identify(this.token, distinctId, userProperties)
+        .identify(this.token, id, userProperties)
         .then(() => {
           resolve();
         })
@@ -226,9 +161,8 @@ export class OursPrivacy {
   /**
    * Track an event.
    *
-   * @param {string} eventName The name of the event to send
-   * @param {object} properties A Map containing the key value pairs of the properties to include in this event.
-   *                   Pass null if no extra properties exist.
+   * @param {string} eventName The name of the event.
+   * @param {object} properties Optional key/value pairs to include with this event.
    */
   track(eventName, properties) {
     if (!StringHelper.isValid(eventName)) {
@@ -241,85 +175,61 @@ export class OursPrivacy {
   }
 
   /**
-   * Generates a new random visitor id for this instance.
-   * Useful for clearing data when a user logs out.
+   * Clear stored identity and all default properties. Generates a new visitor ID.
+   * Call this when a visitor logs out.
    */
   reset() {
-    if (this._isNative) {
-      this._visitorId = null;
-      this._isManuallySetId = false;
-      this._defaultUserCustomProperties = {};
-      this._defaultUserConsentProperties = {};
-    }
     this.oursprivacyImpl.reset(this.token);
   }
 
   /**
-   * Returns the stable device UUID (visitor id) for this install. No prefix.
-   * On the native path this value is cached during init(); call init() before reading it.
+   * Returns the stable visitor UUID for this install. Synchronous.
+   * This is the value sent as visitor_id on every event.
    *
-   * @return {string|null} The visitor id
+   * @return {string|null}
    */
   getVisitorId() {
-    if (this._isNative) {
-      return this._visitorId;
-    }
     return this.oursprivacyImpl.getVisitorId(this.token);
   }
 
   /**
-   * Update properties merged into eventProperties on every track() call.
-   * On native, delegates to registerSuperProperties() on the native bridge.
+   * Merge properties into eventProperties on every subsequent track() call.
    *
-   * @param {object} properties Key/value pairs to merge into default event properties.
+   * @param {object} properties Key/value pairs to merge.
    */
   updateDefaultEventProperties(properties) {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    if (this._isNative) {
-      this.oursprivacyImpl.registerSuperProperties(this.token, properties || {});
-    } else {
-      this.oursprivacyImpl.updateDefaultEventProperties(this.token, properties || {});
-    }
+    this.oursprivacyImpl.updateDefaultEventProperties(this.token, properties || {});
   }
 
   /**
-   * Update properties sent with every event in userProperties.custom_properties.
-   * On native, stored JS-side only (native bridge has no userProperties concept).
+   * Merge properties into userProperties.custom_properties on every event.
    *
-   * @param {object} properties Key/value pairs to merge into default user custom properties.
+   * @param {object} properties Key/value pairs to merge.
    */
   updateDefaultUserCustomProperties(properties) {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    if (this._isNative) {
-      Object.assign(this._defaultUserCustomProperties, properties || {});
-    } else {
-      this.oursprivacyImpl.updateDefaultUserCustomProperties(this.token, properties || {});
-    }
+    this.oursprivacyImpl.updateDefaultUserCustomProperties(this.token, properties || {});
   }
 
   /**
-   * Update consent properties sent with every event in userProperties.consent.
-   * On native, stored JS-side only (native bridge has no userProperties concept).
+   * Merge consent flags into userProperties.consent on every event.
    *
-   * @param {object} properties Key/value pairs to merge into default user consent properties.
+   * @param {object} properties Key/value pairs to merge.
    */
   updateDefaultUserConsentProperties(properties) {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    if (this._isNative) {
-      Object.assign(this._defaultUserConsentProperties, properties || {});
-    } else {
-      this.oursprivacyImpl.updateDefaultUserConsentProperties(this.token, properties || {});
-    }
+    this.oursprivacyImpl.updateDefaultUserConsentProperties(this.token, properties || {});
   }
 
   /**
-   * Push all queued OursPrivacy events to OursPrivacy servers.
+   * Flush queued events to the Ours Privacy ingest endpoint immediately.
    */
   flush() {
     this.oursprivacyImpl.flush(this.token);
@@ -327,46 +237,28 @@ export class OursPrivacy {
 }
 
 class StringHelper {
-  /**
-      Check whether the parameter is not a blank string.
-     */
   static isValid(str) {
     return typeof str === "string" && !/^\s*$/.test(str);
   }
 
-  /**
-      Check whether the parameter is undefined or not a blank string.
-     */
   static isValidOrUndefined(str) {
     return str === undefined || StringHelper.isValid(str);
   }
 
-  /**
-      Raise a string validation error.
-     */
   static raiseError(paramName) {
     throw new Error(`${paramName}${ERROR_MESSAGE.INVALID_STRING}`);
   }
 }
 
 class ObjectHelper {
-  /**
-      Check whether the parameter is an object.
-     */
   static isValid(obj) {
     return typeof obj === "object";
   }
 
-  /**
-      Check whether the parameter is undefined or an object.
-     */
   static isValidOrUndefined(obj) {
     return obj === undefined || ObjectHelper.isValid(obj);
   }
 
-  /**
-      Raise an object validation error.
-     */
   static raiseError(paramName) {
     throw new Error(`${paramName}${ERROR_MESSAGE.INVALID_OBJECT}`);
   }

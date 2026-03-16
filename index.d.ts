@@ -9,7 +9,7 @@ export type OursPrivacyAsyncStorage = {
 
 export type OursPrivacyInitOptions = {
   serverURL?: string;
-  user_id?: string;
+  visitor_id?: string;
   default_event_properties?: Record<string, any>;
   default_user_custom_properties?: Record<string, any>;
   default_user_consent_properties?: Record<string, any>;
@@ -45,7 +45,7 @@ export class OursPrivacy {
   hasOptedOutTracking(): Promise<boolean>;
   optInTracking(): void;
   optOutTracking(): void;
-  identify(distinctId: string, userProperties?: OursPrivacyUserProperties): Promise<void>;
+  identify(id: string, userProperties?: OursPrivacyUserProperties): Promise<void>;
   track(eventName: string, properties?: OursPrivacyProperties): void;
   reset(): void;
   getVisitorId(): string | null;
