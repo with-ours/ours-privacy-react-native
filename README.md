@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@oursprivacy/react-native.svg)](https://www.npmjs.com/package/@oursprivacy/react-native)
 [![GitHub](https://img.shields.io/badge/GitHub-repo-blue)](https://github.com/with-ours/ours-privacy-react-native)
 
-Privacy-first analytics for React Native. Wraps native iOS and Android SDKs with a pure JavaScript fallback for Expo and web.
+Privacy-first analytics for React Native.
 
 - [npm](https://www.npmjs.com/package/@oursprivacy/react-native)
 - [GitHub](https://github.com/with-ours/ours-privacy-react-native)
@@ -15,7 +15,6 @@ Privacy-first analytics for React Native. Wraps native iOS and Android SDKs with
 
 - [Quick Start](#quick-start)
 - [Complete Example](#complete-example)
-- [Expo / React Native Web](#expo--react-native-web)
 - [API Reference](#api-reference)
   - [Initialization](#initialization)
   - [Core Tracking](#core-tracking)
@@ -36,12 +35,6 @@ Privacy-first analytics for React Native. Wraps native iOS and Android SDKs with
 
 ```bash
 npm install @oursprivacy/react-native
-```
-
-For iOS, run `pod install` in your `ios/` directory:
-
-```bash
-cd ios && pod install
 ```
 
 ### 2. Initialize
@@ -119,43 +112,25 @@ export default function App() {
 
 ---
 
-## Expo / React Native Web
-
-The SDK uses a JavaScript implementation backed by `@react-native-async-storage/async-storage`. No native module setup is required.
-
-```js
-const op = new OursPrivacy('YOUR_API_TOKEN', false);
-await op.init();
-```
-
-You can also provide a custom storage implementation:
-
-```js
-const op = new OursPrivacy('YOUR_API_TOKEN', false, false, MyCustomStorage);
-await op.init();
-```
-
-The storage adapter must implement `getItem`, `setItem`, and `removeItem` (same interface as AsyncStorage).
-
----
-
 ## API Reference
 
 ### Initialization
 
-#### `new OursPrivacy(token, storage?)`
+#### `new OursPrivacy(token, trackAutomaticEvents, useNative?, storage?)`
 
 Creates an OursPrivacy instance. You must call `.init()` before tracking.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `token` | `string` | Yes | Your project token |
+| `trackAutomaticEvents` | `boolean` | Yes | Whether to track automatic events |
+| `useNative` | `boolean` | No | Ignored — SDK always uses the JavaScript implementation |
 | `storage` | `OursPrivacyAsyncStorage` | No | Custom AsyncStorage adapter |
 
 **Returns:** `OursPrivacy` instance (call `.init()` to complete setup)
 
 ```js
-const op = new OursPrivacy('YOUR_API_TOKEN');
+const op = new OursPrivacy('YOUR_API_TOKEN', false);
 ```
 
 ---
@@ -173,7 +148,6 @@ Initializes the SDK. Must be called before tracking.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `serverURL` | `string` | Override the default API endpoint |
 | `visitor_id` | `string` | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events |
 | `default_event_properties` | `object` | Properties merged into `eventProperties` on every `track()` call |
 | `default_user_custom_properties` | `object` | Properties merged into `userProperties.custom_properties` on every event |
@@ -187,7 +161,6 @@ await op.init();
 
 // With options
 await op.init(false, {
-  serverURL: 'https://api-eu.oursprivacy.com',
   visitor_id: 'pre-known-id',
   default_event_properties: { platform: 'mobile', app_version: '2.0.0' },
   default_user_custom_properties: { tier: 'pro' },
@@ -356,18 +329,13 @@ op.updateDefaultUserConsentProperties({ marketing: true });
 
 #### `op.setServerURL(serverURL)`
 
-Override the API endpoint after initialization. Use this to route to Ours Privacy's EU servers or a proxy.
+Override the API endpoint after initialization.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `serverURL` | `string` | Yes | Base URL for API requests |
 
 **Returns:** `void`
-
-```js
-// EU data residency
-op.setServerURL('https://api-eu.oursprivacy.com');
-```
 
 ---
 
@@ -608,17 +576,6 @@ Events are batched and sent every 60 seconds or when the app backgrounds. Call `
 - iOS 10+
 - Android API 21+
 - Expo (JavaScript mode)
-
-**How do I route data to EU servers?**
-
-Pass `serverURL` in the `init` options or call `setServerURL()` after initialization:
-
-```js
-await op.init(false, { serverURL: 'https://api-eu.oursprivacy.com' });
-
-// or
-op.setServerURL('https://api-eu.oursprivacy.com');
-```
 
 ---
 
