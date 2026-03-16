@@ -1,7 +1,5 @@
 export const OursPrivacyType = {
-  EVENTS: "/track/",
-  USER: "/engage/",
-  GROUPS: "/groups/",
+  EVENTS: "/ingest",
 };
 
 export const getQueueKey = (token, type) => `OURSPRIVACY_${token}_${type}_QUEUE`;
@@ -17,6 +15,6 @@ export const getTimeEventsKey = (token) => `OURSPRIVACY_${token}_TIME_EVENTS`;
 export const getAppHasOpenedBeforeKey = (token) =>
   `OURSPRIVACY_${token}_APP_HAS_OPENED_BEFORE`;
 
-export const defaultServerURL = `https://api.oursprivacy.com`;
+export const defaultServerURL = `https://cdn.oursprivacy.com`;
 export const defaultBatchSize = 50;
 export const defaultFlushInterval = 10 * 1000; // 10s

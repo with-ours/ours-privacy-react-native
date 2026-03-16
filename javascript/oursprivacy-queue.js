@@ -55,10 +55,10 @@ export const OursPrivacyQueueManager = (() => {
   };
 
   const clearQueue = async (token, type) => {
-    if (!_queues[token] || !_queues[token][type]) {
-      return;
-    }
-    _queues[token][type] = [];
+    _queues[token] = {
+      ..._queues[token],
+      [type]: [],
+    };
     await updateQueueInStorage(token, type);
   };
 

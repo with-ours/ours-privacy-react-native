@@ -78,8 +78,7 @@ export class OursPrivacyPersistent {
         this._identity[token].distinctId = distinctId;
       });
     if (!this._identity[token].distinctId) {
-      this._identity[token].distinctId =
-        "$device:" + this._identity[token].deviceId;
+      this._identity[token].distinctId = this._identity[token].deviceId;
       await this.storageAdapter.setItem(
         getDistinctIdKey(token),
         this._identity[token].distinctId

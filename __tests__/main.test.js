@@ -9,6 +9,16 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-core", () => ({
   })),
 }));
 
+jest.mock("oursprivacy-react-native/javascript/oursprivacy-queue", () => ({
+  OursPrivacyQueueManager: {
+    initialize: jest.fn(),
+    enqueue: jest.fn(),
+    getQueue: jest.fn().mockReturnValue([]),
+    spliceQueue: jest.fn(),
+    clearQueue: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 jest.mock("oursprivacy-react-native/javascript/oursprivacy-network", () => ({
   OursPrivacyNetwork: {
     sendRequest: jest.fn(),
@@ -72,21 +82,13 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-config", () => ({
       getFlushInterval: jest.fn().mockReturnValue(1000),
       getFlushBatchSize: jest.fn().mockReturnValue(50),
       getServerURL: jest.fn(),
-      getUseIpAddressForGeolocation: jest.fn(),
       setLoggingEnabled: jest.fn(),
       getLoggingEnabled: jest.fn().mockReturnValue(true),
       setServerURL: jest.fn(),
+      setIsManuallySetId: jest.fn(),
     }),
   },
 }));
-
-// jest.mock("oursprivacy-react-native/javascript/oursprivacy-logger", () => {
-//   return {
-//     OursPrivacyLogger: {
-//       log: jest.fn(),
-//     },
-//   };
-// });
 
 const {
   OursPrivacyNetwork,
@@ -126,43 +128,70 @@ describe("OursPrivacyMain", () => {
   it("should initialize properly", async () => {
     const trackAutomaticEvents = false;
     const optOutTrackingDefault = false;
-    const superProperties = {superProp1: "value1", superProp2: "value2"};
+    const options = {default_event_properties: {superProp1: "value1", superProp2: "value2"}};
     const serverURL = "https://api.oursprivacy.com";
 
     await oursprivacyMain.initialize(
       token,
       trackAutomaticEvents,
       optOutTrackingDefault,
-      superProperties,
+      options,
       serverURL
     );
 
     expect(oursprivacyMain.core.initialize).toHaveBeenCalledWith(token);
+  });
 
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
-    ).toHaveBeenCalledWith(token, {
-      superProp1: "value1",
-      superProp2: "value2",
-      company_id: [222],
-    });
-    expect(
-      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
-    ).toHaveBeenCalledWith(token);
+  it("should override persistent visitor_id when visitor_id is provided in options", async () => {
+    await oursprivacyMain.initialize(token, false, false, { visitor_id: "preset-visitor-123" }, "https://cdn.oursprivacy.com");
+    expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).toHaveBeenCalledWith(token, "preset-visitor-123");
+    expect(oursprivacyMain.oursprivacyPersistent.updateDistinctId).toHaveBeenCalledWith(token, "preset-visitor-123");
+    expect(oursprivacyMain.oursprivacyPersistent.persistDeviceId).toHaveBeenCalledWith(token);
+    expect(oursprivacyMain.oursprivacyPersistent.persistDistinctId).toHaveBeenCalledWith(token);
+  });
+
+  it("should preserve init options when starting opted out", async () => {
+    await oursprivacyMain.initialize(
+      token,
+      false,
+      true,
+      {
+        visitor_id: "preset-visitor-123",
+        default_event_properties: {platform: "mobile"},
+        default_user_custom_properties: {plan: "pro"},
+        default_user_consent_properties: {marketing: true},
+      },
+      "https://api.oursprivacy.com"
+    );
+
+    expect(oursprivacyMain.config.setServerURL).toHaveBeenCalledWith(
+      token,
+      "https://api.oursprivacy.com"
+    );
+    expect(oursprivacyMain.oursprivacyPersistent.updateOptedOut).toHaveBeenCalledWith(
+      token,
+      true
+    );
+    expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).toHaveBeenCalledWith(
+      token,
+      "preset-visitor-123"
+    );
+    expect(oursprivacyMain._defaultEventProperties[token]).toEqual({platform: "mobile"});
+    expect(oursprivacyMain._defaultUserCustomProperties[token]).toEqual({plan: "pro"});
+    expect(oursprivacyMain._defaultUserConsentProperties[token]).toEqual({marketing: true});
   });
 
   it("should not track if initialize with optOutTrackingDefault being true", async () => {
     const trackAutomaticEvents = false;
     const optOutTrackingDefault = true;
-    const superProperties = {superProp1: "value1", superProp2: "value2"};
+    const options = {};
     const serverURL = "https://api.oursprivacy.com";
-
 
     await oursprivacyMain.initialize(
       token,
       trackAutomaticEvents,
       optOutTrackingDefault,
-      superProperties,
+      options,
       serverURL
     );
 
@@ -181,14 +210,14 @@ describe("OursPrivacyMain", () => {
   it("should track if initialize with optOutTrackingDefault being false", async () => {
     const trackAutomaticEvents = false;
     const optOutTrackingDefault = false;
-    const superProperties = {superProp1: "value1", superProp2: "value2"};
+    const options = {};
     const serverURL = "https://api.oursprivacy.com";
 
     await oursprivacyMain.initialize(
       token,
       trackAutomaticEvents,
       optOutTrackingDefault,
-      superProperties,
+      options,
       serverURL
     );
     oursprivacyMain.setLoggingEnabled(token, true);
@@ -197,79 +226,6 @@ describe("OursPrivacyMain", () => {
 
     await oursprivacyMain.track(token, eventName, eventProperties);
     expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalled();
-  });
-
-  it("register super properties should update properties", async () => {
-    oursprivacyMain.registerSuperProperties(token, {superProp3: "value3"});
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
-    ).toHaveBeenCalledWith(token, {
-      superProp1: "value1",
-      superProp2: "value2",
-      superProp3: "value3",
-      company_id: [222],
-    });
-    expect(
-      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
-    ).toHaveBeenCalledWith(token);
-  });
-
-  it("register super properties once should update properties only once", async () => {
-    oursprivacyMain.registerSuperPropertiesOnce(token, {superProp3: "value3"});
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
-    ).toHaveBeenCalledWith(token, {
-      superProp1: "value1",
-      superProp2: "value2",
-      superProp3: "value3",
-      company_id: [222],
-    });
-    expect(
-      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
-    ).toHaveBeenCalledWith(token);
-    oursprivacyMain.registerSuperPropertiesOnce(token, {superProp3: "value4"});
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
-    ).toHaveBeenCalledWith(token, {
-      superProp1: "value1",
-      superProp2: "value2",
-      superProp3: "value3",
-      company_id: [222],
-    });
-    expect(
-      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
-    ).toHaveBeenCalledWith(token);
-  });
-
-  it("unregister super properties should update properties properly", async () => {
-    oursprivacyMain.registerSuperPropertiesOnce(token, {superProp3: "value3"});
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
-    ).toHaveBeenCalledWith(token, {
-      superProp1: "value1",
-      superProp2: "value2",
-      superProp3: "value3",
-      company_id: [222],
-    });
-
-    oursprivacyMain.unregisterSuperProperty(token, "superProp3");
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
-    ).toHaveBeenCalledWith(token, {
-      superProp1: "value1",
-      superProp2: "value2",
-      company_id: [222],
-    });
-  });
-
-  it("clear super properties should clear properties properly", async () => {
-    oursprivacyMain.clearSuperProperties(token);
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
-    ).toHaveBeenCalledWith(token, {});
-    expect(
-      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
-    ).toHaveBeenCalledWith(token);
   });
 
   it("should send correct payload on track event", async () => {
@@ -282,16 +238,16 @@ describe("OursPrivacyMain", () => {
       OursPrivacyType.EVENTS,
       expect.objectContaining({
         event: eventName,
-        properties: expect.objectContaining({
-          token: token,
-          time: expect.any(Number),
+        visitor_id: "device-id-mock",
+        distinct_id: expect.any(String),
+        eventProperties: expect.objectContaining({
           prop1: "value1",
           prop2: "value2",
-          $device_id: "device-id-mock",
-          $user_id: "user-id-mock",
-          distinct_id: "distinct-id-mock",
-          superProp1: "value1", // include super properties
-          superProp2: "value2",
+        }),
+        defaultProperties: expect.objectContaining({
+          device_type: "mobile",
+          os_name: expect.any(String),
+          version: expect.any(String),
         }),
       })
     );
@@ -313,23 +269,24 @@ describe("OursPrivacyMain", () => {
     expect(console.log).toHaveBeenCalled();
   });
 
-  it("timeEvent should work as expected", async () => {
-    oursprivacyMain.timeEvent(token, "test-event");
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateTimeEvents
-    ).toHaveBeenCalledWith(token, {"test-event": expect.any(Number)});
-    expect(
-      oursprivacyMain.oursprivacyPersistent.persistTimeEvents
-    ).toHaveBeenCalledWith(token);
+  it("hasOptedOutTracking should read the persisted opt-out flag", () => {
+    oursprivacyMain.oursprivacyPersistent.getOptedOut.mockReturnValue(true);
+    expect(oursprivacyMain.hasOptedOutTracking(token)).toBe(true);
+    expect(oursprivacyMain.oursprivacyPersistent.getOptedOut).toHaveBeenCalledWith(token);
   });
 
-  it("eventElapsedTime should work as expected", async () => {
-    oursprivacyMain.timeEvent(token, "test-event");
-    const elapsedTime = await oursprivacyMain.eventElapsedTime(
+  it("optOutTracking should clear queued events before resetting identity", async () => {
+    await oursprivacyMain.optOutTracking(token);
+
+    expect(OursPrivacyQueueManager.clearQueue).toHaveBeenCalledWith(
       token,
-      "test-event"
+      OursPrivacyType.EVENTS
     );
-    expect(elapsedTime).toBeGreaterThan(0);
+    expect(oursprivacyMain.oursprivacyPersistent.reset).toHaveBeenCalledWith(token);
+  });
+
+  it("setFlushOnBackground should be a safe no-op in JavaScript mode", () => {
+    expect(() => oursprivacyMain.setFlushOnBackground(token, false)).not.toThrow();
   });
 
   it("should update the identity properties on identify", async () => {
@@ -356,479 +313,79 @@ describe("OursPrivacyMain", () => {
     );
   });
 
-  it("should send correct payload on set profile properties", async () => {
-    const properties = {prop1: "value1", prop2: "value2"};
-
-    await oursprivacyMain.set(token, properties);
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $set: {prop1: "value1", prop2: "value2"},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-  });
-
-  it("should send correct payload on setOnce profile properties", async () => {
-    const properties = {prop1: "value1", prop2: "value2"};
-
-    await oursprivacyMain.setOnce(token, properties);
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $set_once: {prop1: "value1", prop2: "value2"},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-  });
-
-  it("should send correct payload on increment profile properties", async () => {
-    const properties = {prop1: 3};
-
-    await oursprivacyMain.increment(token, properties);
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $add: {prop1: 3},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-  });
-
-  it("should send correct payload on append profile properties", async () => {
-    const properties = {prop1: "value1"};
-
-    await oursprivacyMain.append(token, properties);
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $append: {prop1: "value1"},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-
-    await oursprivacyMain.append(token, "testProp", "testValue");
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $append: {testProp: "testValue"},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-  });
-
-  it("should send correct payload on union profile properties", async () => {
-    const properties = {prop1: "value1"};
-
-    await oursprivacyMain.union(token, properties);
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $union: {prop1: "value1"},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-
-    await oursprivacyMain.union(token, "testProp", "testValue");
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $union: {testProp: "testValue"},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-  });
-
-  it("should send correct payload on remove profile properties", async () => {
-    const properties = {prop1: "value1"};
-
-    await oursprivacyMain.remove(token, properties);
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $remove: {prop1: "value1"},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-
-    await oursprivacyMain.remove(token, "testProp", "testValue");
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $remove: {testProp: "testValue"},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-  });
-
-  it("should send correct payload on trackCharge", async () => {
-    const properties = {prop1: "value1"};
-    const charge = 100;
-
-    await oursprivacyMain.trackCharge(token, charge, properties);
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $append: {
-          $transactions: {
-            $amount: 100,
-            $time: expect.any(Number),
-            prop1: "value1",
-          },
-        },
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-  });
-
-  it("should send correct payload on clearCharge", async () => {
-    await oursprivacyMain.clearCharges(token);
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $set: {
-          $transactions: [],
-        },
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-  });
-
-  it("should send correct payload on unset profile properties", async () => {
-    const property = "prop1";
-
-    await oursprivacyMain.unset(token, property);
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $unset: [property],
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-  });
-
-  it("should send correct payload on delete profile", async () => {
-    await oursprivacyMain.deleteUser(token);
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $delete: "null",
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-  });
-
-  it("should send correct payload on trackWithGroups", async () => {
-    const properties = {prop1: "value1"};
-    const eventName = "event1";
-    const groups = {company_id: 111};
-    await oursprivacyMain.trackWithGroups(token, eventName, properties, groups);
-
+  it("should send correct $identify payload on identify", async () => {
+    const newDistinctId = "new-distinct-id";
+    await oursprivacyMain.identify(token, newDistinctId);
     expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
       OursPrivacyType.EVENTS,
       expect.objectContaining({
-        event: "event1",
-        properties: expect.objectContaining({
-          token: token,
-          time: expect.any(Number),
-          prop1: "value1",
-          $device_id: "device-id-mock",
-          $user_id: "user-id-mock",
-          distinct_id: "distinct-id-mock",
-          superProp1: "value1", // include super properties
-          superProp2: "value2",
-          company_id: 111,
+        event: "$identify",
+        visitor_id: "device-id-mock",
+        distinct_id: expect.any(String),
+        eventProperties: null,
+        userProperties: expect.objectContaining({
+          external_id: newDistinctId,
+        }),
+        defaultProperties: expect.objectContaining({
+          device_type: "mobile",
         }),
       })
     );
   });
 
-  it("should send correct payload on addGroup", async () => {
-    await oursprivacyMain.addGroup(token, "company_id", 111);
-
+  it("updateDefaultEventProperties should merge into event payload", async () => {
+    oursprivacyMain.updateDefaultEventProperties(token, {tier: "pro"});
+    await oursprivacyMain.track(token, "Test Event", {});
     expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      OursPrivacyType.USER,
+      OursPrivacyType.EVENTS,
       expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $union: {company_id: [111]},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
-    ).toHaveBeenCalledWith(token, {
-      company_id: [222, 111],
-      superProp1: "value1",
-      superProp2: "value2",
-    });
-    expect(
-      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
-    ).toHaveBeenCalledWith(token);
-  });
-
-  it("should send correct payload on setGroup", async () => {
-    await oursprivacyMain.setGroup(token, "company_id", 333);
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $set: {company_id: [333]},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
-    ).toHaveBeenCalledWith(token, {
-      company_id: [333],
-      superProp1: "value1",
-      superProp2: "value2",
-    });
-    expect(
-      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
-    ).toHaveBeenCalledWith(token);
-  });
-
-  it("should send correct payload on removeGroup", async () => {
-    await oursprivacyMain.addGroup(token, "company_id", 111);
-    // The company id has been added
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
-    ).toHaveBeenCalledWith(token, {
-      company_id: [222, 111],
-      superProp1: "value1",
-      superProp2: "value2",
-    });
-    expect(
-      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
-    ).toHaveBeenCalledWith(token);
-
-    await oursprivacyMain.removeGroup(token, "company_id", 111);
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.USER,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $remove: {company_id: 111},
-        $distinct_id: "distinct-id-mock",
-        $device_id: "device-id-mock",
-        $user_id: "user-id-mock",
-      })
-    );
-
-    // The company id has been removed
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateSuperProperties
-    ).toHaveBeenCalledWith(token, {
-      company_id: [222],
-      superProp1: "value1",
-      superProp2: "value2",
-    });
-    expect(
-      oursprivacyMain.oursprivacyPersistent.persistSuperProperties
-    ).toHaveBeenCalledWith(token);
-  });
-
-  it("should send correct payload on deleteGroup", async () => {
-    await oursprivacyMain.deleteGroup(token);
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.GROUPS,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $delete: "null",
+        eventProperties: expect.objectContaining({tier: "pro"}),
       })
     );
   });
 
-  it("should send correct payload on group set", async () => {
-    const properties = {prop1: "value1", prop2: "value2"};
-
-    await oursprivacyMain.groupSetProperties(token, "company_id", 444, properties);
-
+  it("updateDefaultUserCustomProperties should appear in userProperties", async () => {
+    oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "enterprise"});
+    await oursprivacyMain.track(token, "Test Event", {});
     expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      OursPrivacyType.GROUPS,
+      OursPrivacyType.EVENTS,
       expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $group_id: 444,
-        $group_key: "company_id",
-        $set: {prop1: "value1", prop2: "value2"},
+        userProperties: expect.objectContaining({
+          custom_properties: expect.objectContaining({plan: "enterprise"}),
+        }),
       })
     );
   });
 
-  it("should send correct payload on group set once", async () => {
-    const properties = {prop1: "value1", prop2: "value2"};
-
-    await oursprivacyMain.groupSetPropertyOnce(
-      token,
-      "company_id",
-      444,
-      properties
-    );
-
+  it("updateDefaultUserConsentProperties should appear in userProperties", async () => {
+    oursprivacyMain.updateDefaultUserConsentProperties(token, {marketing: true});
+    await oursprivacyMain.track(token, "Test Event", {});
     expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      OursPrivacyType.GROUPS,
+      OursPrivacyType.EVENTS,
       expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $group_id: 444,
-        $group_key: "company_id",
-        $set_once: {prop1: "value1", prop2: "value2"},
+        userProperties: expect.objectContaining({
+          consent: expect.objectContaining({marketing: true}),
+        }),
       })
     );
   });
 
-  it("should send correct payload on groupUnsetProperty", async () => {
-    await oursprivacyMain.groupUnsetProperty(token, "company_id", 444, "prop1");
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.GROUPS,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $group_id: 444,
-        $group_key: "company_id",
-        $unset: ["prop1"],
-      })
-    );
+  it("getVisitorId should return the device id", () => {
+    const visitorId = oursprivacyMain.getVisitorId(token);
+    expect(visitorId).toBe("device-id-mock");
   });
 
-  it("should send correct payload on groupRemovePropertyValue", async () => {
-    await oursprivacyMain.groupRemovePropertyValue(
-      token,
-      "company_id",
-      444,
-      "prop1",
-      "value1"
-    );
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.GROUPS,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $group_id: 444,
-        $group_key: "company_id",
-        $remove: {prop1: "value1"},
-      })
-    );
-  });
-
-  it("should send correct payload on groupUnionProperty", async () => {
-    await oursprivacyMain.groupUnionProperty(
-      token,
-      "company_id",
-      444,
-      "prop1",
-      "value1"
-    );
-
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.GROUPS,
-      expect.objectContaining({
-        $token: token,
-        $time: expect.any(Number),
-        $group_id: 444,
-        $group_key: "company_id",
-        $union: {prop1: "value1"},
-      })
-    );
+  it("reset should clear default property maps", async () => {
+    oursprivacyMain.updateDefaultEventProperties(token, {foo: "bar"});
+    oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro"});
+    oursprivacyMain.updateDefaultUserConsentProperties(token, {marketing: true});
+    await oursprivacyMain.reset(token);
+    expect(oursprivacyMain._defaultEventProperties[token]).toEqual({});
+    expect(oursprivacyMain._defaultUserCustomProperties[token]).toEqual({});
+    expect(oursprivacyMain._defaultUserConsentProperties[token]).toEqual({});
   });
 });

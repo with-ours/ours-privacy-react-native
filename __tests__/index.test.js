@@ -1,227 +1,170 @@
 import {OursPrivacy} from "oursprivacy-react-native";
-import {NativeModules} from "react-native";
 
-test(`it calls OursPrivacyReactNative initialize`, async () => {
-  const oursprivacy = await OursPrivacy.init("token", true);
-  expect(NativeModules.OursPrivacyReactNative.initialize).toBeCalledWith(
+// OursPrivacy always uses JS mode. Mock OursPrivacyMain so index.test.js
+// verifies the wrapper delegates correctly without executing JS SDK internals.
+jest.mock("oursprivacy-react-native/javascript/oursprivacy-main", () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+      initialize: jest.fn().mockResolvedValue(undefined),
+      setServerURL: jest.fn(),
+      setLoggingEnabled: jest.fn(),
+      setFlushOnBackground: jest.fn(),
+      setFlushBatchSize: jest.fn(),
+      hasOptedOutTracking: jest.fn().mockResolvedValue(false),
+      optInTracking: jest.fn(),
+      optOutTracking: jest.fn(),
+      identify: jest.fn().mockResolvedValue(undefined),
+      track: jest.fn(),
+      reset: jest.fn(),
+      flush: jest.fn(),
+      getVisitorId: jest.fn().mockReturnValue("mock-visitor-id"),
+      updateDefaultEventProperties: jest.fn(),
+      updateDefaultUserCustomProperties: jest.fn(),
+      updateDefaultUserConsentProperties: jest.fn(),
+    })),
+}));
+
+test(`it initializes with correct defaults`, async () => {
+  const op = new OursPrivacy("token", false);
+  await op.init();
+  expect(op.oursprivacyImpl.initialize).toBeCalledWith(
     "token",
-    true,
     false,
-    {$lib_version: expect.any(String), op_lib: "react-native"},
-    "https://api.oursprivacy.com/api/v1"
+    false,
+    {},
+    "https://cdn.oursprivacy.com"
   );
 });
 
-test(`it calls OursPrivacyReactNative initialize with optOut and superProperties`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init(true, {super: "property"});
-  expect(NativeModules.OursPrivacyReactNative.initialize).toBeCalledWith(
+test(`it passes optOut and options to initialize`, async () => {
+  const op = new OursPrivacy("token", false);
+  await op.init(true, {default_event_properties: {prop: "value"}});
+  expect(op.oursprivacyImpl.initialize).toBeCalledWith(
     "token",
+    false,
     true,
-    true,
-    {
-      $lib_version: expect.any(String),
-      op_lib: "react-native",
-      super: "property",
-    },
-    "https://api.oursprivacy.com/api/v1"
+    {default_event_properties: {prop: "value"}},
+    "https://cdn.oursprivacy.com"
   );
 });
 
-test(`it calls OursPrivacyReactNative setServerURL`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.setServerURL("https://api-eu.oursprivacy.com");
-  expect(NativeModules.OursPrivacyReactNative.setServerURL).toBeCalledWith(
+test(`it passes visitor_id option through to initialize`, async () => {
+  const op = new OursPrivacy("token", false);
+  await op.init(false, {visitor_id: "preset-visitor-123"});
+  expect(op.oursprivacyImpl.initialize).toBeCalledWith(
+    "token",
+    false,
+    false,
+    {visitor_id: "preset-visitor-123"},
+    "https://cdn.oursprivacy.com"
+  );
+});
+
+test(`it calls setServerURL`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.setServerURL("https://api-eu.oursprivacy.com");
+  expect(op.oursprivacyImpl.setServerURL).toBeCalledWith(
     "token",
     "https://api-eu.oursprivacy.com"
   );
 });
 
-test(`it calls OursPrivacyReactNative setLoggingEnabled`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.setLoggingEnabled(true);
-  expect(NativeModules.OursPrivacyReactNative.setLoggingEnabled).toBeCalledWith(
+test(`it calls setLoggingEnabled`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.setLoggingEnabled(true);
+  expect(op.oursprivacyImpl.setLoggingEnabled).toBeCalledWith("token", true);
+});
+
+test(`it calls setFlushBatchSize`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.setFlushBatchSize(20);
+  expect(op.oursprivacyImpl.setFlushBatchSize).toBeCalledWith("token", 20);
+});
+
+test(`it calls hasOptedOutTracking`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.hasOptedOutTracking();
+  expect(op.oursprivacyImpl.hasOptedOutTracking).toBeCalledWith("token");
+});
+
+test(`it calls optInTracking`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.optInTracking();
+  expect(op.oursprivacyImpl.optInTracking).toBeCalledWith("token");
+});
+
+test(`it calls optOutTracking`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.optOutTracking();
+  expect(op.oursprivacyImpl.optOutTracking).toBeCalledWith("token");
+});
+
+test(`it calls identify with id`, async () => {
+  const op = new OursPrivacy("token", false);
+  await op.identify("user@example.com");
+  expect(op.oursprivacyImpl.identify).toBeCalledWith(
     "token",
-    true
-  );
-});
-
-test(`it calls OursPrivacyReactNative setUseIpAddressForGeolocation`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.setUseIpAddressForGeolocation(true);
-  expect(
-    NativeModules.OursPrivacyReactNative.setUseIpAddressForGeolocation
-  ).toBeCalledWith("token", true);
-});
-
-test(`it calls OursPrivacyReactNative setFlushBatchSize`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.setFlushBatchSize(20);
-  expect(NativeModules.OursPrivacyReactNative.setFlushBatchSize).toBeCalledWith(
-    "token",
-    20
-  );
-});
-
-test(`it calls OursPrivacyReactNative hasOptedOutTracking`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.hasOptedOutTracking();
-  expect(NativeModules.OursPrivacyReactNative.hasOptedOutTracking).toBeCalledWith(
-    "token"
-  );
-});
-
-test(`it calls OursPrivacyReactNative optInTracking`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.optInTracking();
-  expect(NativeModules.OursPrivacyReactNative.optInTracking).toBeCalledWith(
-    "token"
-  );
-});
-
-test(`it calls OursPrivacyReactNative optOutTracking`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.optOutTracking();
-  expect(NativeModules.OursPrivacyReactNative.optOutTracking).toBeCalledWith(
-    "token"
-  );
-});
-
-test(`it calls OursPrivacyReactNative identify`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.identify("distinct_id");
-  expect(NativeModules.OursPrivacyReactNative.identify).toBeCalledWith(
-    "token",
-    "distinct_id",
+    "user@example.com",
     undefined
   );
 });
 
-test(`it calls OursPrivacyReactNative alias`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.alias("alias", "distinct_id");
-  expect(NativeModules.OursPrivacyReactNative.alias).toBeCalledWith(
+test(`it calls identify with id and userProperties`, async () => {
+  const op = new OursPrivacy("token", false);
+  await op.identify("user@example.com", {email: "user@example.com", external_id: "123"});
+  expect(op.oursprivacyImpl.identify).toBeCalledWith(
     "token",
-    "alias",
-    "distinct_id"
+    "user@example.com",
+    {email: "user@example.com", external_id: "123"}
   );
 });
 
-test(`it calls OursPrivacyReactNative track`, async () => {
-  const oursprivacy = await OursPrivacy.init("token", true);
-  oursprivacy.track("event name", {
-    "Cool Property": "Property Value",
-  });
-  expect(NativeModules.OursPrivacyReactNative.track).toBeCalledWith(
+test(`it calls track`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.track("event name", {"Cool Property": "Property Value"});
+  expect(op.oursprivacyImpl.track).toBeCalledWith(
     "token",
     "event name",
-    {
-      "Cool Property": "Property Value",
-      $lib_version: expect.any(String),
-      op_lib: "react-native",
-    }
+    {"Cool Property": "Property Value"}
   );
 });
 
-test(`it calls OursPrivacyReactNative registerSuperProperties`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.registerSuperProperties({
-    "super property": "super property value",
-    "super property1": "super property value1",
-  });
-  expect(
-    NativeModules.OursPrivacyReactNative.registerSuperProperties
-  ).toBeCalledWith("token", {
-    "super property": "super property value",
-    "super property1": "super property value1",
-  });
+test(`it calls reset`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.reset();
+  expect(op.oursprivacyImpl.reset).toBeCalledWith("token");
 });
 
-test(`it calls OursPrivacyReactNative registerSuperPropertiesOnce`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.registerSuperPropertiesOnce({
-    "super property": "super property value",
-    "super property1": "super property value1",
-  });
-  expect(
-    NativeModules.OursPrivacyReactNative.registerSuperProperties
-  ).toBeCalledWith("token", {
-    "super property": "super property value",
-    "super property1": "super property value1",
-  });
+test(`it calls getVisitorId`, async () => {
+  const op = new OursPrivacy("token", false);
+  const id = op.getVisitorId();
+  expect(op.oursprivacyImpl.getVisitorId).toBeCalledWith("token");
+  expect(id).toBe("mock-visitor-id");
 });
 
-test(`it calls OursPrivacyReactNative unregisterSuperProperty`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.unregisterSuperProperty("super property");
-  expect(
-    NativeModules.OursPrivacyReactNative.unregisterSuperProperty
-  ).toBeCalledWith("token", "super property");
-});
-
-test(`it calls OursPrivacyReactNative getSuperProperties`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.getSuperProperties();
-  expect(NativeModules.OursPrivacyReactNative.getSuperProperties).toBeCalledWith(
-    "token"
-  );
-});
-
-test(`it calls OursPrivacyReactNative clearSuperProperties`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.clearSuperProperties();
-  expect(NativeModules.OursPrivacyReactNative.clearSuperProperties).toBeCalledWith(
-    "token"
-  );
-});
-
-test(`it calls OursPrivacyReactNative timeEvent`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.timeEvent("Timed Event");
-  expect(NativeModules.OursPrivacyReactNative.timeEvent).toBeCalledWith(
+test(`it calls updateDefaultEventProperties`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.updateDefaultEventProperties({tier: "pro"});
+  expect(op.oursprivacyImpl.updateDefaultEventProperties).toBeCalledWith(
     "token",
-    "Timed Event"
+    {tier: "pro"}
   );
 });
 
-test(`it calls OursPrivacyReactNative eventElapsedTime`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.eventElapsedTime("Timed Event");
-  expect(NativeModules.OursPrivacyReactNative.eventElapsedTime).toBeCalledWith(
+test(`it calls updateDefaultUserCustomProperties`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.updateDefaultUserCustomProperties({plan: "enterprise"});
+  expect(op.oursprivacyImpl.updateDefaultUserCustomProperties).toBeCalledWith(
     "token",
-    "Timed Event"
+    {plan: "enterprise"}
   );
 });
 
-test(`it calls OursPrivacyReactNative reset`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.reset();
-  expect(NativeModules.OursPrivacyReactNative.reset).toBeCalledWith("token");
-});
-
-test(`it calls OursPrivacyReactNative getDistinctId`, async () => {
-  const oursprivacy = new OursPrivacy("token", true);
-  oursprivacy.init();
-  oursprivacy.getDistinctId();
-  expect(NativeModules.OursPrivacyReactNative.getDistinctId).toBeCalledWith(
-    "token"
+test(`it calls updateDefaultUserConsentProperties`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.updateDefaultUserConsentProperties({marketing: true});
+  expect(op.oursprivacyImpl.updateDefaultUserConsentProperties).toBeCalledWith(
+    "token",
+    {marketing: true}
   );
 });
-
