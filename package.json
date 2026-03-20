@@ -7,7 +7,9 @@
   "react-native": "index.js",
   "scripts": {
     "test": "jest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "qa:capture": "node scripts/capture-ingest.mjs",
+    "qa:check-captures": "node scripts/check-captures.mjs"
   },
   "author": "OursPrivacy",
   "license": "Apache-2.0",

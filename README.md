@@ -5,6 +5,8 @@
 
 Privacy-first analytics for React Native.
 
+This SDK is pure JavaScript. It does not ship native iOS or Android modules.
+
 - [npm](https://www.npmjs.com/package/@oursprivacy/react-native)
 - [GitHub](https://github.com/with-ours/ours-privacy-react-native)
 - [Docs](https://docs.oursprivacy.com/docs/react-native-sdk)
@@ -35,7 +37,10 @@ Privacy-first analytics for React Native.
 
 ```bash
 npm install @oursprivacy/react-native
+npm install @react-native-async-storage/async-storage
 ```
+
+Install `@react-native-async-storage/async-storage` directly in your app if you want persistent storage in bare React Native projects. Without it, the SDK falls back to in-memory storage.
 
 ### 2. Initialize
 
@@ -68,7 +73,7 @@ await op.identify('user-123', {
 
 ### 5. Flush
 
-Events are batched and sent every 60 seconds or when the app backgrounds. To send immediately:
+Events are batched and sent every 10 seconds by default. To send immediately:
 
 ```js
 op.flush();
@@ -124,7 +129,7 @@ Creates an OursPrivacy instance. You must call `.init()` before tracking.
 |-----------|------|----------|-------------|
 | `token` | `string` | Yes | Your project token |
 | `trackAutomaticEvents` | `boolean` | Yes | Whether to track automatic events |
-| `useNative` | `boolean` | No | Ignored — SDK always uses the JavaScript implementation |
+| `useNative` | `boolean` | No | Accepted but ignored |
 | `storage` | `OursPrivacyAsyncStorage` | No | Custom AsyncStorage adapter |
 
 **Returns:** `OursPrivacy` instance (call `.init()` to complete setup)
@@ -152,6 +157,7 @@ Initializes the SDK. Must be called before tracking.
 | `default_event_properties` | `object` | Properties merged into `eventProperties` on every `track()` call |
 | `default_user_custom_properties` | `object` | Properties merged into `userProperties.custom_properties` on every event |
 | `default_user_consent_properties` | `object` | Properties merged into `userProperties.consent` on every event |
+| `serverURL` | `string` | Override the base URL used for requests, for example a local QA capture server |
 
 **Returns:** `Promise<void>`
 
@@ -329,7 +335,7 @@ op.updateDefaultUserConsentProperties({ marketing: true });
 
 #### `op.setServerURL(serverURL)`
 
-Override the API endpoint after initialization.
+Override the base URL after initialization.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -357,11 +363,11 @@ op.setLoggingEnabled(true);
 
 #### `op.setFlushOnBackground(flushOnBackground)`
 
-Control whether the SDK flushes events when the app enters the background. Enabled by default. **iOS only** — calling this on Android is a no-op with a console warning.
+This method has no effect in the current SDK.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `flushOnBackground` | `boolean` | Yes | Whether to flush on app background |
+| `flushOnBackground` | `boolean` | Yes | Ignored |
 
 **Returns:** `void`
 
@@ -447,7 +453,7 @@ if (hasOptedOut) {
 
 ## Payload Structure
 
-The SDK sends a JSON body to `POST /api/v1/track`. Understanding this structure is useful if you are building a proxy, debugging with a network inspector, or verifying your data in the Ours Privacy dashboard.
+The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Understanding this structure is useful if you are building a proxy, using the local QA capture server, or verifying your data in the Ours Privacy dashboard.
 
 ```json
 {
@@ -457,7 +463,7 @@ The SDK sends a JSON body to `POST /api/v1/track`. Understanding this structure 
     {
       "event": "Purchase",
       "visitor_id": "550e8400-e29b-41d4-a716-446655440000",
-      "distinct_id": "550e8400-e29b-41d4-a716-446655440000",
+      "distinct_id": "ecff9f0e-d4f8-4d9e-b2f8-8d9b2fcdf7b2",
       "eventProperties": {
         "price": 99
       },
@@ -475,9 +481,7 @@ The SDK sends a JSON body to `POST /api/v1/track`. Understanding this structure 
         "os_version": "17.0",
         "device_vendor": "Apple",
         "device_model": "iPhone 16 Pro",
-        "screen_width": 390,
-        "screen_height": 844,
-        "version": "1.1.0"
+        "version": "1.2.0"
       }
     }
   ]
@@ -493,7 +497,7 @@ The SDK sends a JSON body to `POST /api/v1/track`. Understanding this structure 
 | `data` | Array of event objects in this batch |
 | `event` | Event name |
 | `visitor_id` | Stable visitor UUID for this install (no prefix) |
-| `distinct_id` | Per-event UUID, same as `visitor_id` for anonymous users |
+| `distinct_id` | Per-event UUID generated for this event occurrence |
 | `eventProperties` | Properties from `track()` merged with default event properties |
 | `userProperties.custom_properties` | From `identify()` and `updateDefaultUserCustomProperties()` |
 | `userProperties.consent` | From `identify()` and `updateDefaultUserConsentProperties()` |
@@ -522,6 +526,7 @@ npm uninstall @mixpanel/react-native
 
 # Install Ours Privacy
 npm install @oursprivacy/react-native
+npm install @react-native-async-storage/async-storage
 ```
 
 ```js
@@ -568,14 +573,13 @@ No. Ours Privacy does not use IDFA, so no ATT permission is required.
 
 **Why aren't my events showing up?**
 
-Events are batched and sent every 60 seconds or when the app backgrounds. Call `flush()` to send immediately. Enable debug logging with `setLoggingEnabled(true)` to see what's happening.
+Events are batched and sent every 10 seconds by default. Call `flush()` to send immediately. Enable debug logging with `setLoggingEnabled(true)` to see what's happening.
 
 **What platforms are supported?**
 
 - React Native >= 0.60
-- iOS 10+
-- Android API 21+
-- Expo (JavaScript mode)
+- iOS and Android apps using React Native
+- Expo and other JavaScript-mode environments
 
 ---
 

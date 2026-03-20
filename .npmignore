@@ -66,6 +66,7 @@ android/src/androidTest/
 generate_docs.sh
 release.py
 PUBLISHING.md
+scripts/
 
 # Version control
 .git/

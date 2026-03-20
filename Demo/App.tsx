@@ -19,7 +19,7 @@ import {
   Header,
 } from 'react-native/Libraries/NewAppScreen';
 
-import { OURSPRIVACY_TOKEN } from '@env';
+import { OURSPRIVACY_SERVER_URL, OURSPRIVACY_TOKEN } from '@env';
 import { OursPrivacy } from '@oursprivacy/react-native';
 
 type SectionProps = PropsWithChildren<{ title: string }>;
@@ -41,10 +41,18 @@ function Section({ children, title }: SectionProps): React.JSX.Element {
 // Initialize SDK once using instance pattern
 const oursprivacy = new OursPrivacy(OURSPRIVACY_TOKEN, false, false);
 
-oursprivacy.init(false, {
+const initOptions = {
   default_event_properties: { demo_app: true },
   default_user_custom_properties: { test_user: true },
-});
+  ...(OURSPRIVACY_SERVER_URL ? { serverURL: OURSPRIVACY_SERVER_URL } : {}),
+};
+
+console.log(
+  '[OursPrivacy] init server URL:',
+  OURSPRIVACY_SERVER_URL || 'https://cdn.oursprivacy.com',
+);
+
+oursprivacy.init(false, initOptions);
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
