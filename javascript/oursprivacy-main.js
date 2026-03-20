@@ -6,14 +6,14 @@ import {OursPrivacyPersistent} from "./oursprivacy-persistent";
 import {OursPrivacyQueueManager} from "./oursprivacy-queue";
 import {OursPrivacyLogger} from "./oursprivacy-logger";
 import packageJson from "../package.json";
-import uuid from "uuid";
+import {uuidv4} from "./oursprivacy-utils";
 
 export default class OursPrivacyMain {
   constructor(token, trackAutomaticEvents, storage) {
     this.token = token;
     this.config = OursPrivacyConfig.getInstance();
     this.core = OursPrivacyCore(storage);
-    this.core.initialize(token);
+    Promise.resolve(this.core.initialize(token)).catch(() => {});
     this.core.startProcessingQueue(token);
     this.oursprivacyPersistent = OursPrivacyPersistent.getInstance();
     this._defaultEventProperties = {};
@@ -88,7 +88,7 @@ export default class OursPrivacyMain {
     // distinct_id: a new UUID generated per-event — it is a unique ID for this
     //   specific event occurrence, NOT a user ID. Do not confuse with visitor_id.
     const visitorId = this.oursprivacyPersistent.getDeviceId(token);
-    const distinctId = uuid.v4();
+    const distinctId = uuidv4();
 
     const rawEventProps = {
       ...(this._defaultEventProperties[token] || {}),
@@ -173,7 +173,7 @@ export default class OursPrivacyMain {
     await this.oursprivacyPersistent.persistIdentity(token);
 
     const visitorId = this.oursprivacyPersistent.getDeviceId(token);
-    const distinctId = uuid.v4();
+    const distinctId = uuidv4();
 
     const customProps = this._defaultUserCustomProperties[token] || {};
     const consentProps = this._defaultUserConsentProperties[token] || {};

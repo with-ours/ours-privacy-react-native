@@ -10,7 +10,7 @@ import {
 } from "./oursprivacy-constants";
 
 import {AsyncStorageAdapter} from "./oursprivacy-storage";
-import uuid from "uuid";
+import {uuidv4} from "./oursprivacy-utils";
 import {OursPrivacyLogger} from "./oursprivacy-logger";
 
 export class OursPrivacyPersistent {
@@ -21,7 +21,6 @@ export class OursPrivacyPersistent {
       OursPrivacyPersistent.instance = new OursPrivacyPersistent(
         new AsyncStorageAdapter(storage)
       );
-      OursPrivacyPersistent.initializationCompletePromise = OursPrivacyPersistent.instance.initializationCompletePromise();
     }
     return OursPrivacyPersistent.instance;
   }
@@ -40,7 +39,7 @@ export class OursPrivacyPersistent {
   }
 
   async initializationCompletePromise(token) {
-    Promise.all([
+    await Promise.all([
       this.loadIdentity(token),
       this.loadSuperProperties(token),
       this.loadTimeEvents(token),
@@ -59,7 +58,7 @@ export class OursPrivacyPersistent {
         this._identity[token].deviceId = deviceId;
       });
     if (!this._identity[token].deviceId) {
-      this._identity[token].deviceId = uuid.v4();
+      this._identity[token].deviceId = uuidv4();
       await this.storageAdapter.setItem(
         getDeviceIdKey(token),
         this._identity[token].deviceId

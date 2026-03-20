@@ -4,7 +4,8 @@ export class AsyncStorageAdapter {
   constructor(storage) {
     if (!storage) {
       try {
-        this.storage = require("@react-native-async-storage/async-storage");
+        const mod = require("@react-native-async-storage/async-storage");
+        this.storage = mod.default || mod;
       } catch {
         console.error(
           "[@RNC/AsyncStorage]: NativeModule: AsyncStorage is null. Please run 'npm install @react-native-async-storage/async-storage' or follow the OursPrivacy guide to set up your own Storage class."

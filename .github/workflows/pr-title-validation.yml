@@ -67,39 +67,15 @@ jobs:
               ERRORS="$ERRORS\n  - package.json: found $PKG_VERSION"
             fi
 
-            # iOS: AutomaticProperties.swift
-            if ! grep -q "return \"$VERSION\"" ios/AutomaticProperties.swift; then
-              FOUND=$(grep -oP 'return "\K[0-9]+\.[0-9]+\.[0-9]+' ios/AutomaticProperties.swift || echo "not found")
-              ERRORS="$ERRORS\n  - ios/AutomaticProperties.swift: found $FOUND"
-            fi
-
-            # iOS: Info.plist
-            if ! grep -q "<string>$VERSION</string>" ios/Info.plist; then
-              FOUND=$(grep -oP '<string>\K[0-9]+\.[0-9]+\.[0-9]+(?=</string>)' ios/Info.plist || echo "not found")
-              ERRORS="$ERRORS\n  - ios/Info.plist: found $FOUND"
-            fi
-
-            # iOS: OursPrivacy-swift.podspec
-            if ! grep -q "s.version = '$VERSION'" ios/OursPrivacy-swift.podspec; then
-              FOUND=$(grep -oP "s\.version = '\K[0-9]+\.[0-9]+\.[0-9]+" ios/OursPrivacy-swift.podspec || echo "not found")
-              ERRORS="$ERRORS\n  - ios/OursPrivacy-swift.podspec: found $FOUND"
-            fi
-
-            # Android: build.gradle
-            if ! grep -q "versionName \"$VERSION\"" android/build.gradle; then
-              FOUND=$(grep -oP 'versionName "\K[^"]+' android/build.gradle || echo "not found")
-              ERRORS="$ERRORS\n  - android/build.gradle: found $FOUND"
-            fi
-
             if [ -n "$ERRORS" ]; then
               echo "❌ Version mismatch! PR title says $VERSION but these files don't match:"
               echo -e "$ERRORS"
               echo ""
-              echo "All version files must be updated to $VERSION before merging."
+              echo "All version files must be updated to $VERSION before merging (package.json)."
               exit 1
             fi
 
-            echo "✅ Version $VERSION is consistent across all files"
+            echo "✅ Version $VERSION is consistent across all files (package.json)"
           fi
 
           echo "✅ PR title format is valid"

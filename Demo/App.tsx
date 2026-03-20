@@ -44,9 +44,6 @@ const oursprivacy = new OursPrivacy(OURSPRIVACY_TOKEN, false, false);
 oursprivacy.init(false, {
   default_event_properties: { demo_app: true },
   default_user_custom_properties: { test_user: true },
-}).then(() => {
-  oursprivacy.setLoggingEnabled(true);
-  console.log('[OursPrivacy] initialized. visitor_id:', oursprivacy.getVisitorId());
 });
 
 function App(): React.JSX.Element {
@@ -56,7 +53,7 @@ function App(): React.JSX.Element {
 
   const handleTrack = () => {
     console.log('[OursPrivacy] visitor_id:', oursprivacy.getVisitorId());
-    oursprivacy.track('button_pressed', { button: 'Track Green' });
+    oursprivacy.track('button_pressed', { button: 'Track Event' });
     oursprivacy.flush();
     console.log('[OursPrivacy] tracked + flushed');
   };

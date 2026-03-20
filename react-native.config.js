@@ -1,18 +1,13 @@
 'use strict';
 
+// This package is JS-only. Disable autolinking for both platforms so RN
+// tooling does not attempt to wire up native modules that no longer exist.
 module.exports = {
   dependencies: {
     'oursprivacy-react-native': {
       platforms: {
-        android: {
-          "sourceDir": "./android",
-          "packageImportPath": "import com.oursprivacy.reactnative.OursPrivacyReactNativePackage;",
-          "packageInstance": "new OursPrivacyReactNativePackage()"
-        },
-        // ios: {
-        //   project: './ios/OursPrivacyReactNative.xcodeproj',
-        //   scheme: 'OursPrivacyReactNative',
-        // },
+        android: null,
+        ios: null,
       }
     }
   }
