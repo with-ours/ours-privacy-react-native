@@ -78,6 +78,7 @@ local.properties
 # Testing
 coverage/
 .nyc_output
+tmp/
 
 # Environment variables
 .env

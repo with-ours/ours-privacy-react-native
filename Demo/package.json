@@ -10,10 +10,10 @@
     "test": "jest"
   },
   "dependencies": {
-    "@oursprivacy/react-native": "1.1.0",
+    "@oursprivacy/react-native": "file:../oursprivacy-react-native-1.2.0.tgz",
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "react": "19.0.0",
-    "react-native": "0.79.2",
-    "uuid": "^11.1.0"
+    "react-native": "0.79.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -34,7 +34,6 @@
     "prettier": "2.8.8",
     "react-native-dotenv": "^3.4.11",
     "react-test-renderer": "19.0.0",
-    "reactotron-react-native": "^5.1.13",
     "typescript": "5.0.4"
   },
   "engines": {

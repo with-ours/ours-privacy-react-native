@@ -43,18 +43,6 @@ DerivedData
 *.xcuserstate
 ios/project.xcworkspace
 
-# Android
-android/build/
-android/app/build/
-android/.idea
-android/.gradle
-android/.settings
-android/local.properties
-android/.classpath
-android/.project
-*.iml
-*.class
-
 # BUCK
 buck-out/
 \.buckd/
@@ -78,6 +66,7 @@ android/src/androidTest/
 generate_docs.sh
 release.py
 PUBLISHING.md
+scripts/
 
 # Version control
 .git/

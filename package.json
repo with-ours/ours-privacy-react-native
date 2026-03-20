@@ -7,7 +7,9 @@
   "react-native": "index.js",
   "scripts": {
     "test": "jest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "qa:capture": "node scripts/capture-ingest.mjs",
+    "qa:check-captures": "node scripts/check-captures.mjs"
   },
   "author": "OursPrivacy",
   "license": "Apache-2.0",
@@ -77,8 +79,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.0.0",
-    "@react-native-async-storage/async-storage": "^1.21.0",
-    "uuid": "3.3.2"
+    "@react-native-async-storage/async-storage": "^2.2.0"
   },
   "peerDependencies": {
     "react": ">=16.8.0",

@@ -7,8 +7,9 @@ jest.mock("../javascript/oursprivacy-storage", () => {
     })),
   };
 });
-jest.mock("uuid", () => ({
-  v4: jest.fn().mockReturnValue("mock-uuid-v4"),
+jest.mock("../javascript/oursprivacy-utils", () => ({
+  ...jest.requireActual("../javascript/oursprivacy-utils"),
+  uuidv4: jest.fn().mockReturnValue("mock-uuid-v4"),
 }));
 
 jest.mock("@react-native-async-storage/async-storage", () => ({
