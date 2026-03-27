@@ -39,22 +39,14 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-persistent", () => {
             superProp1: "value1",
             superProp2: "value2",
           }),
-          getDistinctId: jest.fn().mockReturnValue("distinct-id-mock"),
-          getDeviceId: jest.fn().mockReturnValue("device-id-mock"),
-          getUserId: jest.fn().mockReturnValue("user-id-mock"),
+          getVisitorId: jest.fn().mockReturnValue("visitor-id-mock"),
           getOptedOut: jest.fn(),
           getQueue: jest.fn(),
           saveQueue: jest.fn(),
           loadQueue: jest.fn(),
-          loadDeviceId: jest.fn(),
-          updateDeviceId: jest.fn(),
-          persistDeviceId: jest.fn(),
-          loadDistinctId: jest.fn(),
-          updateDistinctId: jest.fn(),
-          persistDistinctId: jest.fn(),
-          loadUserId: jest.fn(),
-          updateUserId: jest.fn(),
-          persistUserId: jest.fn(),
+          loadVisitorId: jest.fn(),
+          updateVisitorId: jest.fn(),
+          persistVisitorId: jest.fn(),
           loadSuperProperties: jest.fn(),
           persistSuperProperties: jest.fn(),
           loadOptedOut: jest.fn(),
@@ -144,10 +136,8 @@ describe("OursPrivacyMain", () => {
 
   it("should override persistent visitor_id when visitor_id is provided in options", async () => {
     await oursprivacyMain.initialize(token, false, false, { visitor_id: "preset-visitor-123" }, "https://cdn.oursprivacy.com");
-    expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).toHaveBeenCalledWith(token, "preset-visitor-123");
-    expect(oursprivacyMain.oursprivacyPersistent.updateDistinctId).toHaveBeenCalledWith(token, "preset-visitor-123");
-    expect(oursprivacyMain.oursprivacyPersistent.persistDeviceId).toHaveBeenCalledWith(token);
-    expect(oursprivacyMain.oursprivacyPersistent.persistDistinctId).toHaveBeenCalledWith(token);
+    expect(oursprivacyMain.oursprivacyPersistent.updateVisitorId).toHaveBeenCalledWith(token, "preset-visitor-123");
+    expect(oursprivacyMain.oursprivacyPersistent.persistVisitorId).toHaveBeenCalledWith(token);
   });
 
   it("should preserve init options when starting opted out", async () => {
@@ -172,7 +162,7 @@ describe("OursPrivacyMain", () => {
       token,
       true
     );
-    expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).toHaveBeenCalledWith(
+    expect(oursprivacyMain.oursprivacyPersistent.updateVisitorId).toHaveBeenCalledWith(
       token,
       "preset-visitor-123"
     );
@@ -221,7 +211,7 @@ describe("OursPrivacyMain", () => {
     // No attribution stored
     expect(oursprivacyMain._attributionDefaultProperties[token] || {}).toEqual({});
     // No visitor ID stitched
-    expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).not.toHaveBeenCalledWith(token, "web-123");
+    expect(oursprivacyMain.oursprivacyPersistent.updateVisitorId).not.toHaveBeenCalledWith(token, "web-123");
   });
 
   it("should track if initialize with optOutTrackingDefault being false", async () => {
@@ -255,7 +245,7 @@ describe("OursPrivacyMain", () => {
       OursPrivacyType.EVENTS,
       expect.objectContaining({
         event: eventName,
-        visitor_id: "device-id-mock",
+        visitor_id: "visitor-id-mock",
         distinct_id: expect.any(String),
         eventProperties: expect.objectContaining({
           prop1: "value1",
@@ -322,27 +312,19 @@ describe("OursPrivacyMain", () => {
     expect(() => oursprivacyMain.setFlushOnBackground(token, false)).not.toThrow();
   });
 
-  it("should update the identity properties on identify", async () => {
+  it("should always send $identify event on identify", async () => {
     jest.resetModules();
-    const newDistinctId = "new-distinct-id";
-    await oursprivacyMain.identify(token, newDistinctId);
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateDistinctId
-    ).toHaveBeenCalledWith(token, newDistinctId);
-    expect(oursprivacyMain.oursprivacyPersistent.updateUserId).toHaveBeenCalledWith(
+    const externalId = "new-external-id";
+    await oursprivacyMain.identify(token, externalId);
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
       token,
-      newDistinctId
-    );
-  });
-
-  it("should not update the identity properties if the new distinctid is the save as before", async () => {
-    const newDistinctId = "distinct-id-mock";
-    await oursprivacyMain.identify(token, newDistinctId);
-    expect(
-      oursprivacyMain.oursprivacyPersistent.updateDistinctId
-    ).toHaveBeenCalledTimes(0);
-    expect(oursprivacyMain.oursprivacyPersistent.updateUserId).toHaveBeenCalledTimes(
-      0
+      OursPrivacyType.EVENTS,
+      expect.objectContaining({
+        event: "$identify",
+        userProperties: expect.objectContaining({
+          external_id: externalId,
+        }),
+      })
     );
   });
 
@@ -354,7 +336,7 @@ describe("OursPrivacyMain", () => {
       OursPrivacyType.EVENTS,
       expect.objectContaining({
         event: "$identify",
-        visitor_id: "device-id-mock",
+        visitor_id: "visitor-id-mock",
         distinct_id: expect.any(String),
         eventProperties: null,
         userProperties: expect.objectContaining({
@@ -407,9 +389,9 @@ describe("OursPrivacyMain", () => {
     );
   });
 
-  it("getVisitorId should return the device id", () => {
+  it("getVisitorId should return the visitor id", () => {
     const visitorId = oursprivacyMain.getVisitorId(token);
-    expect(visitorId).toBe("device-id-mock");
+    expect(visitorId).toBe("visitor-id-mock");
   });
 
   it("reset should clear default property maps", async () => {
@@ -534,10 +516,7 @@ describe("OursPrivacyMain", () => {
         "myapp://open?ours_visitor_id=web-uuid-123&utm_source=email"
       );
       expect(
-        oursprivacyMain.oursprivacyPersistent.updateDeviceId
-      ).toHaveBeenCalledWith(token, "web-uuid-123");
-      expect(
-        oursprivacyMain.oursprivacyPersistent.updateDistinctId
+        oursprivacyMain.oursprivacyPersistent.updateVisitorId
       ).toHaveBeenCalledWith(token, "web-uuid-123");
       expect(oursprivacyMain.config.setIsManuallySetId).toHaveBeenCalledWith(
         token,
@@ -551,7 +530,7 @@ describe("OursPrivacyMain", () => {
         "myapp://open?utm_source=google"
       );
       expect(
-        oursprivacyMain.oursprivacyPersistent.updateDeviceId
+        oursprivacyMain.oursprivacyPersistent.updateVisitorId
       ).not.toHaveBeenCalled();
     });
 
@@ -571,7 +550,7 @@ describe("OursPrivacyMain", () => {
       // No event, no attribution, no identity stitching
       expect(oursprivacyMain.core.addToOursPrivacyQueue).not.toHaveBeenCalled();
       expect(oursprivacyMain._attributionDefaultProperties[token] || {}).toEqual({});
-      expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).not.toHaveBeenCalled();
+      expect(oursprivacyMain.oursprivacyPersistent.updateVisitorId).not.toHaveBeenCalled();
       expect(oursprivacyMain.config.setIsManuallySetId).not.toHaveBeenCalled();
     });
 
@@ -595,16 +574,10 @@ describe("OursPrivacyMain", () => {
     it("should update visitor_id and set is_manually_set_id", async () => {
       await oursprivacyMain.setVisitorId(token, "new-visitor-id");
       expect(
-        oursprivacyMain.oursprivacyPersistent.updateDeviceId
+        oursprivacyMain.oursprivacyPersistent.updateVisitorId
       ).toHaveBeenCalledWith(token, "new-visitor-id");
       expect(
-        oursprivacyMain.oursprivacyPersistent.updateDistinctId
-      ).toHaveBeenCalledWith(token, "new-visitor-id");
-      expect(
-        oursprivacyMain.oursprivacyPersistent.persistDeviceId
-      ).toHaveBeenCalledWith(token);
-      expect(
-        oursprivacyMain.oursprivacyPersistent.persistDistinctId
+        oursprivacyMain.oursprivacyPersistent.persistVisitorId
       ).toHaveBeenCalledWith(token);
       expect(oursprivacyMain.config.setIsManuallySetId).toHaveBeenCalledWith(
         token,
@@ -650,7 +623,7 @@ describe("OursPrivacyMain", () => {
       );
       // visitor_id option is applied first, then initialURL overrides with ours_visitor_id
       expect(
-        oursprivacyMain.oursprivacyPersistent.updateDeviceId
+        oursprivacyMain.oursprivacyPersistent.updateVisitorId
       ).toHaveBeenCalledWith(token, "url-visitor-id");
     });
   });
