@@ -282,14 +282,17 @@ describe("OursPrivacyMain", () => {
     expect(oursprivacyMain.oursprivacyPersistent.getOptedOut).toHaveBeenCalledWith(token);
   });
 
-  it("optOutTracking should clear queued events before resetting identity", async () => {
+  it("optOutTracking should clear queued events without rotating visitor identity", async () => {
     await oursprivacyMain.optOutTracking(token);
 
     expect(OursPrivacyQueueManager.clearQueue).toHaveBeenCalledWith(
       token,
       OursPrivacyType.EVENTS
     );
-    expect(oursprivacyMain.oursprivacyPersistent.reset).toHaveBeenCalledWith(token);
+    expect(oursprivacyMain.oursprivacyPersistent.reset).toHaveBeenCalledWith(
+      token,
+      {preserveVisitorId: true}
+    );
   });
 
   it("optOutTracking should clear attribution and all default properties", async () => {
@@ -399,6 +402,11 @@ describe("OursPrivacyMain", () => {
     oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro"});
     oursprivacyMain.updateDefaultUserConsentProperties(token, {marketing: true});
     await oursprivacyMain.reset(token);
+    expect(oursprivacyMain.oursprivacyPersistent.reset).toHaveBeenCalledWith(token);
+    expect(oursprivacyMain.config.setIsManuallySetId).toHaveBeenCalledWith(
+      token,
+      false
+    );
     expect(oursprivacyMain._defaultEventProperties[token]).toEqual({});
     expect(oursprivacyMain._defaultUserCustomProperties[token]).toEqual({});
     expect(oursprivacyMain._defaultUserConsentProperties[token]).toEqual({});
