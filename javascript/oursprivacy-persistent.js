@@ -218,11 +218,15 @@ export class OursPrivacyPersistent {
     );
   }
 
-  async reset(token) {
-    await this.storageAdapter.removeItem(getVisitorIdKey(token));
+  async reset(token, {preserveVisitorId = false} = {}) {
+    if (!preserveVisitorId) {
+      await this.storageAdapter.removeItem(getVisitorIdKey(token));
+    }
     await this.storageAdapter.removeItem(getSuperPropertiesKey(token));
     await this.storageAdapter.removeItem(getTimeEventsKey(token));
-    await this.loadIdentity(token);
+    if (!preserveVisitorId) {
+      await this.loadIdentity(token);
+    }
     await this.loadSuperProperties(token);
     await this.loadTimeEvents(token);
   }

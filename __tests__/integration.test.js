@@ -222,6 +222,7 @@ describe("OursPrivacy integration flows", () => {
     fetchMock.resetMocks();
     fetchMock.mockResponse(JSON.stringify({success: true}), {status: 200});
     op.reset();
+    await flushAsyncWork(10);
     op.track("after_reset", {step: 6});
     await flushAsyncWork();
     op.flush();

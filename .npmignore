@@ -72,6 +72,9 @@ scripts/
 .git/
 .github/
 
+# Test captures
+tmp/
+
 # Misc
 babel.config.js
 .nvmrc

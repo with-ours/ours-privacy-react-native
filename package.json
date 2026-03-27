@@ -1,6 +1,6 @@
 {
   "name": "@oursprivacy/react-native",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Official React Native Tracking Library for OursPrivacy Analytics",
   "main": "index.js",
   "types": "index.d.ts",
@@ -9,7 +9,9 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "qa:capture": "node scripts/capture-ingest.mjs",
-    "qa:check-captures": "node scripts/check-captures.mjs"
+    "qa:check-captures": "node scripts/check-captures.mjs",
+    "e2e": "node scripts/run-e2e.mjs",
+    "e2e:assertions": "node scripts/e2e-assertions.mjs"
   },
   "author": "OursPrivacy",
   "license": "Apache-2.0",

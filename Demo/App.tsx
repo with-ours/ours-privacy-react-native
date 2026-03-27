@@ -19,7 +19,7 @@ import {
   Header,
 } from 'react-native/Libraries/NewAppScreen';
 
-import { OURSPRIVACY_SERVER_URL, OURSPRIVACY_TOKEN } from '@env';
+import { OURSPRIVACY_SERVER_URL, OURSPRIVACY_TOKEN, E2E_AUTOFIRE } from '@env';
 import { OursPrivacy } from '@oursprivacy/react-native';
 
 type SectionProps = PropsWithChildren<{ title: string }>;
@@ -57,7 +57,75 @@ console.log(
   OURSPRIVACY_SERVER_URL || 'https://cdn.oursprivacy.com',
 );
 
-oursprivacy.init(false, initOptions);
+oursprivacy.init(false, initOptions).then(async () => {
+  if (E2E_AUTOFIRE !== 'true') return;
+
+  const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+  console.log('[E2E] auto-fire sequence starting');
+
+  // Phase 1: Basic track
+  await delay(500);
+  oursprivacy.track('button_pressed', { button: 'e2e_auto' });
+  console.log('[E2E] tracked button_pressed');
+
+  // Phase 2: Identify
+  oursprivacy.identify('e2e-user@example.com', {
+    email: 'e2e-user@example.com',
+    external_id: 'e2e-user-123',
+    custom_properties: { plan: 'e2e' },
+  });
+  oursprivacy.flush();
+  await delay(1500);
+  console.log('[E2E] identified + flushed');
+
+  // Phase 3: Update defaults then track
+  oursprivacy.updateDefaultEventProperties({ last_action: 'update_defaults' });
+  oursprivacy.updateDefaultUserConsentProperties({ marketing: true });
+  oursprivacy.track('defaults_updated');
+  oursprivacy.flush();
+  await delay(1500);
+  console.log('[E2E] defaults updated + tracked + flushed');
+
+  // Phase 4: Opt-out — events below must NOT appear in captures
+  oursprivacy.optOutTracking();
+  oursprivacy.track('should_not_appear', { leaked: true });
+  oursprivacy.flush();
+  await delay(500);
+  console.log('[E2E] opted out + attempted track (should be suppressed)');
+
+  // Phase 5: Opt-in — should fire $opt_in, suppressed event must not appear
+  oursprivacy.optInTracking();
+  oursprivacy.track('after_opt_in');
+  oursprivacy.flush();
+  await delay(1500);
+  console.log('[E2E] opted in + tracked after_opt_in + flushed');
+
+  // Phase 6: Deep link (warm start)
+  await oursprivacy.trackDeepLink(
+    'myapp://products/456?utm_source=applovin&utm_medium=display&aleid=warm_aleid_789&alart=warm_alart_abc&ours_visitor_id=e2e-web-visitor-id'
+  );
+  oursprivacy.track('post_deep_link');
+  oursprivacy.flush();
+  await delay(1500);
+  console.log('[E2E] deep link + post_deep_link tracked + flushed');
+
+  // Phase 7: Set visitor ID manually
+  await oursprivacy.setVisitorId('e2e-manual-visitor-id');
+  oursprivacy.track('after_set_visitor_id');
+  oursprivacy.flush();
+  await delay(1500);
+  console.log('[E2E] set visitor ID + tracked + flushed');
+
+  // Phase 8: Reset — reset() is async internally, need delay before tracking
+  oursprivacy.reset();
+  await delay(500);
+  oursprivacy.track('after_reset');
+  oursprivacy.flush();
+  await delay(1500);
+  console.log('[E2E] reset + tracked after_reset + flushed');
+
+  console.log('[E2E] auto-fire sequence complete');
+});
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';

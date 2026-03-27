@@ -85,6 +85,7 @@ export default class OursPrivacyMain {
 
   async reset(token) {
     await this.oursprivacyPersistent.reset(token);
+    this.config.setIsManuallySetId(token, false);
     this._defaultEventProperties[token] = {};
     this._defaultUserCustomProperties[token] = {};
     this._defaultUserConsentProperties[token] = {};
@@ -159,7 +160,7 @@ export default class OursPrivacyMain {
     await this._setOptedOutTrackingFlag(token, true);
     await OursPrivacyQueueManager.clearQueue(token, OursPrivacyType.EVENTS);
     OursPrivacyLogger.log(token, "User has opted out of tracking");
-    await this.oursprivacyPersistent.reset(token);
+    await this.oursprivacyPersistent.reset(token, {preserveVisitorId: true});
     this._defaultEventProperties[token] = {};
     this._defaultUserCustomProperties[token] = {};
     this._defaultUserConsentProperties[token] = {};
