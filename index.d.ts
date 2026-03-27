@@ -10,6 +10,7 @@ export type OursPrivacyAsyncStorage = {
 export type OursPrivacyInitOptions = {
   serverURL?: string;
   visitor_id?: string;
+  initialURL?: string;
   default_event_properties?: Record<string, any>;
   default_user_custom_properties?: Record<string, any>;
   default_user_consent_properties?: Record<string, any>;
@@ -52,5 +53,7 @@ export class OursPrivacy {
   updateDefaultEventProperties(properties: Record<string, any>): void;
   updateDefaultUserCustomProperties(properties: Record<string, any>): void;
   updateDefaultUserConsentProperties(properties: Record<string, any>): void;
+  trackDeepLink(url: string): Promise<void>;
+  setVisitorId(visitorId: string): Promise<void>;
   flush(): void;
 }

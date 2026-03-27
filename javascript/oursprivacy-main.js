@@ -7,6 +7,7 @@ import {OursPrivacyQueueManager} from "./oursprivacy-queue";
 import {OursPrivacyLogger} from "./oursprivacy-logger";
 import packageJson from "../package.json";
 import {uuidv4} from "./oursprivacy-utils";
+import {parseAttributionFromURL} from "./oursprivacy-attribution";
 
 export default class OursPrivacyMain {
   constructor(token, trackAutomaticEvents, storage) {
@@ -19,6 +20,7 @@ export default class OursPrivacyMain {
     this._defaultEventProperties = {};
     this._defaultUserCustomProperties = {};
     this._defaultUserConsentProperties = {};
+    this._attributionDefaultProperties = {};
   }
 
   async initialize(
@@ -33,16 +35,24 @@ export default class OursPrivacyMain {
     await this.oursprivacyPersistent.initializationCompletePromise(token);
 
     this.setServerURL(token, serverURL);
-    await this._applyInitializationOptions(token, options);
 
-    if (optOutTrackingDefault) {
-      await this._setOptedOutTrackingFlag(token, true);
-      return;
-    }
-    await this._setOptedOutTrackingFlag(token, false);
+    // Set opt-out flag BEFORE applying options so that initialURL processing
+    // (which may fire $deep_link_opened) respects the opted-out state.
+    await this._setOptedOutTrackingFlag(token, !!optOutTrackingDefault);
+
+    await this._applyInitializationOptions(token, options);
   }
 
-  getDefaultProperties() {
+  /**
+   * Build the defaultProperties object for an event.
+   *
+   * Contains device metadata plus any marketing attribution captured via
+   * trackDeepLink(). All keys here must exist in the server's defaultPayload
+   * Zod schema — unknown keys are silently stripped server-side.
+   *
+   * @see javascript/oursprivacy-schema.js (auto-generated field list)
+   */
+  getDefaultProperties(token) {
     const {OS, Version, constants} = Platform;
     const {Model, Manufacturer, Brand} = constants || {};
 
@@ -59,6 +69,14 @@ export default class OursPrivacyMain {
       props.device_vendor = Manufacturer || Brand || undefined;
       if (Model) props.device_model = Model;
     }
+
+    // Merge marketing attribution (UTMs, click IDs) captured from deep links.
+    // These are typed fields in the server's defaultPayload schema.
+    const attribution = this._attributionDefaultProperties[token];
+    if (attribution && Object.keys(attribution).length > 0) {
+      Object.assign(props, attribution);
+    }
+
     return props;
   }
 
@@ -67,6 +85,7 @@ export default class OursPrivacyMain {
     this._defaultEventProperties[token] = {};
     this._defaultUserCustomProperties[token] = {};
     this._defaultUserConsentProperties[token] = {};
+    this._attributionDefaultProperties[token] = {};
   }
 
   async track(token, eventName, properties) {
@@ -107,7 +126,7 @@ export default class OursPrivacyMain {
       distinct_id: distinctId,
       eventProperties: Object.keys(rawEventProps).length > 0 ? rawEventProps : null,
       userProperties: Object.keys(userProps).length > 0 ? userProps : null,
-      defaultProperties: this.getDefaultProperties(),
+      defaultProperties: this.getDefaultProperties(token),
     };
 
     await this.core.addToOursPrivacyQueue(token, OursPrivacyType.EVENTS, eventData);
@@ -141,6 +160,10 @@ export default class OursPrivacyMain {
     await OursPrivacyQueueManager.clearQueue(token, OursPrivacyType.EVENTS);
     OursPrivacyLogger.log(token, "User has opted out of tracking");
     await this.oursprivacyPersistent.reset(token);
+    this._defaultEventProperties[token] = {};
+    this._defaultUserCustomProperties[token] = {};
+    this._defaultUserConsentProperties[token] = {};
+    this._attributionDefaultProperties[token] = {};
   }
 
   async optInTracking(token) {
@@ -202,7 +225,7 @@ export default class OursPrivacyMain {
       distinct_id: distinctId,
       eventProperties: null,
       userProperties: identifyUserProps,
-      defaultProperties: this.getDefaultProperties(),
+      defaultProperties: this.getDefaultProperties(token),
     };
 
     await this.core.addToOursPrivacyQueue(token, OursPrivacyType.EVENTS, eventData);
@@ -210,6 +233,52 @@ export default class OursPrivacyMain {
 
   getVisitorId(token) {
     return this.oursprivacyPersistent.getDeviceId(token);
+  }
+
+  async setVisitorId(token, visitorId) {
+    this.config.setIsManuallySetId(token, true);
+    this.oursprivacyPersistent.updateDeviceId(token, visitorId);
+    this.oursprivacyPersistent.updateDistinctId(token, visitorId);
+    await this.oursprivacyPersistent.persistDeviceId(token);
+    await this.oursprivacyPersistent.persistDistinctId(token);
+  }
+
+  async trackDeepLink(token, url) {
+    if (!url || typeof url !== "string") {
+      OursPrivacyLogger.log(token, "trackDeepLink called with invalid URL, skipping.");
+      return;
+    }
+
+    // No state mutation while opted out — no attribution, no identity
+    // stitching, no event. The deep link is silently dropped.
+    if (this.oursprivacyPersistent.getOptedOut(token)) {
+      OursPrivacyLogger.log(token, "trackDeepLink skipped: user is opted out.");
+      return;
+    }
+
+    OursPrivacyLogger.log(token, `trackDeepLink: ${url}`);
+
+    const attribution = parseAttributionFromURL(url);
+
+    // If ours_visitor_id is in the URL, stitch web → app identity
+    if (attribution.oursVisitorId) {
+      await this.setVisitorId(token, attribution.oursVisitorId);
+    }
+
+    // Replace (not merge) attribution default properties with this link's
+    // parsed fields. A new deep link is a new attribution context — stale
+    // keys from a previous link must not carry over.
+    this._attributionDefaultProperties[token] = {
+      ...(attribution.utmParams || {}),
+      ...(attribution.clickIds || {}),
+    };
+
+    // Fire a $deep_link_opened event. Attribution data lives in
+    // defaultProperties (via getDefaultProperties); only the raw URL
+    // goes into eventProperties to avoid duplicating typed schema fields.
+    await this.track(token, "$deep_link_opened", {
+      url: attribution.rawURL,
+    });
   }
 
   updateDefaultEventProperties(token, properties) {
@@ -248,13 +317,10 @@ export default class OursPrivacyMain {
       this.updateDefaultUserConsentProperties(token, options.default_user_consent_properties);
     }
     if (options.visitor_id) {
-      this.config.setIsManuallySetId(token, true);
-      // Override the stable visitor UUID with the caller-supplied ID so that
-      // visitor_id on all subsequent events reflects the provided value.
-      this.oursprivacyPersistent.updateDeviceId(token, options.visitor_id);
-      this.oursprivacyPersistent.updateDistinctId(token, options.visitor_id);
-      await this.oursprivacyPersistent.persistDeviceId(token);
-      await this.oursprivacyPersistent.persistDistinctId(token);
+      await this.setVisitorId(token, options.visitor_id);
+    }
+    if (options.initialURL) {
+      await this.trackDeepLink(token, options.initialURL);
     }
   }
 }

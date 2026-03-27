@@ -207,6 +207,23 @@ describe("OursPrivacyMain", () => {
     expect(oursprivacyMain.core.addToOursPrivacyQueue).not.toHaveBeenCalled();
   });
 
+  it("should not fire $deep_link_opened or store attribution when opted out", async () => {
+    oursprivacyMain.oursprivacyPersistent.getOptedOut.mockReturnValue(true);
+    await oursprivacyMain.initialize(
+      token,
+      false,
+      true,
+      {initialURL: "myapp://open?utm_source=google&gclid=abc&ours_visitor_id=web-123"},
+      "https://cdn.oursprivacy.com"
+    );
+    // No event fired
+    expect(oursprivacyMain.core.addToOursPrivacyQueue).not.toHaveBeenCalled();
+    // No attribution stored
+    expect(oursprivacyMain._attributionDefaultProperties[token] || {}).toEqual({});
+    // No visitor ID stitched
+    expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).not.toHaveBeenCalledWith(token, "web-123");
+  });
+
   it("should track if initialize with optOutTrackingDefault being false", async () => {
     const trackAutomaticEvents = false;
     const optOutTrackingDefault = false;
@@ -283,6 +300,22 @@ describe("OursPrivacyMain", () => {
       OursPrivacyType.EVENTS
     );
     expect(oursprivacyMain.oursprivacyPersistent.reset).toHaveBeenCalledWith(token);
+  });
+
+  it("optOutTracking should clear attribution and all default properties", async () => {
+    await oursprivacyMain.trackDeepLink(token, "myapp://open?utm_source=google&gclid=abc");
+    oursprivacyMain.updateDefaultEventProperties(token, {custom: "val"});
+    oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro"});
+    oursprivacyMain.updateDefaultUserConsentProperties(token, {marketing: true});
+
+    await oursprivacyMain.optOutTracking(token);
+
+    expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual({});
+    expect(oursprivacyMain._defaultEventProperties[token]).toEqual({});
+    expect(oursprivacyMain._defaultUserCustomProperties[token]).toEqual({});
+    expect(oursprivacyMain._defaultUserConsentProperties[token]).toEqual({});
+    const dp = oursprivacyMain.getDefaultProperties(token);
+    expect(dp.utm_source).toBeUndefined();
   });
 
   it("setFlushOnBackground should be a safe no-op in JavaScript mode", () => {
@@ -387,5 +420,252 @@ describe("OursPrivacyMain", () => {
     expect(oursprivacyMain._defaultEventProperties[token]).toEqual({});
     expect(oursprivacyMain._defaultUserCustomProperties[token]).toEqual({});
     expect(oursprivacyMain._defaultUserConsentProperties[token]).toEqual({});
+  });
+
+  it("getDefaultProperties should include device_type and merge attribution", async () => {
+    const props = oursprivacyMain.getDefaultProperties(token);
+    expect(props.device_type).toBe("mobile");
+    // After trackDeepLink, attribution should appear in defaultProperties
+    await oursprivacyMain.trackDeepLink(token, "myapp://open?utm_source=test");
+    const propsAfter = oursprivacyMain.getDefaultProperties(token);
+    expect(propsAfter.utm_source).toBe("test");
+  });
+
+  describe("trackDeepLink", () => {
+    it("should parse UTM params into defaultProperties (not eventProperties)", async () => {
+      await oursprivacyMain.trackDeepLink(
+        token,
+        "myapp://open?utm_source=google&utm_medium=cpc&utm_campaign=spring"
+      );
+      // Attribution goes into _attributionDefaultProperties which merges into defaultProperties
+      expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual(
+        expect.objectContaining({
+          utm_source: "google",
+          utm_medium: "cpc",
+          utm_campaign: "spring",
+        })
+      );
+      // And should appear in getDefaultProperties output
+      const dp = oursprivacyMain.getDefaultProperties(token);
+      expect(dp.utm_source).toBe("google");
+      expect(dp.utm_medium).toBe("cpc");
+    });
+
+    it("should parse click IDs into defaultProperties", async () => {
+      await oursprivacyMain.trackDeepLink(
+        token,
+        "myapp://open?gclid=abc123&fbclid=def456"
+      );
+      expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual(
+        expect.objectContaining({
+          gclid: "abc123",
+          fbclid: "def456",
+        })
+      );
+    });
+
+    it("should parse AppLovin params (aleid, alart) into defaultProperties", async () => {
+      await oursprivacyMain.trackDeepLink(
+        token,
+        "myapp://open?aleid=click_123&alart=user_456"
+      );
+      expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual(
+        expect.objectContaining({
+          aleid: "click_123",
+          alart: "user_456",
+        })
+      );
+    });
+
+    it("should fire a $deep_link_opened event with only URL in eventProperties", async () => {
+      await oursprivacyMain.trackDeepLink(
+        token,
+        "myapp://open?utm_source=email&gclid=xyz"
+      );
+      const call = oursprivacyMain.core.addToOursPrivacyQueue.mock.calls.find(
+        (c) => c[2].event === "$deep_link_opened"
+      );
+      expect(call).toBeTruthy();
+      const eventData = call[2];
+      // Only the raw URL goes in eventProperties
+      expect(eventData.eventProperties).toEqual(
+        expect.objectContaining({url: "myapp://open?utm_source=email&gclid=xyz"})
+      );
+      // UTM/click IDs should NOT be duplicated into eventProperties
+      expect(eventData.eventProperties.utm_source).toBeUndefined();
+      expect(eventData.eventProperties.gclid).toBeUndefined();
+      // They should appear in defaultProperties
+      expect(eventData.defaultProperties).toEqual(
+        expect.objectContaining({
+          utm_source: "email",
+          gclid: "xyz",
+        })
+      );
+    });
+
+    it("should replace (not merge) attribution on subsequent deep links", async () => {
+      await oursprivacyMain.trackDeepLink(
+        token,
+        "myapp://open?utm_campaign=spring&gclid=abc"
+      );
+      expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual({
+        utm_campaign: "spring",
+        gclid: "abc",
+      });
+
+      // Second deep link with different params — stale keys must not persist
+      await oursprivacyMain.trackDeepLink(
+        token,
+        "myapp://open?utm_source=email"
+      );
+      expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual({
+        utm_source: "email",
+      });
+      // utm_campaign and gclid from the first link must be gone
+      const dp = oursprivacyMain.getDefaultProperties(token);
+      expect(dp.utm_campaign).toBeUndefined();
+      expect(dp.gclid).toBeUndefined();
+      expect(dp.utm_source).toBe("email");
+    });
+
+    it("should update visitor_id when ours_visitor_id is in the URL", async () => {
+      await oursprivacyMain.trackDeepLink(
+        token,
+        "myapp://open?ours_visitor_id=web-uuid-123&utm_source=email"
+      );
+      expect(
+        oursprivacyMain.oursprivacyPersistent.updateDeviceId
+      ).toHaveBeenCalledWith(token, "web-uuid-123");
+      expect(
+        oursprivacyMain.oursprivacyPersistent.updateDistinctId
+      ).toHaveBeenCalledWith(token, "web-uuid-123");
+      expect(oursprivacyMain.config.setIsManuallySetId).toHaveBeenCalledWith(
+        token,
+        true
+      );
+    });
+
+    it("should not update visitor_id when ours_visitor_id is absent", async () => {
+      await oursprivacyMain.trackDeepLink(
+        token,
+        "myapp://open?utm_source=google"
+      );
+      expect(
+        oursprivacyMain.oursprivacyPersistent.updateDeviceId
+      ).not.toHaveBeenCalled();
+    });
+
+    it("should be a no-op for null/undefined/empty URL", async () => {
+      await oursprivacyMain.trackDeepLink(token, null);
+      await oursprivacyMain.trackDeepLink(token, undefined);
+      await oursprivacyMain.trackDeepLink(token, "");
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).not.toHaveBeenCalled();
+    });
+
+    it("should be a complete no-op when opted out", async () => {
+      oursprivacyMain.oursprivacyPersistent.getOptedOut.mockReturnValue(true);
+      await oursprivacyMain.trackDeepLink(
+        token,
+        "myapp://open?utm_source=google&gclid=abc&ours_visitor_id=web-123"
+      );
+      // No event, no attribution, no identity stitching
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).not.toHaveBeenCalled();
+      expect(oursprivacyMain._attributionDefaultProperties[token] || {}).toEqual({});
+      expect(oursprivacyMain.oursprivacyPersistent.updateDeviceId).not.toHaveBeenCalled();
+      expect(oursprivacyMain.config.setIsManuallySetId).not.toHaveBeenCalled();
+    });
+
+    it("should handle URL with no attribution params", async () => {
+      await oursprivacyMain.trackDeepLink(token, "myapp://open");
+      // Should still fire the event with just the URL
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
+        token,
+        OursPrivacyType.EVENTS,
+        expect.objectContaining({
+          event: "$deep_link_opened",
+          eventProperties: expect.objectContaining({
+            url: "myapp://open",
+          }),
+        })
+      );
+    });
+  });
+
+  describe("setVisitorId", () => {
+    it("should update visitor_id and set is_manually_set_id", async () => {
+      await oursprivacyMain.setVisitorId(token, "new-visitor-id");
+      expect(
+        oursprivacyMain.oursprivacyPersistent.updateDeviceId
+      ).toHaveBeenCalledWith(token, "new-visitor-id");
+      expect(
+        oursprivacyMain.oursprivacyPersistent.updateDistinctId
+      ).toHaveBeenCalledWith(token, "new-visitor-id");
+      expect(
+        oursprivacyMain.oursprivacyPersistent.persistDeviceId
+      ).toHaveBeenCalledWith(token);
+      expect(
+        oursprivacyMain.oursprivacyPersistent.persistDistinctId
+      ).toHaveBeenCalledWith(token);
+      expect(oursprivacyMain.config.setIsManuallySetId).toHaveBeenCalledWith(
+        token,
+        true
+      );
+    });
+  });
+
+  describe("initialURL init option", () => {
+    it("should parse deep link on init when initialURL is provided", async () => {
+      await oursprivacyMain.initialize(
+        token,
+        false,
+        false,
+        {initialURL: "myapp://open?utm_source=google&aleid=click_abc"},
+        "https://cdn.oursprivacy.com"
+      );
+      expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual(
+        expect.objectContaining({
+          utm_source: "google",
+          aleid: "click_abc",
+        })
+      );
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
+        token,
+        OursPrivacyType.EVENTS,
+        expect.objectContaining({
+          event: "$deep_link_opened",
+        })
+      );
+    });
+
+    it("should handle both visitor_id and initialURL in init options", async () => {
+      await oursprivacyMain.initialize(
+        token,
+        false,
+        false,
+        {
+          visitor_id: "explicit-visitor-id",
+          initialURL: "myapp://open?utm_source=google&ours_visitor_id=url-visitor-id",
+        },
+        "https://cdn.oursprivacy.com"
+      );
+      // visitor_id option is applied first, then initialURL overrides with ours_visitor_id
+      expect(
+        oursprivacyMain.oursprivacyPersistent.updateDeviceId
+      ).toHaveBeenCalledWith(token, "url-visitor-id");
+    });
+  });
+
+  it("reset should clear attribution from defaultProperties", async () => {
+    await oursprivacyMain.trackDeepLink(
+      token,
+      "myapp://open?utm_source=google&gclid=abc"
+    );
+    expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual(
+      expect.objectContaining({utm_source: "google", gclid: "abc"})
+    );
+    await oursprivacyMain.reset(token);
+    expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual({});
+    const dp = oursprivacyMain.getDefaultProperties(token);
+    expect(dp.utm_source).toBeUndefined();
   });
 });
