@@ -1,4 +1,4 @@
-import {Platform} from "react-native";
+import {Platform, Dimensions} from "react-native";
 import {OursPrivacyCore} from "./oursprivacy-core";
 import {OursPrivacyType} from "./oursprivacy-constants";
 import {OursPrivacyConfig} from "./oursprivacy-config";
@@ -55,12 +55,15 @@ export default class OursPrivacyMain {
   getDefaultProperties(token) {
     const {OS, Version, constants} = Platform;
     const {Model, Manufacturer, Brand} = constants || {};
+    const {width, height} = Dimensions.get("screen");
 
     const props = {
       device_type: "mobile",
       os_name: OS === "ios" ? "iOS" : OS === "android" ? "Android" : OS,
       os_version: String(Version),
       version: packageJson.version,
+      screen_width: width,
+      screen_height: height,
     };
     if (OS === "ios") {
       props.device_vendor = "Apple";
@@ -103,10 +106,7 @@ export default class OursPrivacyMain {
       properties
     );
 
-    // visitor_id: stable UUID for this device/install (persisted in AsyncStorage).
-    // distinct_id: a new UUID generated per-event — it is a unique ID for this
-    //   specific event occurrence, NOT a user ID. Do not confuse with visitor_id.
-    const visitorId = this.oursprivacyPersistent.getDeviceId(token);
+    const visitorId = this.oursprivacyPersistent.getVisitorId(token);
     const distinctId = uuidv4();
 
     const rawEventProps = {
@@ -181,28 +181,17 @@ export default class OursPrivacyMain {
     return this.oursprivacyPersistent.getOptedOut(token);
   }
 
-  async identify(token, newDistinctId, userProperties) {
-    OursPrivacyLogger.log(token, `Identify '${newDistinctId}'`);
-    const oldDistinctId = this.oursprivacyPersistent.getDistinctId(token);
-    if (oldDistinctId === newDistinctId) {
-      OursPrivacyLogger.log(
-        token,
-        `Distinct Id is already set to ${newDistinctId}, skipping identify.`
-      );
-      return;
-    }
-    this.oursprivacyPersistent.updateDistinctId(token, newDistinctId);
-    this.oursprivacyPersistent.updateUserId(token, newDistinctId);
-    await this.oursprivacyPersistent.persistIdentity(token);
+  async identify(token, externalId, userProperties) {
+    OursPrivacyLogger.log(token, `Identify '${externalId}'`);
 
-    const visitorId = this.oursprivacyPersistent.getDeviceId(token);
+    const visitorId = this.oursprivacyPersistent.getVisitorId(token);
     const distinctId = uuidv4();
 
     const customProps = this._defaultUserCustomProperties[token] || {};
     const consentProps = this._defaultUserConsentProperties[token] || {};
 
     const identifyUserProps = {
-      external_id: newDistinctId,
+      external_id: externalId,
       ...(userProperties || {}),
     };
 
@@ -232,15 +221,13 @@ export default class OursPrivacyMain {
   }
 
   getVisitorId(token) {
-    return this.oursprivacyPersistent.getDeviceId(token);
+    return this.oursprivacyPersistent.getVisitorId(token);
   }
 
   async setVisitorId(token, visitorId) {
     this.config.setIsManuallySetId(token, true);
-    this.oursprivacyPersistent.updateDeviceId(token, visitorId);
-    this.oursprivacyPersistent.updateDistinctId(token, visitorId);
-    await this.oursprivacyPersistent.persistDeviceId(token);
-    await this.oursprivacyPersistent.persistDistinctId(token);
+    this.oursprivacyPersistent.updateVisitorId(token, visitorId);
+    await this.oursprivacyPersistent.persistVisitorId(token);
   }
 
   async trackDeepLink(token, url) {

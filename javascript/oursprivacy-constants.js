@@ -4,9 +4,8 @@ export const OursPrivacyType = {
 
 export const getQueueKey = (token, type) => `OURSPRIVACY_${token}_${type}_QUEUE`;
 
-export const getDeviceIdKey = (token) => `OURSPRIVACY_${token}_DEVICE_ID`;
-export const getDistinctIdKey = (token) => `OURSPRIVACY_${token}_DISTINCT_ID`;
-export const getUserIdKey = (token) => `OURSPRIVACY_${token}_USER_ID`;
+// Storage key string kept as-is for backwards compatibility with existing installs.
+export const getVisitorIdKey = (token) => `OURSPRIVACY_${token}_DEVICE_ID`;
 
 export const getOptedOutKey = (token) => `OURSPRIVACY_${token}_OPT_OUT`;
 export const getSuperPropertiesKey = (token) =>

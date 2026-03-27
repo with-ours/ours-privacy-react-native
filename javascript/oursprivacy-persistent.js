@@ -1,11 +1,9 @@
 import {
-  getDeviceIdKey,
-  getDistinctIdKey,
+  getVisitorIdKey,
   getSuperPropertiesKey,
   getTimeEventsKey,
   getOptedOutKey as getOutedOutKey,
   getQueueKey,
-  getUserIdKey,
   getAppHasOpenedBeforeKey,
 } from "./oursprivacy-constants";
 
@@ -48,126 +46,51 @@ export class OursPrivacyPersistent {
     ]);
   }
 
-  async loadDeviceId(token) {
+  async loadVisitorId(token) {
     await this.storageAdapter
-      .getItem(getDeviceIdKey(token))
-      .then((deviceId) => {
+      .getItem(getVisitorIdKey(token))
+      .then((visitorId) => {
         if (!this._identity[token]) {
           this._identity[token] = {};
         }
-        this._identity[token].deviceId = deviceId;
+        this._identity[token].visitorId = visitorId;
       });
-    if (!this._identity[token].deviceId) {
-      this._identity[token].deviceId = uuidv4();
+    if (!this._identity[token].visitorId) {
+      this._identity[token].visitorId = uuidv4();
       await this.storageAdapter.setItem(
-        getDeviceIdKey(token),
-        this._identity[token].deviceId
+        getVisitorIdKey(token),
+        this._identity[token].visitorId
       );
     }
-    OursPrivacyLogger.log(token, "deviceId:", this._identity[token].deviceId);
-  }
-
-  async loadDistinctId(token) {
-    await this.storageAdapter
-      .getItem(getDistinctIdKey(token))
-      .then((distinctId) => {
-        if (!this._identity[token]) {
-          this._identity[token] = {};
-        }
-        this._identity[token].distinctId = distinctId;
-      });
-    if (!this._identity[token].distinctId) {
-      this._identity[token].distinctId = this._identity[token].deviceId;
-      await this.storageAdapter.setItem(
-        getDistinctIdKey(token),
-        this._identity[token].distinctId
-      );
-    }
-    OursPrivacyLogger.log(token, "distinctId:", this._identity[token].distinctId);
-  }
-
-  async loadUserId(token) {
-    await this.storageAdapter.getItem(getUserIdKey(token)).then((userId) => {
-      if (!this._identity[token]) {
-        this._identity[token] = {};
-      }
-      this._identity[token].userId = userId;
-    });
-    OursPrivacyLogger.log(token, "userId:", this._identity[token].userId);
+    OursPrivacyLogger.log(token, "visitorId:", this._identity[token].visitorId);
   }
 
   async loadIdentity(token) {
-    await this.loadDeviceId(token);
-    await this.loadDistinctId(token);
-    await this.loadUserId(token);
+    await this.loadVisitorId(token);
   }
 
   async persistIdentity(token) {
-    await this.persistDeviceId(token);
-    await this.persistDistinctId(token);
-    await this.persistUserId(token);
+    await this.persistVisitorId(token);
   }
 
-  getDeviceId(token) {
+  getVisitorId(token) {
     if (!this._identity[token]) {
       return null;
     }
-    return this._identity[token].deviceId;
+    return this._identity[token].visitorId;
   }
 
-  updateDeviceId(token, deviceId) {
-    this._identity[token].deviceId = deviceId;
+  updateVisitorId(token, visitorId) {
+    this._identity[token].visitorId = visitorId;
   }
 
-  async persistDeviceId(token) {
-    if (!this._identity[token] || this._identity[token].deviceId === null) {
+  async persistVisitorId(token) {
+    if (!this._identity[token] || this._identity[token].visitorId === null) {
       return;
     }
     await this.storageAdapter.setItem(
-      getDeviceIdKey(token),
-      this._identity[token].deviceId
-    );
-  }
-
-  getDistinctId(token) {
-    if (!this._identity[token]) {
-      return null;
-    }
-    return this._identity[token].distinctId;
-  }
-
-  updateDistinctId(token, distinctId) {
-    this._identity[token].distinctId = distinctId;
-  }
-
-  async persistDistinctId(token) {
-    if (!this._identity[token] || this._identity[token].distinctId === null) {
-      return;
-    }
-    await this.storageAdapter.setItem(
-      getDistinctIdKey(token),
-      this._identity[token].distinctId
-    );
-  }
-
-  getUserId(token) {
-    if (!this._identity[token]) {
-      return null;
-    }
-    return this._identity[token].userId;
-  }
-
-  updateUserId(token, userId) {
-    this._identity[token].userId = userId;
-  }
-
-  async persistUserId(token) {
-    if (!this._identity[token] || this._identity[token].userId === null) {
-      return;
-    }
-    await this.storageAdapter.setItem(
-      getUserIdKey(token),
-      this._identity[token].userId
+      getVisitorIdKey(token),
+      this._identity[token].visitorId
     );
   }
 
@@ -296,9 +219,7 @@ export class OursPrivacyPersistent {
   }
 
   async reset(token) {
-    await this.storageAdapter.removeItem(getDeviceIdKey(token));
-    await this.storageAdapter.removeItem(getDistinctIdKey(token));
-    await this.storageAdapter.removeItem(getUserIdKey(token));
+    await this.storageAdapter.removeItem(getVisitorIdKey(token));
     await this.storageAdapter.removeItem(getSuperPropertiesKey(token));
     await this.storageAdapter.removeItem(getTimeEventsKey(token));
     await this.loadIdentity(token);
