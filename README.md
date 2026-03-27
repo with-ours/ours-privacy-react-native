@@ -158,6 +158,7 @@ Initializes the SDK. Must be called before tracking.
 | `default_user_custom_properties` | `object` | Properties merged into `userProperties.custom_properties` on every event |
 | `default_user_consent_properties` | `object` | Properties merged into `userProperties.consent` on every event |
 | `serverURL` | `string` | Override the base URL used for requests, for example a local QA capture server |
+| `initialURL` | `string` | Deep link URL to parse on init — extracts UTM params, click IDs, and `ours_visitor_id` (see [Deep Link Attribution](#deep-link-attribution)) |
 
 **Returns:** `Promise<void>`
 
@@ -408,6 +409,98 @@ console.log(visitorId); // e.g. "550e8400-e29b-41d4-a716-446655440000"
 
 ---
 
+#### `op.setVisitorId(visitorId)`
+
+Update the visitor ID after initialization. Use this for web-to-app identity stitching when the visitor ID arrives outside of a deep link (e.g. via a native bridge or async lookup).
+
+Sets `is_manually_set_id: true` on all subsequent events.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `visitorId` | `string` | Yes | The Ours Privacy visitor ID to adopt |
+
+**Returns:** `Promise<void>`
+
+```js
+await op.setVisitorId('550e8400-e29b-41d4-a716-446655440000');
+```
+
+---
+
+### Deep Link Attribution
+
+#### `op.trackDeepLink(url)`
+
+Parse a deep link URL for marketing attribution data and fire a `$deep_link_opened` event. Extracts UTM parameters, ad network click IDs, and `ours_visitor_id` for cross-platform identity stitching.
+
+Parsed attribution params are merged into defaultProperties, so they appear on all subsequent `track()` calls.
+
+Await the returned promise before calling `track()` to ensure attribution and visitor identity are fully applied.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | `string` | Yes | The deep link or initial URL to parse |
+
+**Returns:** `Promise<void>`
+
+```js
+import { Linking } from 'react-native';
+
+// On cold start — await to ensure attribution is applied before tracking
+const initialURL = await Linking.getInitialURL();
+if (initialURL) {
+  await op.trackDeepLink(initialURL);
+}
+
+// On warm start (app in background)
+Linking.addEventListener('url', async ({ url }) => {
+  await op.trackDeepLink(url);
+});
+```
+
+Alternatively, pass the URL at init time:
+
+```js
+const initialURL = await Linking.getInitialURL();
+await op.init(false, {
+  initialURL: initialURL || undefined,
+});
+```
+
+**Supported parameters:**
+
+| Category | Parameters |
+|----------|-----------|
+| UTM | `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term` |
+| Google | `gclid`, `gad_source`, `dclid`, `gbraid`, `wbraid` |
+| Meta | `fbclid`, `fbc`, `fbp` |
+| Microsoft | `msclkid` |
+| TikTok | `ttclid` |
+| Twitter/X | `twclid` |
+| LinkedIn | `li_fat_id` |
+| Reddit | `rdt_cid` |
+| Snapchat | `sccid` |
+| Pinterest | `epik` |
+| Quora | `qclid` |
+| AppLovin | `aleid`, `alart`, `axwrt` |
+| Other | `clickid`, `clid`, `ndclid`, `irclickid`, `im_ref`, `sacid`, `basis_cid` |
+| Identity | `ours_visitor_id` — cross-platform visitor stitching |
+
+**AppLovin example:**
+
+When a user clicks an AppLovin ad, the deep link will contain `aleid` (click ID) and `alart` (app user ID):
+
+```js
+// Deep link: myapp://open?aleid=click_abc&alart=user_xyz&utm_source=applovin
+await op.trackDeepLink('myapp://open?aleid=click_abc&alart=user_xyz&utm_source=applovin');
+
+// All subsequent events will include aleid, alart, and utm_source in defaultProperties
+```
+
+> **Note:** `esi` (Event Source Indicator) is configured in the AppLovin destination mapping in the Ours Privacy dashboard, not in the SDK. Set it to `"app"` for mobile events in your destination settings.
+
+---
+
 ### Privacy Controls
 
 #### `op.optOutTracking()`
@@ -493,7 +586,7 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
 | Field | Description |
 |-------|-------------|
 | `token` | Your project token |
-| `is_manually_set_id` | `true` when `visitor_id` was passed in `init()` options |
+| `is_manually_set_id` | `true` when visitor ID was set via `init()` options, `setVisitorId()`, or `ours_visitor_id` in a deep link |
 | `data` | Array of event objects in this batch |
 | `event` | Event name |
 | `visitor_id` | Stable visitor UUID for this install (no prefix) |

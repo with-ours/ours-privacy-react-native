@@ -41,9 +41,14 @@ function Section({ children, title }: SectionProps): React.JSX.Element {
 // Initialize SDK once using instance pattern
 const oursprivacy = new OursPrivacy(OURSPRIVACY_TOKEN, false, false);
 
+// Test initialURL init option: parse a simulated deep link at init time
+const SIMULATED_COLD_START_URL =
+  'myapp://open?utm_source=google&utm_medium=cpc&utm_campaign=spring_2026&gclid=test_gclid_123&aleid=test_aleid_456';
+
 const initOptions = {
   default_event_properties: { demo_app: true },
   default_user_custom_properties: { test_user: true },
+  initialURL: SIMULATED_COLD_START_URL,
   ...(OURSPRIVACY_SERVER_URL ? { serverURL: OURSPRIVACY_SERVER_URL } : {}),
 };
 
@@ -95,6 +100,33 @@ function App(): React.JSX.Element {
     console.log('[OursPrivacy] opted in + flushed ($opt_in event sent)');
   };
 
+  const handleTrackDeepLink = async () => {
+    // Simulate a warm-start deep link with different attribution (replaces init's attribution)
+    const url =
+      'myapp://products/456?utm_source=applovin&utm_medium=display&aleid=warm_aleid_789&alart=warm_alart_abc&ours_visitor_id=web-visitor-uuid-from-deep-link';
+    console.log('[OursPrivacy] trackDeepLink:', url);
+    await oursprivacy.trackDeepLink(url);
+    oursprivacy.flush();
+    console.log('[OursPrivacy] deep link tracked + flushed. visitor_id:', oursprivacy.getVisitorId());
+  };
+
+  const handleSetVisitorId = async () => {
+    const newId = 'manually-set-visitor-id-' + Date.now();
+    console.log('[OursPrivacy] setVisitorId:', newId);
+    await oursprivacy.setVisitorId(newId);
+    oursprivacy.track('after_set_visitor_id', { new_visitor_id: newId });
+    oursprivacy.flush();
+    console.log('[OursPrivacy] visitor_id set + tracked + flushed. visitor_id:', oursprivacy.getVisitorId());
+  };
+
+  const handleTrackAfterAttribution = () => {
+    // This should include attribution from the most recent deep link in defaultProperties
+    console.log('[OursPrivacy] tracking after attribution...');
+    oursprivacy.track('post_attribution_event', { source: 'manual_test' });
+    oursprivacy.flush();
+    console.log('[OursPrivacy] post-attribution event tracked + flushed');
+  };
+
   const handleReset = () => {
     oursprivacy.reset();
     console.log('[OursPrivacy] reset. new visitor_id:', oursprivacy.getVisitorId());
@@ -130,6 +162,13 @@ function App(): React.JSX.Element {
             Updates default event + consent properties, then tracks an event.
           </Section>
           <Button onPress={handleUpdateDefaults} title="Update Defaults + Track" color="#0f9d58" />
+
+          <Section title="Deep Link Attribution">
+            Tests trackDeepLink() with UTMs, click IDs, and ours_visitor_id.
+          </Section>
+          <Button onPress={handleTrackDeepLink} title="Track Deep Link (warm start)" color="#6200ee" />
+          <Button onPress={handleTrackAfterAttribution} title="Track After Attribution" color="#6200ee" />
+          <Button onPress={handleSetVisitorId} title="Set Visitor ID Manually" color="#03dac5" />
 
           <Section title="Privacy Controls">
             Opt out stops all tracking. Opt in resumes and sends $opt_in event.

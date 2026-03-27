@@ -229,6 +229,55 @@ export class OursPrivacy {
   }
 
   /**
+   * Parse a deep link URL for marketing attribution data and fire a
+   * $deep_link_opened event. Extracts UTM parameters, ad network click IDs
+   * (gclid, fbclid, ttclid, aleid, etc.), and ours_visitor_id for
+   * cross-platform identity stitching.
+   *
+   * Parsed attribution params are merged into default event properties so
+   * they appear on all subsequent track() calls.
+   *
+   * @param {string} url The deep link or initial URL to parse.
+   */
+  /**
+   * Parse a deep link URL for marketing attribution data and fire a
+   * $deep_link_opened event. Extracts UTM parameters, ad network click IDs
+   * (gclid, fbclid, ttclid, aleid, etc.), and ours_visitor_id for
+   * cross-platform identity stitching.
+   *
+   * Parsed attribution params are merged into defaultProperties so
+   * they appear on all subsequent track() calls.
+   *
+   * Await the returned promise before calling track() to ensure attribution
+   * and visitor identity are fully applied.
+   *
+   * @param {string} url The deep link or initial URL to parse.
+   * @returns {Promise<void>}
+   */
+  async trackDeepLink(url) {
+    if (!StringHelper.isValid(url)) {
+      StringHelper.raiseError("url");
+    }
+    await this.oursprivacyImpl.trackDeepLink(this.token, url);
+  }
+
+  /**
+   * Update the visitor ID after initialization. Use this for web-to-app
+   * identity stitching when the visitor ID arrives outside of a deep link
+   * (e.g. via a native bridge or async lookup).
+   *
+   * Sets is_manually_set_id: true on all subsequent events.
+   *
+   * @param {string} visitorId The Ours Privacy visitor ID to adopt.
+   */
+  async setVisitorId(visitorId) {
+    if (!StringHelper.isValid(visitorId)) {
+      StringHelper.raiseError("visitorId");
+    }
+    await this.oursprivacyImpl.setVisitorId(this.token, visitorId);
+  }
+
+  /**
    * Flush queued events to the Ours Privacy ingest endpoint immediately.
    */
   flush() {
