@@ -122,20 +122,17 @@ jobs:
         run: npm install -g npm@11.6.2
 
       - name: Debug — decode OIDC claims for npm audience
-        run: |
-          set -e
-          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" | jq -r .value)
-          # Mask raw token + raw payload so neither leaks into public logs.
-          echo "::add-mask::$TOKEN"
-          PAYLOAD=$(echo "$TOKEN" | cut -d. -f2)
-          echo "::add-mask::$PAYLOAD"
-          # base64url -> base64
-          PAD=$(( (4 - ${#PAYLOAD} % 4) % 4 ))
-          PADDED="$PAYLOAD$(printf '=%.0s' $(seq 1 $PAD))"
-          DECODED=$(echo "$PADDED" | tr '_-' '/+' | base64 -d 2>/dev/null)
-          # Only print claims relevant to npm Trusted Publisher matching.
-          echo "$DECODED" | jq '{iss, aud, repository, repository_owner, workflow, workflow_ref, job_workflow_ref, ref, ref_type, event_name, environment}'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v8.0.0
+        with:
+          script: |
+            const token = await core.getIDToken('npm:registry.npmjs.org');
+            core.setSecret(token);
+            const payload = token.split('.')[1];
+            core.setSecret(payload);
+            const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString());
+            const interesting = (({ iss, aud, repository, repository_owner, repository_id, workflow, workflow_ref, job_workflow_ref, ref, ref_type, event_name, environment, sub }) =>
+              ({ iss, aud, repository, repository_owner, repository_id, workflow, workflow_ref, job_workflow_ref, ref, ref_type, event_name, environment, sub }))(decoded);
+            console.log(JSON.stringify(interesting, null, 2));
 
       - name: Publish tarball to npm
         env:
