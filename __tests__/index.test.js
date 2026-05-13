@@ -1,4 +1,5 @@
 import {OursPrivacy} from "oursprivacy-react-native";
+import OursPrivacyMain from "oursprivacy-react-native/javascript/oursprivacy-main";
 
 // OursPrivacy always uses JS mode. Mock OursPrivacyMain so index.test.js
 // verifies the wrapper delegates correctly without executing JS SDK internals.
@@ -24,6 +25,10 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-main", () => ({
     })),
 }));
 
+beforeEach(() => {
+  OursPrivacyMain.mockClear();
+});
+
 test(`it initializes with correct defaults`, async () => {
   const op = new OursPrivacy("token", false);
   await op.init();
@@ -34,6 +39,26 @@ test(`it initializes with correct defaults`, async () => {
     {},
     "https://cdn.oursprivacy.com"
   );
+});
+
+test(`constructor passes storage at position 3 of OursPrivacyMain`, () => {
+  const storage = {getItem: jest.fn(), setItem: jest.fn(), removeItem: jest.fn()};
+  new OursPrivacy("token", false, storage);
+  expect(OursPrivacyMain).toHaveBeenCalledWith("token", false, storage);
+});
+
+test(`constructor omits storage when not provided`, () => {
+  new OursPrivacy("token", false);
+  expect(OursPrivacyMain).toHaveBeenCalledWith("token", false, undefined);
+});
+
+test(`constructor throws when token is missing or blank`, () => {
+  expect(() => new OursPrivacy("", false)).toThrow();
+  expect(() => new OursPrivacy("   ", false)).toThrow();
+});
+
+test(`constructor throws when trackAutomaticEvents is undefined`, () => {
+  expect(() => new OursPrivacy("token")).toThrow(/trackAutomaticEvents/);
 });
 
 test(`it passes optOut and options to initialize`, async () => {

@@ -121,7 +121,7 @@ export default function App() {
 
 ### Initialization
 
-#### `new OursPrivacy(token, trackAutomaticEvents, useNative?, storage?)`
+#### `new OursPrivacy(token, trackAutomaticEvents, storage?)`
 
 Creates an OursPrivacy instance. You must call `.init()` before tracking.
 
@@ -129,7 +129,6 @@ Creates an OursPrivacy instance. You must call `.init()` before tracking.
 |-----------|------|----------|-------------|
 | `token` | `string` | Yes | Your project token |
 | `trackAutomaticEvents` | `boolean` | Yes | Whether to track automatic events |
-| `useNative` | `boolean` | No | Accepted but ignored |
 | `storage` | `OursPrivacyAsyncStorage` | No | Custom AsyncStorage adapter |
 
 **Returns:** `OursPrivacy` instance (call `.init()` to complete setup)
@@ -597,6 +596,22 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
 | `defaultProperties` | Automatically collected device/SDK metadata |
 
 ---
+
+## Migration
+
+### From 1.x to 2.x
+
+The `useNative` constructor argument was removed in 2.0.0. The SDK has always run pure JavaScript, so the argument was a no-op — but its position shifted, so any call that passed `storage` positionally needs to drop the third argument.
+
+```js
+// 1.x
+const op = new OursPrivacy('TOKEN', false, false, customStorage);
+
+// 2.x
+const op = new OursPrivacy('TOKEN', false, customStorage);
+```
+
+If you never passed anything beyond `token` and `trackAutomaticEvents`, no change is required.
 
 ## Migration from Mixpanel
 

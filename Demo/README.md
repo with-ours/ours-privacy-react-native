@@ -16,7 +16,26 @@ The Demo exercises the main SDK flows exposed in `App.tsx`:
 
 The `ios/` and `android/` folders are required. This Demo is a bare React Native app, so those native project shells are how `run-ios` and `run-android` work.
 
-## Install the Packed SDK
+## Pick an SDK Source
+
+The Demo can resolve `@oursprivacy/react-native` two ways. Set `OURSPRIVACY_SDK_SOURCE` in `Demo/.env`:
+
+| Value | Resolves to | When to use |
+|-------|-------------|-------------|
+| `npm` (default) | Whatever is installed in `Demo/node_modules/@oursprivacy/react-native` (e.g. a packed tgz or a published version) | Verifying the published artifact |
+| `local` | The repo root — Metro aliases the package and watches the SDK source | Iterating on SDK changes; edits to `index.js`, `javascript/*` reload immediately |
+
+No `package.json` edit is needed to switch — Metro reads the env var on startup. Restart Metro after toggling.
+
+### When using `local`
+
+```sh
+# From Demo/
+echo "OURSPRIVACY_SDK_SOURCE=local" >> .env
+npm install   # still needed once for react-native / async-storage
+```
+
+### When using `npm` with a freshly packed tgz
 
 From the repo root:
 
@@ -38,6 +57,7 @@ Set values in `Demo/.env`:
 ```sh
 OURSPRIVACY_TOKEN=demo-token
 OURSPRIVACY_SERVER_URL=http://127.0.0.1:4010
+OURSPRIVACY_SDK_SOURCE=npm   # or `local`
 ```
 
 Use these server URLs:

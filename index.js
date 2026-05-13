@@ -19,13 +19,9 @@ const DEFAULT_OPT_OUT = false;
 
 /**
  * The primary class for integrating OursPrivacy with your app.
- *
- * Always uses the JavaScript implementation regardless of the useNative argument.
- * The native iOS/Android modules (forked from Mixpanel) generate a payload format
- * that does not match the Ours Privacy ingest schema, so they are not used.
  */
 export class OursPrivacy {
-  constructor(token, trackAutomaticEvents, useNative = true, storage) {
+  constructor(token, trackAutomaticEvents, storage) {
     if (!StringHelper.isValid(token)) {
       StringHelper.raiseError(PARAMS.TOKEN);
     }

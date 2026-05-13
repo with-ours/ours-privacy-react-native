@@ -54,7 +54,7 @@ function Section({ children, title }: SectionProps): React.JSX.Element {
 }
 
 // Initialize SDK once using instance pattern
-const oursprivacy = new OursPrivacy(OURSPRIVACY_TOKEN, false, false);
+const oursprivacy = new OursPrivacy(OURSPRIVACY_TOKEN, false);
 
 // Test initialURL init option: parse a simulated deep link at init time
 const SIMULATED_COLD_START_URL =
