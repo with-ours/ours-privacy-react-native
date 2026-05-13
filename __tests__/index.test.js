@@ -125,7 +125,23 @@ test(`it calls track`, async () => {
   expect(op.oursprivacyImpl.track).toHaveBeenCalledWith(
     "token",
     "event name",
-    {"Cool Property": "Property Value"}
+    {"Cool Property": "Property Value"},
+    undefined
+  );
+});
+
+test(`it calls track with userProperties`, async () => {
+  const op = new OursPrivacy("token", false);
+  op.track(
+    "event name",
+    {"Cool Property": "Property Value"},
+    {email: "user@example.com", custom_properties: {plan: "pro"}}
+  );
+  expect(op.oursprivacyImpl.track).toHaveBeenCalledWith(
+    "token",
+    "event name",
+    {"Cool Property": "Property Value"},
+    {email: "user@example.com", custom_properties: {plan: "pro"}}
   );
 });
 

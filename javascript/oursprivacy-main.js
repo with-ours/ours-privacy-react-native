@@ -92,7 +92,7 @@ export default class OursPrivacyMain {
     this._attributionDefaultProperties[token] = {};
   }
 
-  async track(token, eventName, properties) {
+  async track(token, eventName, properties, userProperties) {
     if (this.oursprivacyPersistent.getOptedOut(token)) {
       OursPrivacyLogger.log(
         token,
@@ -115,22 +115,52 @@ export default class OursPrivacyMain {
       ...properties,
     };
 
-    const customProps = this._defaultUserCustomProperties[token] || {};
-    const consentProps = this._defaultUserConsentProperties[token] || {};
-    const userProps = {};
-    if (Object.keys(customProps).length > 0) userProps.custom_properties = {...customProps};
-    if (Object.keys(consentProps).length > 0) userProps.consent = {...consentProps};
+    const mergedUserProps = this._composeUserProperties(token, userProperties);
 
     const eventData = {
       event: eventName,
       visitor_id: visitorId,
       distinct_id: distinctId,
       eventProperties: Object.keys(rawEventProps).length > 0 ? rawEventProps : null,
-      userProperties: Object.keys(userProps).length > 0 ? userProps : null,
+      userProperties: mergedUserProps,
       defaultProperties: this.getDefaultProperties(token),
     };
 
     await this.core.addToOursPrivacyQueue(token, OursPrivacyType.EVENTS, eventData);
+  }
+
+  // Mirrors web-cdp formatUserProperties (martech/apps/web-cdp/src/lib/format-track.ts).
+  // Top-level keys (email, external_id, etc.) spread onto userProperties; nested
+  // custom_properties and consent merge on top of the store defaults. Consent is
+  // intentionally omitted when nothing carries it (OUR-3669).
+  _composeUserProperties(token, perCallUserProps) {
+    const defaultCustom = this._defaultUserCustomProperties[token] || {};
+    const defaultConsent = this._defaultUserConsentProperties[token] || {};
+    const hasDefaultCustom = Object.keys(defaultCustom).length > 0;
+    const hasDefaultConsent = Object.keys(defaultConsent).length > 0;
+    const hasPerCall = perCallUserProps && Object.keys(perCallUserProps).length > 0;
+
+    if (!hasDefaultCustom && !hasDefaultConsent && !hasPerCall) {
+      return null;
+    }
+
+    const merged = {...(perCallUserProps || {})};
+
+    if (hasDefaultCustom || perCallUserProps?.custom_properties) {
+      merged.custom_properties = {
+        ...defaultCustom,
+        ...(perCallUserProps?.custom_properties || {}),
+      };
+    }
+
+    if (hasDefaultConsent || perCallUserProps?.consent) {
+      merged.consent = {
+        ...defaultConsent,
+        ...(perCallUserProps?.consent || {}),
+      };
+    }
+
+    return merged;
   }
 
   setLoggingEnabled(token, loggingEnabled) {

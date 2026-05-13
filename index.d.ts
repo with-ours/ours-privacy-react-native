@@ -47,7 +47,11 @@ export class OursPrivacy {
   optInTracking(): void;
   optOutTracking(): void;
   identify(id: string, userProperties?: OursPrivacyUserProperties): Promise<void>;
-  track(eventName: string, properties?: OursPrivacyProperties): void;
+  track(
+    eventName: string,
+    eventProperties?: OursPrivacyProperties,
+    userProperties?: OursPrivacyUserProperties
+  ): void;
   reset(): void;
   getVisitorId(): string | null;
   updateDefaultEventProperties(properties: Record<string, any>): void;

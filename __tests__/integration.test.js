@@ -237,4 +237,72 @@ describe("OursPrivacy integration flows", () => {
     expect(trackEvent.visitor_id).not.toBe("manual-visitor-id");
     expect(trackEvent.visitor_id).not.toBe("web-uuid-123");
   });
+
+  it("3-arg track: top-level user props, custom_properties + consent merge, null when empty (OUR-4098)", async () => {
+    fetchMock.mockResponse(JSON.stringify({success: true}), {status: 200});
+
+    const {OursPrivacy} = require("oursprivacy-react-native");
+    const op = new OursPrivacy("test-token", false);
+
+    await op.init(false, {
+      serverURL: "https://api.oursprivacy.com",
+      visitor_id: "preset-visitor-123",
+      default_user_custom_properties: {test_user: true},
+    });
+
+    // S1: 2-arg backwards compat — default custom only on the wire
+    op.track("two_arg_compat", {scenario: 1});
+    // S2: 3-arg with top-level user props (email + external_id)
+    op.track("three_arg_top_level", {scenario: 2}, {email: "qa@example.com", external_id: "qa-1"});
+    // S3: 3-arg with per-call custom_properties — merges on top of default {test_user:true}
+    op.track("three_arg_custom_merge", {scenario: 3}, {custom_properties: {tier: "gold"}});
+    // S4: 3-arg with per-call consent — no default consent, should appear verbatim
+    op.track("three_arg_consent", {scenario: 4}, {consent: {marketing: true}});
+
+    await flushAsyncWork();
+    op.flush();
+    await waitForFetchCalls(1);
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const byName = Object.fromEntries(body.data.map((e) => [e.event, e]));
+
+    // S1: backwards compat — default custom_properties only
+    expect(byName.two_arg_compat.userProperties).toEqual({
+      custom_properties: {test_user: true},
+    });
+
+    // S2: top-level keys spread, default custom_properties merged, no consent key
+    expect(byName.three_arg_top_level.userProperties).toEqual({
+      email: "qa@example.com",
+      external_id: "qa-1",
+      custom_properties: {test_user: true},
+    });
+    expect(byName.three_arg_top_level.userProperties.consent).toBeUndefined();
+
+    // S3: custom_properties merged (default + per-call)
+    expect(byName.three_arg_custom_merge.userProperties.custom_properties).toEqual({
+      test_user: true,
+      tier: "gold",
+    });
+
+    // S4: consent appears, default custom_properties still merged
+    expect(byName.three_arg_consent.userProperties.consent).toEqual({marketing: true});
+    expect(byName.three_arg_consent.userProperties.custom_properties).toEqual({test_user: true});
+
+    // S5: separate instance with no defaults and no per-call user props → null
+    fetchMock.resetMocks();
+    fetchMock.mockResponse(JSON.stringify({success: true}), {status: 200});
+    const op2 = new OursPrivacy("test-token-2", false);
+    await op2.init(false, {
+      serverURL: "https://api.oursprivacy.com",
+      visitor_id: "preset-visitor-456",
+    });
+    op2.track("no_user_props_anywhere", {scenario: 5});
+    await flushAsyncWork();
+    op2.flush();
+    await waitForFetchCalls(1);
+    const body2 = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const s5 = body2.data.find((e) => e.event === "no_user_props_anywhere");
+    expect(s5.userProperties).toBeNull();
+  });
 });

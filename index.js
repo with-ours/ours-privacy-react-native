@@ -162,16 +162,23 @@ export class OursPrivacy {
    * Track an event.
    *
    * @param {string} eventName The name of the event.
-   * @param {object} properties Optional key/value pairs to include with this event.
+   * @param {object} [eventProperties] Optional key/value pairs to include with this event.
+   * @param {object} [userProperties] Optional per-call user properties. Top-level keys
+   *   (e.g. email, external_id) are spread onto userProperties on the wire; nested
+   *   custom_properties and consent are merged on top of the defaults set via
+   *   updateDefaultUserCustomProperties / updateDefaultUserConsentProperties.
    */
-  track(eventName, properties) {
+  track(eventName, eventProperties, userProperties) {
     if (!StringHelper.isValid(eventName)) {
       StringHelper.raiseError(PARAMS.EVENT_NAME);
     }
-    if (!ObjectHelper.isValidOrUndefined(properties)) {
+    if (!ObjectHelper.isValidOrUndefined(eventProperties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.oursprivacyImpl.track(this.token, eventName, properties);
+    if (!ObjectHelper.isValidOrUndefined(userProperties)) {
+      ObjectHelper.raiseError(PARAMS.PROPERTIES);
+    }
+    this.oursprivacyImpl.track(this.token, eventName, eventProperties, userProperties);
   }
 
   /**
