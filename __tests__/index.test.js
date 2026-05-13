@@ -29,64 +29,60 @@ beforeEach(() => {
   OursPrivacyMain.mockClear();
 });
 
-test(`it initializes with correct defaults`, async () => {
-  const op = new OursPrivacy("token", false);
-  await op.init();
-  expect(op.oursprivacyImpl.initialize).toHaveBeenCalledWith(
-    "token",
-    false,
-    false,
-    {},
-    "https://cdn.oursprivacy.com"
-  );
+const newInitialized = async (token = "token", options = {}) => {
+  const op = new OursPrivacy();
+  await op.init(token, options);
+  return op;
+};
+
+test(`init forwards token and options to the impl initialize()`, async () => {
+  const op = await newInitialized("token");
+  expect(op.oursprivacyImpl.initialize).toHaveBeenCalledWith("token", {});
 });
 
-test(`constructor passes storage at position 3 of OursPrivacyMain`, () => {
+test(`init passes options through verbatim (camelCase)`, async () => {
+  const opts = {
+    trackAutomaticEvents: false,
+    optOutTrackingByDefault: true,
+    defaultEventProperties: {prop: "value"},
+    visitorId: "preset-visitor-123",
+  };
+  const op = await newInitialized("token", opts);
+  expect(op.oursprivacyImpl.initialize).toHaveBeenCalledWith("token", opts);
+});
+
+test(`init passes the storage adapter to the OursPrivacyMain constructor`, async () => {
   const storage = {getItem: jest.fn(), setItem: jest.fn(), removeItem: jest.fn()};
-  new OursPrivacy("token", false, storage);
-  expect(OursPrivacyMain).toHaveBeenCalledWith("token", false, storage);
+  await newInitialized("token", {storage});
+  expect(OursPrivacyMain).toHaveBeenCalledWith("token", storage);
 });
 
-test(`constructor omits storage when not provided`, () => {
-  new OursPrivacy("token", false);
-  expect(OursPrivacyMain).toHaveBeenCalledWith("token", false, undefined);
+test(`init omits storage when not provided`, async () => {
+  await newInitialized("token");
+  expect(OursPrivacyMain).toHaveBeenCalledWith("token", undefined);
 });
 
-test(`constructor throws when token is missing or blank`, () => {
-  expect(() => new OursPrivacy("", false)).toThrow();
-  expect(() => new OursPrivacy("   ", false)).toThrow();
+test(`init throws when token is missing or blank`, async () => {
+  await expect(new OursPrivacy().init("")).rejects.toThrow();
+  await expect(new OursPrivacy().init("   ")).rejects.toThrow();
+  await expect(new OursPrivacy().init(undefined)).rejects.toThrow();
 });
 
-test(`constructor throws when trackAutomaticEvents is undefined`, () => {
-  expect(() => new OursPrivacy("token")).toThrow(/trackAutomaticEvents/);
+test(`methods throw if called before init()`, () => {
+  const op = new OursPrivacy();
+  expect(() => op.track("e")).toThrow(/init/);
+  expect(() => op.reset()).toThrow(/init/);
+  expect(() => op.flush()).toThrow(/init/);
+  expect(() => op.getVisitorId()).toThrow(/init/);
 });
 
-test(`it passes optOut and options to initialize`, async () => {
-  const op = new OursPrivacy("token", false);
-  await op.init(true, {default_event_properties: {prop: "value"}});
-  expect(op.oursprivacyImpl.initialize).toHaveBeenCalledWith(
-    "token",
-    false,
-    true,
-    {default_event_properties: {prop: "value"}},
-    "https://cdn.oursprivacy.com"
-  );
-});
-
-test(`it passes visitor_id option through to initialize`, async () => {
-  const op = new OursPrivacy("token", false);
-  await op.init(false, {visitor_id: "preset-visitor-123"});
-  expect(op.oursprivacyImpl.initialize).toHaveBeenCalledWith(
-    "token",
-    false,
-    false,
-    {visitor_id: "preset-visitor-123"},
-    "https://cdn.oursprivacy.com"
-  );
+test(`identify before init() throws`, async () => {
+  const op = new OursPrivacy();
+  expect(() => op.identify({email: "a@b.com"})).toThrow(/init/);
 });
 
 test(`it calls setServerURL`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   op.setServerURL("https://api-eu.oursprivacy.com");
   expect(op.oursprivacyImpl.setServerURL).toHaveBeenCalledWith(
     "token",
@@ -95,57 +91,52 @@ test(`it calls setServerURL`, async () => {
 });
 
 test(`it calls setLoggingEnabled`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   op.setLoggingEnabled(true);
   expect(op.oursprivacyImpl.setLoggingEnabled).toHaveBeenCalledWith("token", true);
 });
 
 test(`it calls setFlushBatchSize`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   op.setFlushBatchSize(20);
   expect(op.oursprivacyImpl.setFlushBatchSize).toHaveBeenCalledWith("token", 20);
 });
 
 test(`it calls hasOptedOutTracking`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   op.hasOptedOutTracking();
   expect(op.oursprivacyImpl.hasOptedOutTracking).toHaveBeenCalledWith("token");
 });
 
 test(`it calls optInTracking`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   op.optInTracking();
   expect(op.oursprivacyImpl.optInTracking).toHaveBeenCalledWith("token");
 });
 
 test(`it calls optOutTracking`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   op.optOutTracking();
   expect(op.oursprivacyImpl.optOutTracking).toHaveBeenCalledWith("token");
 });
 
-test(`it calls identify with id`, async () => {
-  const op = new OursPrivacy("token", false);
-  await op.identify("user@example.com");
+test(`identify forwards userProperties (no positional id arg)`, async () => {
+  const op = await newInitialized();
+  await op.identify({email: "user@example.com", externalId: "123"});
   expect(op.oursprivacyImpl.identify).toHaveBeenCalledWith(
     "token",
-    "user@example.com",
-    undefined
+    {email: "user@example.com", externalId: "123"}
   );
 });
 
-test(`it calls identify with id and userProperties`, async () => {
-  const op = new OursPrivacy("token", false);
-  await op.identify("user@example.com", {email: "user@example.com", external_id: "123"});
-  expect(op.oursprivacyImpl.identify).toHaveBeenCalledWith(
-    "token",
-    "user@example.com",
-    {email: "user@example.com", external_id: "123"}
-  );
+test(`identify with no userProperties is allowed`, async () => {
+  const op = await newInitialized();
+  await op.identify();
+  expect(op.oursprivacyImpl.identify).toHaveBeenCalledWith("token", undefined);
 });
 
 test(`it calls track`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   op.track("event name", {"Cool Property": "Property Value"});
   expect(op.oursprivacyImpl.track).toHaveBeenCalledWith(
     "token",
@@ -155,36 +146,36 @@ test(`it calls track`, async () => {
   );
 });
 
-test(`it calls track with userProperties`, async () => {
-  const op = new OursPrivacy("token", false);
+test(`track forwards camelCase userProperties`, async () => {
+  const op = await newInitialized();
   op.track(
     "event name",
     {"Cool Property": "Property Value"},
-    {email: "user@example.com", custom_properties: {plan: "pro"}}
+    {email: "user@example.com", customProperties: {plan: "pro"}}
   );
   expect(op.oursprivacyImpl.track).toHaveBeenCalledWith(
     "token",
     "event name",
     {"Cool Property": "Property Value"},
-    {email: "user@example.com", custom_properties: {plan: "pro"}}
+    {email: "user@example.com", customProperties: {plan: "pro"}}
   );
 });
 
 test(`it calls reset`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   op.reset();
   expect(op.oursprivacyImpl.reset).toHaveBeenCalledWith("token");
 });
 
 test(`it calls getVisitorId`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   const id = op.getVisitorId();
   expect(op.oursprivacyImpl.getVisitorId).toHaveBeenCalledWith("token");
   expect(id).toBe("mock-visitor-id");
 });
 
 test(`it calls updateDefaultEventProperties`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   op.updateDefaultEventProperties({tier: "pro"});
   expect(op.oursprivacyImpl.updateDefaultEventProperties).toHaveBeenCalledWith(
     "token",
@@ -193,7 +184,7 @@ test(`it calls updateDefaultEventProperties`, async () => {
 });
 
 test(`it calls updateDefaultUserCustomProperties`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   op.updateDefaultUserCustomProperties({plan: "enterprise"});
   expect(op.oursprivacyImpl.updateDefaultUserCustomProperties).toHaveBeenCalledWith(
     "token",
@@ -202,7 +193,7 @@ test(`it calls updateDefaultUserCustomProperties`, async () => {
 });
 
 test(`it calls updateDefaultUserConsentProperties`, async () => {
-  const op = new OursPrivacy("token", false);
+  const op = await newInitialized();
   op.updateDefaultUserConsentProperties({marketing: true});
   expect(op.oursprivacyImpl.updateDefaultUserConsentProperties).toHaveBeenCalledWith(
     "token",

@@ -118,41 +118,34 @@ describe("OursPrivacyMain", () => {
   });
 
   it("should initialize properly", async () => {
-    const trackAutomaticEvents = false;
-    const optOutTrackingDefault = false;
-    const options = {default_event_properties: {superProp1: "value1", superProp2: "value2"}};
-    const serverURL = "https://api.oursprivacy.com";
+    const options = {
+      serverURL: "https://api.oursprivacy.com",
+      defaultEventProperties: {superProp1: "value1", superProp2: "value2"},
+    };
 
-    await oursprivacyMain.initialize(
-      token,
-      trackAutomaticEvents,
-      optOutTrackingDefault,
-      options,
-      serverURL
-    );
+    await oursprivacyMain.initialize(token, options);
 
     expect(oursprivacyMain.core.initialize).toHaveBeenCalledWith(token);
   });
 
-  it("should override persistent visitor_id when visitor_id is provided in options", async () => {
-    await oursprivacyMain.initialize(token, false, false, { visitor_id: "preset-visitor-123" }, "https://cdn.oursprivacy.com");
+  it("should override persistent visitor_id when visitorId is provided in options", async () => {
+    await oursprivacyMain.initialize(token, {
+      visitorId: "preset-visitor-123",
+      serverURL: "https://cdn.oursprivacy.com",
+    });
     expect(oursprivacyMain.oursprivacyPersistent.updateVisitorId).toHaveBeenCalledWith(token, "preset-visitor-123");
     expect(oursprivacyMain.oursprivacyPersistent.persistVisitorId).toHaveBeenCalledWith(token);
   });
 
   it("should preserve init options when starting opted out", async () => {
-    await oursprivacyMain.initialize(
-      token,
-      false,
-      true,
-      {
-        visitor_id: "preset-visitor-123",
-        default_event_properties: {platform: "mobile"},
-        default_user_custom_properties: {plan: "pro"},
-        default_user_consent_properties: {marketing: true},
-      },
-      "https://api.oursprivacy.com"
-    );
+    await oursprivacyMain.initialize(token, {
+      optOutTrackingByDefault: true,
+      serverURL: "https://api.oursprivacy.com",
+      visitorId: "preset-visitor-123",
+      defaultEventProperties: {platform: "mobile"},
+      defaultUserCustomProperties: {plan: "pro"},
+      defaultUserConsentProperties: {marketing: true},
+    });
 
     expect(oursprivacyMain.config.setServerURL).toHaveBeenCalledWith(
       token,
@@ -171,26 +164,18 @@ describe("OursPrivacyMain", () => {
     expect(oursprivacyMain._defaultUserConsentProperties[token]).toEqual({marketing: true});
   });
 
-  it("should not track if initialize with optOutTrackingDefault being true", async () => {
-    const trackAutomaticEvents = false;
-    const optOutTrackingDefault = true;
-    const options = {};
-    const serverURL = "https://api.oursprivacy.com";
-
-    await oursprivacyMain.initialize(
-      token,
-      trackAutomaticEvents,
-      optOutTrackingDefault,
-      options,
-      serverURL
-    );
+  it("should not track if initialize with optOutTrackingByDefault being true", async () => {
+    await oursprivacyMain.initialize(token, {
+      optOutTrackingByDefault: true,
+      serverURL: "https://api.oursprivacy.com",
+    });
 
     const eventName = "Test Event";
     const eventProperties = {prop1: "value1", prop2: "value2"};
 
     expect(
-          oursprivacyMain.oursprivacyPersistent.updateOptedOut
-        ).toHaveBeenCalledWith(token, true);
+      oursprivacyMain.oursprivacyPersistent.updateOptedOut
+    ).toHaveBeenCalledWith(token, true);
 
     oursprivacyMain.oursprivacyPersistent.getOptedOut.mockReturnValue(true);
     await oursprivacyMain.track(token, eventName, eventProperties);
@@ -199,34 +184,18 @@ describe("OursPrivacyMain", () => {
 
   it("should not fire $deep_link_opened or store attribution when opted out", async () => {
     oursprivacyMain.oursprivacyPersistent.getOptedOut.mockReturnValue(true);
-    await oursprivacyMain.initialize(
-      token,
-      false,
-      true,
-      {initialURL: "myapp://open?utm_source=google&gclid=abc&ours_visitor_id=web-123"},
-      "https://cdn.oursprivacy.com"
-    );
-    // No event fired
+    await oursprivacyMain.initialize(token, {
+      optOutTrackingByDefault: true,
+      serverURL: "https://cdn.oursprivacy.com",
+      initialURL: "myapp://open?utm_source=google&gclid=abc&ours_visitor_id=web-123",
+    });
     expect(oursprivacyMain.core.addToOursPrivacyQueue).not.toHaveBeenCalled();
-    // No attribution stored
     expect(oursprivacyMain._attributionDefaultProperties[token] || {}).toEqual({});
-    // No visitor ID stitched
     expect(oursprivacyMain.oursprivacyPersistent.updateVisitorId).not.toHaveBeenCalledWith(token, "web-123");
   });
 
-  it("should track if initialize with optOutTrackingDefault being false", async () => {
-    const trackAutomaticEvents = false;
-    const optOutTrackingDefault = false;
-    const options = {};
-    const serverURL = "https://api.oursprivacy.com";
-
-    await oursprivacyMain.initialize(
-      token,
-      trackAutomaticEvents,
-      optOutTrackingDefault,
-      options,
-      serverURL
-    );
+  it("should track if initialize with optOutTrackingByDefault being false", async () => {
+    await oursprivacyMain.initialize(token, {serverURL: "https://api.oursprivacy.com"});
     oursprivacyMain.setLoggingEnabled(token, true);
     const eventName = "Test Event";
     const eventProperties = {prop1: "value1", prop2: "value2"};
@@ -315,41 +284,137 @@ describe("OursPrivacyMain", () => {
     expect(() => oursprivacyMain.setFlushOnBackground(token, false)).not.toThrow();
   });
 
-  it("should always send $identify event on identify", async () => {
-    jest.resetModules();
-    const externalId = "new-external-id";
-    await oursprivacyMain.identify(token, externalId);
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.EVENTS,
-      expect.objectContaining({
-        event: "$identify",
-        userProperties: expect.objectContaining({
-          external_id: externalId,
-        }),
-      })
-    );
-  });
+  describe("identify", () => {
+    it("sends $identify with external_id on the wire when caller passes externalId", async () => {
+      const externalId = "new-external-id";
+      await oursprivacyMain.identify(token, {externalId});
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
+        token,
+        OursPrivacyType.EVENTS,
+        expect.objectContaining({
+          event: "$identify",
+          userProperties: expect.objectContaining({
+            external_id: externalId,
+          }),
+        })
+      );
+    });
 
-  it("should send correct $identify payload on identify", async () => {
-    const newDistinctId = "new-distinct-id";
-    await oursprivacyMain.identify(token, newDistinctId);
-    expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
-      token,
-      OursPrivacyType.EVENTS,
-      expect.objectContaining({
-        event: "$identify",
-        visitor_id: "visitor-id-mock",
-        distinct_id: expect.any(String),
-        eventProperties: null,
-        userProperties: expect.objectContaining({
-          external_id: newDistinctId,
-        }),
-        defaultProperties: expect.objectContaining({
-          device_type: "mobile",
-        }),
-      })
-    );
+    it("sends the full $identify payload shape", async () => {
+      await oursprivacyMain.identify(token, {externalId: "new-distinct-id"});
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
+        token,
+        OursPrivacyType.EVENTS,
+        expect.objectContaining({
+          event: "$identify",
+          visitor_id: "visitor-id-mock",
+          distinct_id: expect.any(String),
+          eventProperties: null,
+          userProperties: expect.objectContaining({
+            external_id: "new-distinct-id",
+          }),
+          defaultProperties: expect.objectContaining({
+            device_type: "mobile",
+          }),
+        })
+      );
+    });
+
+    it("merges per-call customProperties on top of default customProperties (was broken before)", async () => {
+      oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro", tier: "silver"});
+      await oursprivacyMain.identify(token, {
+        externalId: "u-1",
+        customProperties: {tier: "gold"},
+      });
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
+        token,
+        OursPrivacyType.EVENTS,
+        expect.objectContaining({
+          event: "$identify",
+          userProperties: expect.objectContaining({
+            external_id: "u-1",
+            custom_properties: {plan: "pro", tier: "gold"},
+          }),
+        })
+      );
+    });
+
+    it("preserves per-call customProperties even when no defaults are set (fixes the broken guard)", async () => {
+      await oursprivacyMain.identify(token, {
+        externalId: "u-2",
+        customProperties: {tier: "gold"},
+      });
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
+        token,
+        OursPrivacyType.EVENTS,
+        expect.objectContaining({
+          event: "$identify",
+          userProperties: expect.objectContaining({
+            external_id: "u-2",
+            custom_properties: {tier: "gold"},
+          }),
+        })
+      );
+    });
+
+    it("preserves per-call consent even when no defaults are set", async () => {
+      await oursprivacyMain.identify(token, {
+        externalId: "u-3",
+        consent: {marketing: true},
+      });
+      const call = oursprivacyMain.core.addToOursPrivacyQueue.mock.calls[0];
+      expect(call[2].userProperties).toEqual({
+        external_id: "u-3",
+        consent: {marketing: true},
+      });
+    });
+
+    it("translates camelCase typed fields to snake_case on the wire", async () => {
+      await oursprivacyMain.identify(token, {
+        email: "u@x.com",
+        externalId: "u-4",
+        phoneNumber: "+15555555555",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        dateOfBirth: "1815-12-10",
+        companyName: "Babbage Ltd",
+        jobTitle: "Mathematician",
+        gender: "female",
+        city: "London",
+        state: "England",
+        zip: "NW1",
+        country: "GB",
+        ip: "203.0.113.1",
+      });
+      const call = oursprivacyMain.core.addToOursPrivacyQueue.mock.calls[0];
+      expect(call[2].userProperties).toEqual({
+        email: "u@x.com",
+        external_id: "u-4",
+        phone_number: "+15555555555",
+        first_name: "Ada",
+        last_name: "Lovelace",
+        date_of_birth: "1815-12-10",
+        company_name: "Babbage Ltd",
+        job_title: "Mathematician",
+        gender: "female",
+        city: "London",
+        state: "England",
+        zip: "NW1",
+        country: "GB",
+        ip: "203.0.113.1",
+      });
+    });
+
+    it("omits consent when neither defaults nor per-call carry consent", async () => {
+      oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro"});
+      await oursprivacyMain.identify(token, {externalId: "u-5"});
+      const call = oursprivacyMain.core.addToOursPrivacyQueue.mock.calls[0];
+      expect(call[2].userProperties).toEqual({
+        external_id: "u-5",
+        custom_properties: {plan: "pro"},
+      });
+      expect(call[2].userProperties).not.toHaveProperty("consent");
+    });
   });
 
   it("updateDefaultEventProperties should merge into event payload", async () => {
@@ -415,10 +480,10 @@ describe("OursPrivacyMain", () => {
       );
     });
 
-    it("merges per-call custom_properties on top of default custom properties", async () => {
+    it("merges per-call customProperties (camelCase) on top of default custom properties → snake_case on wire", async () => {
       oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro", tier: "silver"});
       await oursprivacyMain.track(token, "Test Event", {}, {
-        custom_properties: {tier: "gold"},
+        customProperties: {tier: "gold"},
       });
       expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
         token,
@@ -451,7 +516,7 @@ describe("OursPrivacyMain", () => {
       oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro"});
       await oursprivacyMain.track(token, "Test Event", {}, {
         email: "u@x.com",
-        custom_properties: {tier: "gold"},
+        customProperties: {tier: "gold"},
       });
       expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
         token,
@@ -465,7 +530,7 @@ describe("OursPrivacyMain", () => {
       );
     });
 
-    it("omits consent when neither defaults nor per-call user props carry consent (OUR-3669)", async () => {
+    it("omits consent when neither defaults nor per-call user props carry consent", async () => {
       oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro"});
       await oursprivacyMain.track(token, "Test Event", {}, {email: "u@x.com"});
       const call = oursprivacyMain.core.addToOursPrivacyQueue.mock.calls[0];
@@ -501,7 +566,6 @@ describe("OursPrivacyMain", () => {
   it("getDefaultProperties should include device_type and merge attribution", async () => {
     const props = oursprivacyMain.getDefaultProperties(token);
     expect(props.device_type).toBe("mobile");
-    // After trackDeepLink, attribution should appear in defaultProperties
     await oursprivacyMain.trackDeepLink(token, "myapp://open?utm_source=test");
     const propsAfter = oursprivacyMain.getDefaultProperties(token);
     expect(propsAfter.utm_source).toBe("test");
@@ -513,7 +577,6 @@ describe("OursPrivacyMain", () => {
         token,
         "myapp://open?utm_source=google&utm_medium=cpc&utm_campaign=spring"
       );
-      // Attribution goes into _attributionDefaultProperties which merges into defaultProperties
       expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual(
         expect.objectContaining({
           utm_source: "google",
@@ -521,7 +584,6 @@ describe("OursPrivacyMain", () => {
           utm_campaign: "spring",
         })
       );
-      // And should appear in getDefaultProperties output
       const dp = oursprivacyMain.getDefaultProperties(token);
       expect(dp.utm_source).toBe("google");
       expect(dp.utm_medium).toBe("cpc");
@@ -563,14 +625,11 @@ describe("OursPrivacyMain", () => {
       );
       expect(call).toBeTruthy();
       const eventData = call[2];
-      // Only the raw URL goes in eventProperties
       expect(eventData.eventProperties).toEqual(
         expect.objectContaining({url: "myapp://open?utm_source=email&gclid=xyz"})
       );
-      // UTM/click IDs should NOT be duplicated into eventProperties
       expect(eventData.eventProperties.utm_source).toBeUndefined();
       expect(eventData.eventProperties.gclid).toBeUndefined();
-      // They should appear in defaultProperties
       expect(eventData.defaultProperties).toEqual(
         expect.objectContaining({
           utm_source: "email",
@@ -589,7 +648,6 @@ describe("OursPrivacyMain", () => {
         gclid: "abc",
       });
 
-      // Second deep link with different params — stale keys must not persist
       await oursprivacyMain.trackDeepLink(
         token,
         "myapp://open?utm_source=email"
@@ -597,7 +655,6 @@ describe("OursPrivacyMain", () => {
       expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual({
         utm_source: "email",
       });
-      // utm_campaign and gclid from the first link must be gone
       const dp = oursprivacyMain.getDefaultProperties(token);
       expect(dp.utm_campaign).toBeUndefined();
       expect(dp.gclid).toBeUndefined();
@@ -641,7 +698,6 @@ describe("OursPrivacyMain", () => {
         token,
         "myapp://open?utm_source=google&gclid=abc&ours_visitor_id=web-123"
       );
-      // No event, no attribution, no identity stitching
       expect(oursprivacyMain.core.addToOursPrivacyQueue).not.toHaveBeenCalled();
       expect(oursprivacyMain._attributionDefaultProperties[token] || {}).toEqual({});
       expect(oursprivacyMain.oursprivacyPersistent.updateVisitorId).not.toHaveBeenCalled();
@@ -650,7 +706,6 @@ describe("OursPrivacyMain", () => {
 
     it("should handle URL with no attribution params", async () => {
       await oursprivacyMain.trackDeepLink(token, "myapp://open");
-      // Should still fire the event with just the URL
       expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
         token,
         OursPrivacyType.EVENTS,
@@ -682,13 +737,10 @@ describe("OursPrivacyMain", () => {
 
   describe("initialURL init option", () => {
     it("should parse deep link on init when initialURL is provided", async () => {
-      await oursprivacyMain.initialize(
-        token,
-        false,
-        false,
-        {initialURL: "myapp://open?utm_source=google&aleid=click_abc"},
-        "https://cdn.oursprivacy.com"
-      );
+      await oursprivacyMain.initialize(token, {
+        initialURL: "myapp://open?utm_source=google&aleid=click_abc",
+        serverURL: "https://cdn.oursprivacy.com",
+      });
       expect(oursprivacyMain._attributionDefaultProperties[token]).toEqual(
         expect.objectContaining({
           utm_source: "google",
@@ -704,18 +756,13 @@ describe("OursPrivacyMain", () => {
       );
     });
 
-    it("should handle both visitor_id and initialURL in init options", async () => {
-      await oursprivacyMain.initialize(
-        token,
-        false,
-        false,
-        {
-          visitor_id: "explicit-visitor-id",
-          initialURL: "myapp://open?utm_source=google&ours_visitor_id=url-visitor-id",
-        },
-        "https://cdn.oursprivacy.com"
-      );
-      // visitor_id option is applied first, then initialURL overrides with ours_visitor_id
+    it("should handle both visitorId and initialURL in init options", async () => {
+      await oursprivacyMain.initialize(token, {
+        visitorId: "explicit-visitor-id",
+        initialURL: "myapp://open?utm_source=google&ours_visitor_id=url-visitor-id",
+        serverURL: "https://cdn.oursprivacy.com",
+      });
+      // visitorId option is applied first, then initialURL overrides with ours_visitor_id
       expect(
         oursprivacyMain.oursprivacyPersistent.updateVisitorId
       ).toHaveBeenCalledWith(token, "url-visitor-id");

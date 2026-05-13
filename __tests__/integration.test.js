@@ -36,14 +36,14 @@ describe("OursPrivacy integration flows", () => {
     fetchMock.mockResponseOnce(JSON.stringify({success: true}), {status: 200});
 
     const {OursPrivacy} = require("oursprivacy-react-native");
-    const op = new OursPrivacy("test-token", false);
+    const op = new OursPrivacy();
 
-    await op.init(false, {
+    await op.init("test-token", {
       serverURL: "https://api.oursprivacy.com",
-      visitor_id: "preset-visitor-123",
-      default_event_properties: {platform: "mobile"},
-      default_user_custom_properties: {plan: "pro"},
-      default_user_consent_properties: {marketing: true},
+      visitorId: "preset-visitor-123",
+      defaultEventProperties: {platform: "mobile"},
+      defaultUserCustomProperties: {plan: "pro"},
+      defaultUserConsentProperties: {marketing: true},
     });
 
     op.track("Purchase", {price: 99});
@@ -84,11 +84,11 @@ describe("OursPrivacy integration flows", () => {
     fetchMock.mockResponseOnce(JSON.stringify({success: true}), {status: 200});
 
     const {OursPrivacy} = require("oursprivacy-react-native");
-    const op = new OursPrivacy("test-token", false);
+    const op = new OursPrivacy();
 
-    await op.init(false, {
+    await op.init("test-token", {
       serverURL: "https://api-eu.oursprivacy.com",
-      visitor_id: "preset-visitor-123",
+      visitorId: "preset-visitor-123",
     });
 
     op.track("Before Opt Out", {step: 1});
@@ -121,10 +121,10 @@ describe("OursPrivacy integration flows", () => {
     fetchMock.mockResponse(JSON.stringify({success: true}), {status: 200});
 
     const {OursPrivacy} = require("oursprivacy-react-native");
-    const op = new OursPrivacy("test-token", false);
+    const op = new OursPrivacy();
 
     // Step 1: Init with initialURL — should fire $deep_link_opened and set attribution
-    await op.init(false, {
+    await op.init("test-token", {
       serverURL: "https://api.oursprivacy.com",
       initialURL: "myapp://open?utm_source=google&utm_medium=cpc&gclid=init_gclid&aleid=init_aleid",
     });
@@ -238,24 +238,24 @@ describe("OursPrivacy integration flows", () => {
     expect(trackEvent.visitor_id).not.toBe("web-uuid-123");
   });
 
-  it("3-arg track: top-level user props, custom_properties + consent merge, null when empty (OUR-4098)", async () => {
+  it("3-arg track: top-level user props, custom_properties + consent merge, null when empty", async () => {
     fetchMock.mockResponse(JSON.stringify({success: true}), {status: 200});
 
     const {OursPrivacy} = require("oursprivacy-react-native");
-    const op = new OursPrivacy("test-token", false);
+    const op = new OursPrivacy();
 
-    await op.init(false, {
+    await op.init("test-token", {
       serverURL: "https://api.oursprivacy.com",
-      visitor_id: "preset-visitor-123",
-      default_user_custom_properties: {test_user: true},
+      visitorId: "preset-visitor-123",
+      defaultUserCustomProperties: {test_user: true},
     });
 
     // S1: 2-arg backwards compat — default custom only on the wire
     op.track("two_arg_compat", {scenario: 1});
-    // S2: 3-arg with top-level user props (email + external_id)
-    op.track("three_arg_top_level", {scenario: 2}, {email: "qa@example.com", external_id: "qa-1"});
-    // S3: 3-arg with per-call custom_properties — merges on top of default {test_user:true}
-    op.track("three_arg_custom_merge", {scenario: 3}, {custom_properties: {tier: "gold"}});
+    // S2: 3-arg with top-level user props (email + externalId)
+    op.track("three_arg_top_level", {scenario: 2}, {email: "qa@example.com", externalId: "qa-1"});
+    // S3: 3-arg with per-call customProperties — merges on top of default {test_user:true}
+    op.track("three_arg_custom_merge", {scenario: 3}, {customProperties: {tier: "gold"}});
     // S4: 3-arg with per-call consent — no default consent, should appear verbatim
     op.track("three_arg_consent", {scenario: 4}, {consent: {marketing: true}});
 
@@ -292,10 +292,10 @@ describe("OursPrivacy integration flows", () => {
     // S5: separate instance with no defaults and no per-call user props → null
     fetchMock.resetMocks();
     fetchMock.mockResponse(JSON.stringify({success: true}), {status: 200});
-    const op2 = new OursPrivacy("test-token-2", false);
-    await op2.init(false, {
+    const op2 = new OursPrivacy();
+    await op2.init("test-token-2", {
       serverURL: "https://api.oursprivacy.com",
-      visitor_id: "preset-visitor-456",
+      visitorId: "preset-visitor-456",
     });
     op2.track("no_user_props_anywhere", {scenario: 5});
     await flushAsyncWork();

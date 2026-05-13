@@ -25,7 +25,6 @@ This SDK is pure JavaScript. It does not ship native iOS or Android modules.
   - [Identity](#identity)
   - [Privacy Controls](#privacy-controls)
 - [Payload Structure](#payload-structure)
-- [Migration from Mixpanel](#migration-from-mixpanel)
 - [FAQ](#faq)
 - [Support](#support)
 
@@ -47,8 +46,8 @@ Install `@react-native-async-storage/async-storage` directly in your app if you 
 ```js
 import { OursPrivacy } from '@oursprivacy/react-native';
 
-const op = new OursPrivacy('YOUR_API_TOKEN', false);
-await op.init();
+const op = new OursPrivacy();
+await op.init('YOUR_API_TOKEN');
 ```
 
 That's it. The SDK connects to `https://cdn.oursprivacy.com` by default — no endpoint configuration needed.
@@ -65,9 +64,10 @@ op.track('Purchase', { value: 49.99, currency: 'USD' });
 After login, link events to a user:
 
 ```js
-await op.identify('user-123', {
+await op.identify({
+  externalId: 'user-123',
   email: 'user@example.com',
-  first_name: 'Jane',
+  firstName: 'Jane',
 });
 ```
 
@@ -92,9 +92,9 @@ let op;
 
 async function getClient() {
   if (!op) {
-    op = new OursPrivacy('YOUR_API_TOKEN', false);
-    await op.init(false, {
-      default_event_properties: { app_version: '2.0.0' },
+    op = new OursPrivacy();
+    await op.init('YOUR_API_TOKEN', {
+      defaultEventProperties: { app_version: '2.0.0' },
     });
   }
   return op;
@@ -121,56 +121,53 @@ export default function App() {
 
 ### Initialization
 
-#### `new OursPrivacy(token, trackAutomaticEvents, storage?)`
+#### `new OursPrivacy()`
 
-Creates an OursPrivacy instance. You must call `.init()` before tracking.
+Creates an OursPrivacy instance. The instance is unconfigured until you call `.init()`. All configuration (token, default properties, storage, etc.) is passed to `init()`.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `token` | `string` | Yes | Your project token |
-| `trackAutomaticEvents` | `boolean` | Yes | Whether to track automatic events |
-| `storage` | `OursPrivacyAsyncStorage` | No | Custom AsyncStorage adapter |
-
-**Returns:** `OursPrivacy` instance (call `.init()` to complete setup)
+**Returns:** `OursPrivacy` instance.
 
 ```js
-const op = new OursPrivacy('YOUR_API_TOKEN', false);
+const op = new OursPrivacy();
 ```
 
 ---
 
-#### `op.init(optOutTrackingDefault?, options?)`
+#### `op.init(token, options?)`
 
-Initializes the SDK. Must be called before tracking.
+Initialize the SDK. Must be called before any tracking method.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `optOutTrackingDefault` | `boolean` | No | If `true`, tracking is opted out by default (default: `false`) |
-| `options` | `OursPrivacyInitOptions` | No | Additional initialization options (see below) |
+| `token` | `string` | Yes | Your project token |
+| `options` | `OursPrivacyInitOptions` | No | Initialization options (see below) |
 
-**`OursPrivacyInitOptions` shape:**
+**`OursPrivacyInitOptions` shape (all camelCase):**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `visitor_id` | `string` | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events |
-| `default_event_properties` | `object` | Properties merged into `eventProperties` on every `track()` call |
-| `default_user_custom_properties` | `object` | Properties merged into `userProperties.custom_properties` on every event |
-| `default_user_consent_properties` | `object` | Properties merged into `userProperties.consent` on every event |
+| `trackAutomaticEvents` | `boolean` | Reserved for future automatic event tracking |
+| `optOutTrackingByDefault` | `boolean` | If `true`, tracking starts opted out (default: `false`) |
+| `visitorId` | `string` | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events |
+| `defaultEventProperties` | `object` | Properties merged into `eventProperties` on every `track()` call |
+| `defaultUserCustomProperties` | `object` | Properties merged into `userProperties.custom_properties` on every event |
+| `defaultUserConsentProperties` | `object` | Properties merged into `userProperties.consent` on every event |
 | `serverURL` | `string` | Override the base URL used for requests, for example a local QA capture server |
 | `initialURL` | `string` | Deep link URL to parse on init — extracts UTM params, click IDs, and `ours_visitor_id` (see [Deep Link Attribution](#deep-link-attribution)) |
+| `storage` | `OursPrivacyAsyncStorage` | Custom AsyncStorage adapter |
 
 **Returns:** `Promise<void>`
 
 ```js
 // Minimal init
-await op.init();
+await op.init('YOUR_API_TOKEN');
 
 // With options
-await op.init(false, {
-  visitor_id: 'pre-known-id',
-  default_event_properties: { platform: 'mobile', app_version: '2.0.0' },
-  default_user_custom_properties: { tier: 'pro' },
-  default_user_consent_properties: { marketing: true },
+await op.init('YOUR_API_TOKEN', {
+  visitorId: 'pre-known-id',
+  defaultEventProperties: { platform: 'mobile', app_version: '2.0.0' },
+  defaultUserCustomProperties: { tier: 'pro' },
+  defaultUserConsentProperties: { marketing: true },
 });
 ```
 
@@ -195,35 +192,47 @@ op.track('Page View', { page: '/home', referrer: 'google' });
 
 ---
 
-#### `op.identify(id, userProperties?)`
+#### `op.identify(userProperties?)`
 
 Associate all future `track()` calls with the given user identity. Call this after a user logs in.
 
+Pass identifying fields inside the `userProperties` bag — most commonly `externalId` (your system's user ID). Any default custom or consent properties registered via `updateDefault*` are merged in automatically.
+
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | `string` | Yes | The user's known identifier (e.g. email or external ID) |
-| `userProperties` | `OursPrivacyUserProperties` | No | User properties to attach |
+| `userProperties` | `OursPrivacyUserProperties` | No | User properties to attach to this identity |
 
-**`OursPrivacyUserProperties` shape:**
+**`OursPrivacyUserProperties` shape (all camelCase):**
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `email` | `string` | User's email address |
-| `external_id` | `string` | ID from your own system |
-| `phone_number` | `string` | User's phone number |
-| `first_name` | `string` | First name |
-| `last_name` | `string` | Last name |
-| `custom_properties` | `object` | Arbitrary custom user attributes |
+| `externalId` | `string` | ID from your own system |
+| `phoneNumber` | `string` | User's phone number |
+| `firstName` | `string` | First name |
+| `lastName` | `string` | Last name |
+| `gender` | `string` | Gender |
+| `dateOfBirth` | `string` | Date of birth (ISO 8601, e.g. `1990-04-12`) |
+| `city` | `string` | City |
+| `state` | `string` | State / region |
+| `zip` | `string` | Postal / ZIP code |
+| `country` | `string` | Country (ISO 3166-1 alpha-2 preferred) |
+| `companyName` | `string` | Company name |
+| `jobTitle` | `string` | Job title |
+| `ip` | `string` | Client IP (only set this if you have a reliable source — the server will infer otherwise) |
+| `customProperties` | `object` | Arbitrary custom user attributes |
 | `consent` | `object` | Consent flags (e.g. `{ marketing: true }`) |
+
+The SDK converts these camelCase fields to the snake_case wire format (`externalId` → `external_id`, `dateOfBirth` → `date_of_birth`, etc.) before sending.
 
 **Returns:** `Promise<void>`
 
 ```js
-await op.identify('user-123', {
+await op.identify({
   email: 'jane@example.com',
-  external_id: 'db-user-456',
-  first_name: 'Jane',
-  custom_properties: { tier: 'pro' },
+  externalId: 'db-user-456',
+  firstName: 'Jane',
+  customProperties: { tier: 'pro' },
   consent: { marketing: true },
 });
 ```
@@ -274,8 +283,8 @@ Merge properties into `eventProperties` on every future `track()` call. Properti
 
 ```js
 // At init time:
-await op.init(false, {
-  default_event_properties: { app_version: '2.0.0', environment: 'production' },
+await op.init('YOUR_API_TOKEN', {
+  defaultEventProperties: { app_version: '2.0.0', environment: 'production' },
 });
 
 // Or post-init (e.g. after fetching user data):
@@ -299,8 +308,8 @@ Merge properties into `userProperties.custom_properties` on every future event. 
 
 ```js
 // At init time:
-await op.init(false, {
-  default_user_custom_properties: { tier: 'pro' },
+await op.init('YOUR_API_TOKEN', {
+  defaultUserCustomProperties: { tier: 'pro' },
 });
 
 // Or post-init (e.g. after subscription status loads):
@@ -321,8 +330,8 @@ Merge properties into `userProperties.consent` on every future event. Use this t
 
 ```js
 // At init time:
-await op.init(false, {
-  default_user_consent_properties: { marketing: false, analytics: true },
+await op.init('YOUR_API_TOKEN', {
+  defaultUserConsentProperties: { marketing: false, analytics: true },
 });
 
 // Or when the user updates their preferences:
@@ -461,7 +470,7 @@ Alternatively, pass the URL at init time:
 
 ```js
 const initialURL = await Linking.getInitialURL();
-await op.init(false, {
+await op.init('YOUR_API_TOKEN', {
   initialURL: initialURL || undefined,
 });
 ```
@@ -594,82 +603,6 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
 | `userProperties.custom_properties` | From `identify()` and `updateDefaultUserCustomProperties()` |
 | `userProperties.consent` | From `identify()` and `updateDefaultUserConsentProperties()` |
 | `defaultProperties` | Automatically collected device/SDK metadata |
-
----
-
-## Migration
-
-### From 1.x to 2.x
-
-The `useNative` constructor argument was removed in 2.0.0. The SDK has always run pure JavaScript, so the argument was a no-op — but its position shifted, so any call that passed `storage` positionally needs to drop the third argument.
-
-```js
-// 1.x
-const op = new OursPrivacy('TOKEN', false, false, customStorage);
-
-// 2.x
-const op = new OursPrivacy('TOKEN', false, customStorage);
-```
-
-If you never passed anything beyond `token` and `trackAutomaticEvents`, no change is required.
-
-## Migration from Mixpanel
-
-This SDK was originally forked from the Mixpanel React Native SDK. If you are migrating from Mixpanel or from an earlier version of this SDK, note the following:
-
-### Removed features
-
-The following Mixpanel-specific features have been removed and are not planned:
-
-- **People / Profiles** — `mixpanel.getPeople()`, `people.set()`, `people.increment()`, etc.
-- **Groups** — `mixpanel.getGroup()`, `setGroup()`, `addGroup()`, etc.
-
-These APIs do not exist in `@oursprivacy/react-native` and will throw if called.
-
-### Renamed package
-
-```bash
-# Remove Mixpanel
-npm uninstall @mixpanel/react-native
-
-# Install Ours Privacy
-npm install @oursprivacy/react-native
-npm install @react-native-async-storage/async-storage
-```
-
-```js
-// Before
-import { Mixpanel } from '@mixpanel/react-native';
-const mp = await Mixpanel.init('TOKEN', false);
-
-// After
-import { OursPrivacy } from '@oursprivacy/react-native';
-const op = new OursPrivacy('TOKEN', false);
-await op.init();
-```
-
-### Default properties
-
-Replace `registerSuperProperties` with the Ours Privacy default properties API:
-
-```js
-// Event properties sent with every track() call
-op.updateDefaultEventProperties({ plan: 'pro', environment: 'production' });
-
-// Per-user custom properties sent on every event
-op.updateDefaultUserCustomProperties({ tier: 'enterprise' });
-
-// Consent state sent on every event
-op.updateDefaultUserConsentProperties({ marketing: true, analytics: true });
-```
-
-### Visitor ID
-
-Use `getVisitorId()` instead of `getDistinctId()` — it returns a clean UUID synchronously:
-
-```js
-const id = op.getVisitorId();
-```
 
 ---
 
