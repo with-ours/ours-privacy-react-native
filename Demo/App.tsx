@@ -14,10 +14,25 @@ import {
   View,
 } from 'react-native';
 
-import {
-  Colors,
-  Header,
-} from 'react-native/Libraries/NewAppScreen';
+// react-native/Libraries/NewAppScreen was removed in RN 0.85. Inline a minimal
+// equivalent so the QA harness keeps the same shape without pulling a new dep.
+const Colors = {
+  white: '#FFF',
+  black: '#000',
+  light: '#DAE1E7',
+  lighter: '#F3F3F3',
+  dark: '#444',
+  darker: '#222',
+};
+function Header() {
+  return (
+    <View style={{paddingVertical: 20}}>
+      <Text style={{fontSize: 24, fontWeight: '700', textAlign: 'center'}}>
+        OursPrivacy Demo
+      </Text>
+    </View>
+  );
+}
 
 import { OURSPRIVACY_SERVER_URL, OURSPRIVACY_TOKEN, E2E_AUTOFIRE } from '@env';
 import { OursPrivacy } from '@oursprivacy/react-native';
