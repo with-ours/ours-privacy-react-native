@@ -27,12 +27,9 @@ export type OursPrivacyUserProperties = {
 };
 
 export class OursPrivacy {
-  constructor(token: string, trackAutoMaticEvents: boolean);
-  constructor(token: string, trackAutoMaticEvents: boolean, useNative: true);
   constructor(
     token: string,
     trackAutomaticEvents: boolean,
-    useNative: false,
     storage?: OursPrivacyAsyncStorage
   );
   init(
