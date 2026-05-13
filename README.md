@@ -25,7 +25,6 @@ This SDK is pure JavaScript. It does not ship native iOS or Android modules.
   - [Identity](#identity)
   - [Privacy Controls](#privacy-controls)
 - [Payload Structure](#payload-structure)
-- [Migration from Mixpanel](#migration-from-mixpanel)
 - [FAQ](#faq)
 - [Support](#support)
 
@@ -604,66 +603,6 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
 | `userProperties.custom_properties` | From `identify()` and `updateDefaultUserCustomProperties()` |
 | `userProperties.consent` | From `identify()` and `updateDefaultUserConsentProperties()` |
 | `defaultProperties` | Automatically collected device/SDK metadata |
-
----
-
-## Migration from Mixpanel
-
-This SDK was originally forked from the Mixpanel React Native SDK. If you are migrating from Mixpanel or from an earlier version of this SDK, note the following:
-
-### Removed features
-
-The following Mixpanel-specific features have been removed and are not planned:
-
-- **People / Profiles** — `mixpanel.getPeople()`, `people.set()`, `people.increment()`, etc.
-- **Groups** — `mixpanel.getGroup()`, `setGroup()`, `addGroup()`, etc.
-
-These APIs do not exist in `@oursprivacy/react-native` and will throw if called.
-
-### Renamed package
-
-```bash
-# Remove Mixpanel
-npm uninstall @mixpanel/react-native
-
-# Install Ours Privacy
-npm install @oursprivacy/react-native
-npm install @react-native-async-storage/async-storage
-```
-
-```js
-// Before
-import { Mixpanel } from '@mixpanel/react-native';
-const mp = await Mixpanel.init('TOKEN', false);
-
-// After
-import { OursPrivacy } from '@oursprivacy/react-native';
-const op = new OursPrivacy();
-await op.init('TOKEN');
-```
-
-### Default properties
-
-Replace `registerSuperProperties` with the Ours Privacy default properties API:
-
-```js
-// Event properties sent with every track() call
-op.updateDefaultEventProperties({ plan: 'pro', environment: 'production' });
-
-// Per-user custom properties sent on every event
-op.updateDefaultUserCustomProperties({ tier: 'enterprise' });
-
-// Consent state sent on every event
-op.updateDefaultUserConsentProperties({ marketing: true, analytics: true });
-```
-
-### Visitor ID
-
-Use `getVisitorId()` instead of `getDistinctId()` — it returns a clean UUID synchronously:
-
-```js
-const id = op.getVisitorId();
-```
 
 ---
 

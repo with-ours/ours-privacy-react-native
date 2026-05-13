@@ -238,7 +238,7 @@ describe("OursPrivacy integration flows", () => {
     expect(trackEvent.visitor_id).not.toBe("web-uuid-123");
   });
 
-  it("3-arg track: top-level user props, custom_properties + consent merge, null when empty (OUR-4098)", async () => {
+  it("3-arg track: top-level user props, custom_properties + consent merge, null when empty", async () => {
     fetchMock.mockResponse(JSON.stringify({success: true}), {status: 200});
 
     const {OursPrivacy} = require("oursprivacy-react-native");

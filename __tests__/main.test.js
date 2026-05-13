@@ -405,7 +405,7 @@ describe("OursPrivacyMain", () => {
       });
     });
 
-    it("omits consent when neither defaults nor per-call carry consent (OUR-3669)", async () => {
+    it("omits consent when neither defaults nor per-call carry consent", async () => {
       oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro"});
       await oursprivacyMain.identify(token, {externalId: "u-5"});
       const call = oursprivacyMain.core.addToOursPrivacyQueue.mock.calls[0];
@@ -530,7 +530,7 @@ describe("OursPrivacyMain", () => {
       );
     });
 
-    it("omits consent when neither defaults nor per-call user props carry consent (OUR-3669)", async () => {
+    it("omits consent when neither defaults nor per-call user props carry consent", async () => {
       oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro"});
       await oursprivacyMain.track(token, "Test Event", {}, {email: "u@x.com"});
       const call = oursprivacyMain.core.addToOursPrivacyQueue.mock.calls[0];

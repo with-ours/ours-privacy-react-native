@@ -149,13 +149,12 @@ export default class OursPrivacyMain {
     await this.core.addToOursPrivacyQueue(token, OursPrivacyType.EVENTS, eventData);
   }
 
-  // Mirrors web-cdp formatUserProperties (martech/apps/web-cdp/src/lib/format-track.ts).
   // Accepts camelCase userProperties at the caller surface and produces wire-format
   // (snake_case) for the queue payload.
   //
   // Top-level keys (email, externalId → external_id, etc.) spread onto userProperties;
   // nested customProperties and consent merge on top of the store defaults. Consent is
-  // intentionally omitted when nothing carries it (OUR-3669).
+  // intentionally omitted when nothing carries it.
   _composeUserProperties(token, perCallUserProps) {
     const wirePerCall = toWireUserProperties(perCallUserProps);
 
@@ -240,7 +239,7 @@ export default class OursPrivacyMain {
   // identify(userProperties) — caller supplies identifying fields inside the
   // userProperties bag (most commonly externalId). Merging with store-level
   // default custom/consent properties is identical to track() — see
-  // _composeUserProperties for the OUR-3669 consent guard.
+  // _composeUserProperties for the consent guard.
   async identify(token, userProperties) {
     OursPrivacyLogger.log(token, `Identify`, userProperties);
 
