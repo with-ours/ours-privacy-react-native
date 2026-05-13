@@ -116,6 +116,11 @@ jobs:
           name: npm-package
           path: .
 
+      # Node's bundled npm is older than the CLI version required by npm's
+      # OIDC Trusted Publishing endpoint. Pin a known-good version.
+      - name: Install OIDC-compatible npm
+        run: npm install -g npm@11.6.2
+
       - name: Publish tarball to npm
         env:
           VERSION: ${{ needs.build.outputs.version }}
