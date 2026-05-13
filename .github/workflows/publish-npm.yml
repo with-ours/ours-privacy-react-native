@@ -11,22 +11,33 @@ on:
         description: "Version to publish (e.g., 1.1.0)"
         required: true
 
-permissions:
-  contents: write
-  id-token: write
+permissions: {}
+
+concurrency:
+  group: publish-npm
+  cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Publish to npm
+  # Build + test runs without id-token: write and without npm registry creds,
+  # so a malicious dep installed by `npm ci` cannot exfiltrate publish auth.
+  # Tarball is handed to the publish job via artifact.
+  build:
+    name: Build & Test
     runs-on: ubuntu-latest
     if: >
       (github.event_name == 'workflow_dispatch') ||
       (github.event.pull_request.merged == true &&
        startsWith(github.event.pull_request.title, 'release:'))
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
@@ -34,12 +45,15 @@ jobs:
 
       - name: Extract version
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
           else
-            TITLE="${{ github.event.pull_request.title }}"
-            VERSION=$(echo "$TITLE" | grep -oP '\d+\.\d+\.\d+')
+            VERSION=$(echo "$PR_TITLE" | grep -oP '\d+\.\d+\.\d+')
           fi
 
           if [ -z "$VERSION" ]; then
@@ -56,7 +70,7 @@ jobs:
           fi
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Publishing version: $VERSION"
+          echo "Building version: $VERSION"
 
       - run: npm ci
 
@@ -64,17 +78,57 @@ jobs:
 
       - run: npx tsc --noEmit
 
-      - name: Publish to npm
-        run: npm publish --access public
+      - name: Pack tarball
+        run: npm pack
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: npm-package
+          path: oursprivacy-react-native-*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  # Publish runs in an isolated job: no `npm ci`, no project deps loaded.
+  # `npm publish <tarball>` does not execute package lifecycle scripts, so
+  # no third-party JS runs in this job's env where OIDC tokens are present.
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write # push release tag, create GitHub release
+      id-token: write # npm Trusted Publishing via OIDC + npm provenance
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Download tarball artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: npm-package
+          path: .
+
+      - name: Publish tarball to npm
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: npm publish "oursprivacy-react-native-${VERSION}.tgz" --access public --provenance
 
       - name: Create git tag and GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: v${{ needs.build.outputs.version }}
         run: |
-          VERSION="v${{ steps.version.outputs.version }}"
           git tag "$VERSION"
-          git push origin "$VERSION"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$VERSION"
 
           gh release create "$VERSION" \
             --title "$VERSION" \
             --generate-notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
