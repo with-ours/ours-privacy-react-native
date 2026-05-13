@@ -392,6 +392,92 @@ describe("OursPrivacyMain", () => {
     );
   });
 
+  describe("track with per-call userProperties (CDP parity)", () => {
+    it("sends per-call userProperties on the wire when no defaults set", async () => {
+      await oursprivacyMain.track(token, "Test Event", {}, {email: "u@x.com"});
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
+        token,
+        OursPrivacyType.EVENTS,
+        expect.objectContaining({
+          userProperties: {email: "u@x.com"},
+        })
+      );
+    });
+
+    it("leaves userProperties null when neither defaults nor per-call user props are present", async () => {
+      await oursprivacyMain.track(token, "Test Event", {prop1: "v"});
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
+        token,
+        OursPrivacyType.EVENTS,
+        expect.objectContaining({
+          userProperties: null,
+        })
+      );
+    });
+
+    it("merges per-call custom_properties on top of default custom properties", async () => {
+      oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro", tier: "silver"});
+      await oursprivacyMain.track(token, "Test Event", {}, {
+        custom_properties: {tier: "gold"},
+      });
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
+        token,
+        OursPrivacyType.EVENTS,
+        expect.objectContaining({
+          userProperties: expect.objectContaining({
+            custom_properties: {plan: "pro", tier: "gold"},
+          }),
+        })
+      );
+    });
+
+    it("merges per-call consent on top of default consent properties", async () => {
+      oursprivacyMain.updateDefaultUserConsentProperties(token, {analytics: true, marketing: false});
+      await oursprivacyMain.track(token, "Test Event", {}, {
+        consent: {marketing: true},
+      });
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
+        token,
+        OursPrivacyType.EVENTS,
+        expect.objectContaining({
+          userProperties: expect.objectContaining({
+            consent: {analytics: true, marketing: true},
+          }),
+        })
+      );
+    });
+
+    it("spreads top-level per-call user props (e.g. email) onto userProperties alongside merged custom_properties", async () => {
+      oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro"});
+      await oursprivacyMain.track(token, "Test Event", {}, {
+        email: "u@x.com",
+        custom_properties: {tier: "gold"},
+      });
+      expect(oursprivacyMain.core.addToOursPrivacyQueue).toHaveBeenCalledWith(
+        token,
+        OursPrivacyType.EVENTS,
+        expect.objectContaining({
+          userProperties: {
+            email: "u@x.com",
+            custom_properties: {plan: "pro", tier: "gold"},
+          },
+        })
+      );
+    });
+
+    it("omits consent when neither defaults nor per-call user props carry consent (OUR-3669)", async () => {
+      oursprivacyMain.updateDefaultUserCustomProperties(token, {plan: "pro"});
+      await oursprivacyMain.track(token, "Test Event", {}, {email: "u@x.com"});
+      const call = oursprivacyMain.core.addToOursPrivacyQueue.mock.calls[0];
+      const payload = call[2];
+      expect(payload.userProperties).toEqual({
+        email: "u@x.com",
+        custom_properties: {plan: "pro"},
+      });
+      expect(payload.userProperties).not.toHaveProperty("consent");
+    });
+  });
+
   it("getVisitorId should return the visitor id", () => {
     const visitorId = oursprivacyMain.getVisitorId(token);
     expect(visitorId).toBe("visitor-id-mock");
