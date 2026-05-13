@@ -10,81 +10,83 @@ const ERROR_MESSAGE = {
 
 const PARAMS = {
   TOKEN: "token",
-  ID: "id",
   EVENT_NAME: "eventName",
   PROPERTIES: "properties",
+  USER_PROPERTIES: "userProperties",
+  OPTIONS: "options",
+  URL: "url",
+  VISITOR_ID: "visitorId",
 };
 
-const DEFAULT_OPT_OUT = false;
+const NOT_INITIALIZED_ERROR =
+  "OursPrivacy.init(token, options) must be called before any other method.";
 
 /**
  * The primary class for integrating OursPrivacy with your app.
+ *
+ * Usage:
+ *   const ours = new OursPrivacy();
+ *   await ours.init('YOUR_API_TOKEN', { ...options });
+ *   ours.track('event_name');
  */
 export class OursPrivacy {
-  constructor(token, trackAutomaticEvents, storage) {
-    if (!StringHelper.isValid(token)) {
-      StringHelper.raiseError(PARAMS.TOKEN);
-    }
-    if (trackAutomaticEvents == null) {
-      throw new Error(`trackAutomaticEvents is undefined`);
-    }
-    this.token = token;
-    this.trackAutomaticEvents = trackAutomaticEvents;
-    this.oursprivacyImpl = new OursPrivacyMain(token, trackAutomaticEvents, storage);
+  constructor() {
+    this.token = null;
+    this.oursprivacyImpl = null;
   }
 
   /**
-   * Initializes OursPrivacy.
+   * Initialize OursPrivacy.
    *
-   * @param {boolean} optOutTrackingDefault Whether to start tracking opted-out. Defaults to false.
-   * @param {object} options Optional configuration:
+   * @param {string} token Your OursPrivacy project token.
+   * @param {OursPrivacyInitOptions} [options] Optional configuration:
+   *   - trackAutomaticEvents: boolean — reserved for future automatic event tracking
+   *   - optOutTrackingByDefault: boolean — start in an opted-out state (default false)
    *   - serverURL: string — override the ingest endpoint
-   *   - visitor_id: string — pre-set the visitor ID (sets is_manually_set_id: true)
-   *   - default_event_properties: object — merged into every track() call
-   *   - default_user_custom_properties: object — merged into userProperties.custom_properties
-   *   - default_user_consent_properties: object — merged into userProperties.consent
+   *   - visitorId: string — pre-set the visitor ID (sets is_manually_set_id: true)
+   *   - initialURL: string — deep link URL to parse on init
+   *   - defaultEventProperties: object — merged into every track() call
+   *   - defaultUserCustomProperties: object — merged into userProperties.customProperties
+   *   - defaultUserConsentProperties: object — merged into userProperties.consent
+   *   - storage: AsyncStorage adapter — override the default storage backend
    */
-  async init(
-    optOutTrackingDefault = DEFAULT_OPT_OUT,
-    options = {}
-  ) {
-    const serverURL = (options && options.serverURL) || "https://cdn.oursprivacy.com";
-    await this.oursprivacyImpl.initialize(
-      this.token,
-      this.trackAutomaticEvents,
-      optOutTrackingDefault,
-      options,
-      serverURL
-    );
+  async init(token, options = {}) {
+    if (!StringHelper.isValid(token)) {
+      StringHelper.raiseError(PARAMS.TOKEN);
+    }
+    if (options !== undefined && !ObjectHelper.isValid(options)) {
+      ObjectHelper.raiseError(PARAMS.OPTIONS);
+    }
+    const opts = options || {};
+    this.token = token;
+    this.oursprivacyImpl = new OursPrivacyMain(token, opts.storage);
+    await this.oursprivacyImpl.initialize(token, opts);
   }
 
   /**
    * Set the base URL used for OursPrivacy API requests.
    * Defaults to https://cdn.oursprivacy.com.
    * To route data to OursPrivacy's EU servers, set to https://api-eu.oursprivacy.com.
-   *
-   * @param {string} serverURL the base URL used for OursPrivacy API requests
    */
   setServerURL(serverURL) {
+    this._requireInit();
     this.oursprivacyImpl.setServerURL(this.token, serverURL);
   }
 
   /**
    * Enable or disable debug logging at run time. Disabled by default.
-   *
-   * @param {boolean} loggingEnabled whether to enable logging
    */
   setLoggingEnabled(loggingEnabled) {
+    this._requireInit();
     this.oursprivacyImpl.setLoggingEnabled(this.token, loggingEnabled);
   }
 
   /**
    * Compatibility API retained from the earlier native-backed SDK surface.
    * In the current JavaScript runtime this is a safe no-op.
-   *
-   * @param {boolean} flushOnBackground
    */
   setFlushOnBackground(flushOnBackground) {
+    this._requireInit();
     if (Platform.OS === "ios") {
       this.oursprivacyImpl.setFlushOnBackground(this.token, flushOnBackground);
     } else {
@@ -97,19 +99,17 @@ export class OursPrivacy {
   /**
    * Set the maximum number of events sent in a single network request.
    * Values above 50 are clamped to 50.
-   *
-   * @param {integer} flushBatchSize
    */
   setFlushBatchSize(flushBatchSize) {
+    this._requireInit();
     this.oursprivacyImpl.setFlushBatchSize(this.token, flushBatchSize);
   }
 
   /**
    * Returns true if the visitor has opted out from tracking.
-   *
-   * @return {Promise<boolean>}
    */
   hasOptedOutTracking() {
+    this._requireInit();
     return this.oursprivacyImpl.hasOptedOutTracking(this.token);
   }
 
@@ -117,6 +117,7 @@ export class OursPrivacy {
    * Resume tracking after optOutTracking(). Also sends a $opt_in event.
    */
   optInTracking() {
+    this._requireInit();
     this.oursprivacyImpl.optInTracking(this.token);
   }
 
@@ -125,46 +126,34 @@ export class OursPrivacy {
    * are discarded. Call flush() first to preserve them.
    */
   optOutTracking() {
+    this._requireInit();
     this.oursprivacyImpl.optOutTracking(this.token);
   }
 
   /**
-   * Link this anonymous visitor to a known user identity.
-   * Call this after login. Sends a $identify event with the provided ID and
-   * user properties.
+   * Link this anonymous visitor to a known user identity. Call this after login.
+   * Sends a $identify event with the provided user properties.
    *
-   * @param {string} id The user's known identifier (e.g. email or external ID).
-   * @param {object} userProperties Optional properties to attach to this identity.
-   * @returns {Promise}
+   * Callers pass identifying fields inside userProperties — most commonly
+   * `externalId` (your system's user ID). The SDK merges in any default
+   * customProperties / consent registered via updateDefault*().
+   *
+   * @param {OursPrivacyUserProperties} [userProperties] User properties to attach
+   *   to this identity (e.g. { email, externalId, customProperties }).
    */
-  identify(id, userProperties) {
-    return new Promise((resolve, reject) => {
-      if (!StringHelper.isValid(id)) {
-        StringHelper.raiseError(PARAMS.ID);
-        reject(new Error("Invalid id"));
-      }
-      this.oursprivacyImpl
-        .identify(this.token, id, userProperties)
-        .then(() => {
-          resolve();
-        })
-        .catch((err) => {
-          reject(err);
-        });
-    });
+  identify(userProperties) {
+    this._requireInit();
+    if (!ObjectHelper.isValidOrUndefined(userProperties)) {
+      ObjectHelper.raiseError(PARAMS.USER_PROPERTIES);
+    }
+    return this.oursprivacyImpl.identify(this.token, userProperties);
   }
 
   /**
    * Track an event.
-   *
-   * @param {string} eventName The name of the event.
-   * @param {object} [eventProperties] Optional key/value pairs to include with this event.
-   * @param {object} [userProperties] Optional per-call user properties. Top-level keys
-   *   (e.g. email, external_id) are spread onto userProperties on the wire; nested
-   *   custom_properties and consent are merged on top of the defaults set via
-   *   updateDefaultUserCustomProperties / updateDefaultUserConsentProperties.
    */
   track(eventName, eventProperties, userProperties) {
+    this._requireInit();
     if (!StringHelper.isValid(eventName)) {
       StringHelper.raiseError(PARAMS.EVENT_NAME);
     }
@@ -172,7 +161,7 @@ export class OursPrivacy {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
     if (!ObjectHelper.isValidOrUndefined(userProperties)) {
-      ObjectHelper.raiseError(PARAMS.PROPERTIES);
+      ObjectHelper.raiseError(PARAMS.USER_PROPERTIES);
     }
     this.oursprivacyImpl.track(this.token, eventName, eventProperties, userProperties);
   }
@@ -182,25 +171,23 @@ export class OursPrivacy {
    * Call this when a visitor logs out.
    */
   reset() {
+    this._requireInit();
     this.oursprivacyImpl.reset(this.token);
   }
 
   /**
    * Returns the stable visitor UUID for this install. Synchronous.
-   * This is the value sent as visitor_id on every event.
-   *
-   * @return {string|null}
    */
   getVisitorId() {
+    this._requireInit();
     return this.oursprivacyImpl.getVisitorId(this.token);
   }
 
   /**
    * Merge properties into eventProperties on every subsequent track() call.
-   *
-   * @param {object} properties Key/value pairs to merge.
    */
   updateDefaultEventProperties(properties) {
+    this._requireInit();
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
@@ -208,11 +195,10 @@ export class OursPrivacy {
   }
 
   /**
-   * Merge properties into userProperties.custom_properties on every event.
-   *
-   * @param {object} properties Key/value pairs to merge.
+   * Merge properties into userProperties.customProperties on every event.
    */
   updateDefaultUserCustomProperties(properties) {
+    this._requireInit();
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
@@ -221,10 +207,9 @@ export class OursPrivacy {
 
   /**
    * Merge consent flags into userProperties.consent on every event.
-   *
-   * @param {object} properties Key/value pairs to merge.
    */
   updateDefaultUserConsentProperties(properties) {
+    this._requireInit();
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
@@ -236,46 +221,24 @@ export class OursPrivacy {
    * $deep_link_opened event. Extracts UTM parameters, ad network click IDs
    * (gclid, fbclid, ttclid, aleid, etc.), and ours_visitor_id for
    * cross-platform identity stitching.
-   *
-   * Parsed attribution params are merged into default event properties so
-   * they appear on all subsequent track() calls.
-   *
-   * @param {string} url The deep link or initial URL to parse.
-   */
-  /**
-   * Parse a deep link URL for marketing attribution data and fire a
-   * $deep_link_opened event. Extracts UTM parameters, ad network click IDs
-   * (gclid, fbclid, ttclid, aleid, etc.), and ours_visitor_id for
-   * cross-platform identity stitching.
-   *
-   * Parsed attribution params are merged into defaultProperties so
-   * they appear on all subsequent track() calls.
-   *
-   * Await the returned promise before calling track() to ensure attribution
-   * and visitor identity are fully applied.
-   *
-   * @param {string} url The deep link or initial URL to parse.
-   * @returns {Promise<void>}
    */
   async trackDeepLink(url) {
+    this._requireInit();
     if (!StringHelper.isValid(url)) {
-      StringHelper.raiseError("url");
+      StringHelper.raiseError(PARAMS.URL);
     }
     await this.oursprivacyImpl.trackDeepLink(this.token, url);
   }
 
   /**
    * Update the visitor ID after initialization. Use this for web-to-app
-   * identity stitching when the visitor ID arrives outside of a deep link
-   * (e.g. via a native bridge or async lookup).
-   *
+   * identity stitching when the visitor ID arrives outside of a deep link.
    * Sets is_manually_set_id: true on all subsequent events.
-   *
-   * @param {string} visitorId The Ours Privacy visitor ID to adopt.
    */
   async setVisitorId(visitorId) {
+    this._requireInit();
     if (!StringHelper.isValid(visitorId)) {
-      StringHelper.raiseError("visitorId");
+      StringHelper.raiseError(PARAMS.VISITOR_ID);
     }
     await this.oursprivacyImpl.setVisitorId(this.token, visitorId);
   }
@@ -284,7 +247,14 @@ export class OursPrivacy {
    * Flush queued events to the Ours Privacy ingest endpoint immediately.
    */
   flush() {
+    this._requireInit();
     this.oursprivacyImpl.flush(this.token);
+  }
+
+  _requireInit() {
+    if (!this.oursprivacyImpl) {
+      throw new Error(NOT_INITIALIZED_ERROR);
+    }
   }
 }
 

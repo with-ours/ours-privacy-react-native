@@ -8,34 +8,39 @@ export type OursPrivacyAsyncStorage = {
 };
 
 export type OursPrivacyInitOptions = {
+  trackAutomaticEvents?: boolean;
+  optOutTrackingByDefault?: boolean;
   serverURL?: string;
-  visitor_id?: string;
+  visitorId?: string;
   initialURL?: string;
-  default_event_properties?: Record<string, any>;
-  default_user_custom_properties?: Record<string, any>;
-  default_user_consent_properties?: Record<string, any>;
+  defaultEventProperties?: Record<string, any>;
+  defaultUserCustomProperties?: Record<string, any>;
+  defaultUserConsentProperties?: Record<string, any>;
+  storage?: OursPrivacyAsyncStorage;
 };
 
 export type OursPrivacyUserProperties = {
   email?: string;
-  external_id?: string;
-  phone_number?: string;
-  first_name?: string;
-  last_name?: string;
-  custom_properties?: Record<string, any>;
+  externalId?: string;
+  phoneNumber?: string;
+  firstName?: string;
+  lastName?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  companyName?: string;
+  jobTitle?: string;
+  ip?: string;
+  customProperties?: Record<string, any>;
   consent?: Record<string, any>;
 };
 
 export class OursPrivacy {
-  constructor(
-    token: string,
-    trackAutomaticEvents: boolean,
-    storage?: OursPrivacyAsyncStorage
-  );
-  init(
-    optOutTrackingDefault?: boolean,
-    options?: OursPrivacyInitOptions
-  ): Promise<void>;
+  constructor();
+  init(token: string, options?: OursPrivacyInitOptions): Promise<void>;
   setServerURL(serverURL: string): void;
   setLoggingEnabled(loggingEnabled: boolean): void;
   setFlushOnBackground(flushOnBackground: boolean): void;
@@ -43,7 +48,7 @@ export class OursPrivacy {
   hasOptedOutTracking(): Promise<boolean>;
   optInTracking(): void;
   optOutTracking(): void;
-  identify(id: string, userProperties?: OursPrivacyUserProperties): Promise<void>;
+  identify(userProperties?: OursPrivacyUserProperties): Promise<void>;
   track(
     eventName: string,
     eventProperties?: OursPrivacyProperties,

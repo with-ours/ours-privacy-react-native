@@ -54,15 +54,16 @@ function Section({ children, title }: SectionProps): React.JSX.Element {
 }
 
 // Initialize SDK once using instance pattern
-const oursprivacy = new OursPrivacy(OURSPRIVACY_TOKEN, false);
+const oursprivacy = new OursPrivacy();
 
 // Test initialURL init option: parse a simulated deep link at init time
 const SIMULATED_COLD_START_URL =
   'myapp://open?utm_source=google&utm_medium=cpc&utm_campaign=spring_2026&gclid=test_gclid_123&aleid=test_aleid_456';
 
 const initOptions = {
-  default_event_properties: { demo_app: true },
-  default_user_custom_properties: { test_user: true },
+  trackAutomaticEvents: false,
+  defaultEventProperties: { demo_app: true },
+  defaultUserCustomProperties: { test_user: true },
   initialURL: SIMULATED_COLD_START_URL,
   ...(OURSPRIVACY_SERVER_URL ? { serverURL: OURSPRIVACY_SERVER_URL } : {}),
 };
@@ -72,7 +73,7 @@ console.log(
   OURSPRIVACY_SERVER_URL || 'https://cdn.oursprivacy.com',
 );
 
-oursprivacy.init(false, initOptions).then(async () => {
+oursprivacy.init(OURSPRIVACY_TOKEN, initOptions).then(async () => {
   if (E2E_AUTOFIRE !== 'true') return;
 
   const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -84,10 +85,10 @@ oursprivacy.init(false, initOptions).then(async () => {
   console.log('[E2E] tracked button_pressed');
 
   // Phase 2: Identify
-  oursprivacy.identify('e2e-user@example.com', {
+  oursprivacy.identify({
     email: 'e2e-user@example.com',
-    external_id: 'e2e-user-123',
-    custom_properties: { plan: 'e2e' },
+    externalId: 'e2e-user-123',
+    customProperties: { plan: 'e2e' },
   });
   oursprivacy.flush();
   await delay(1500);
@@ -155,10 +156,10 @@ function App(): React.JSX.Element {
   };
 
   const handleIdentify = () => {
-    oursprivacy.identify('demo-user@example.com', {
+    oursprivacy.identify({
       email: 'demo-user@example.com',
-      external_id: 'demo-user-123',
-      custom_properties: { plan: 'demo' },
+      externalId: 'demo-user-123',
+      customProperties: { plan: 'demo' },
     });
     oursprivacy.flush();
     console.log('[OursPrivacy] identified + flushed');

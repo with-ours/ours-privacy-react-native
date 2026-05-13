@@ -9,8 +9,32 @@ import packageJson from "../package.json";
 import {uuidv4} from "./oursprivacy-utils";
 import {parseAttributionFromURL} from "./oursprivacy-attribution";
 
+// Caller-facing user-property field names are camelCase. The wire format
+// (and server schema in @ours/types) is snake_case. Translate at the wire
+// boundary here so the rest of the SDK and the queue payload stay snake_case.
+const USER_PROPS_WIRE_MAP = {
+  externalId: "external_id",
+  phoneNumber: "phone_number",
+  firstName: "first_name",
+  lastName: "last_name",
+  dateOfBirth: "date_of_birth",
+  companyName: "company_name",
+  jobTitle: "job_title",
+  customProperties: "custom_properties",
+};
+
+function toWireUserProperties(userProps) {
+  if (!userProps) return userProps;
+  const wire = {};
+  for (const key of Object.keys(userProps)) {
+    const wireKey = USER_PROPS_WIRE_MAP[key] || key;
+    wire[wireKey] = userProps[key];
+  }
+  return wire;
+}
+
 export default class OursPrivacyMain {
-  constructor(token, trackAutomaticEvents, storage) {
+  constructor(token, storage) {
     this.token = token;
     this.config = OursPrivacyConfig.getInstance();
     this.core = OursPrivacyCore(storage);
@@ -23,22 +47,22 @@ export default class OursPrivacyMain {
     this._attributionDefaultProperties = {};
   }
 
-  async initialize(
-    token,
-    trackAutomaticEvents = false,
-    optOutTrackingDefault = false,
-    options = {},
-    serverURL = "https://cdn.oursprivacy.com"
-  ) {
+  /**
+   * Initialize the SDK from a single options bag. All caller-facing keys
+   * are camelCase; this is the entry point that converts/applies them.
+   */
+  async initialize(token, options = {}) {
     OursPrivacyLogger.log(token, `Initializing OursPrivacy`);
 
     await this.oursprivacyPersistent.initializationCompletePromise(token);
 
+    const serverURL =
+      (options && options.serverURL) || "https://cdn.oursprivacy.com";
     this.setServerURL(token, serverURL);
 
     // Set opt-out flag BEFORE applying options so that initialURL processing
     // (which may fire $deep_link_opened) respects the opted-out state.
-    await this._setOptedOutTrackingFlag(token, !!optOutTrackingDefault);
+    await this._setOptedOutTrackingFlag(token, !!options.optOutTrackingByDefault);
 
     await this._applyInitializationOptions(token, options);
   }
@@ -49,8 +73,6 @@ export default class OursPrivacyMain {
    * Contains device metadata plus any marketing attribution captured via
    * trackDeepLink(). All keys here must exist in the server's defaultPayload
    * Zod schema — unknown keys are silently stripped server-side.
-   *
-   * @see javascript/oursprivacy-schema.js (auto-generated field list)
    */
   getDefaultProperties(token) {
     const {OS, Version, constants} = Platform;
@@ -73,8 +95,6 @@ export default class OursPrivacyMain {
       if (Model) props.device_model = Model;
     }
 
-    // Merge marketing attribution (UTMs, click IDs) captured from deep links.
-    // These are typed fields in the server's defaultPayload schema.
     const attribution = this._attributionDefaultProperties[token];
     if (attribution && Object.keys(attribution).length > 0) {
       Object.assign(props, attribution);
@@ -130,33 +150,38 @@ export default class OursPrivacyMain {
   }
 
   // Mirrors web-cdp formatUserProperties (martech/apps/web-cdp/src/lib/format-track.ts).
-  // Top-level keys (email, external_id, etc.) spread onto userProperties; nested
-  // custom_properties and consent merge on top of the store defaults. Consent is
+  // Accepts camelCase userProperties at the caller surface and produces wire-format
+  // (snake_case) for the queue payload.
+  //
+  // Top-level keys (email, externalId → external_id, etc.) spread onto userProperties;
+  // nested customProperties and consent merge on top of the store defaults. Consent is
   // intentionally omitted when nothing carries it (OUR-3669).
   _composeUserProperties(token, perCallUserProps) {
+    const wirePerCall = toWireUserProperties(perCallUserProps);
+
     const defaultCustom = this._defaultUserCustomProperties[token] || {};
     const defaultConsent = this._defaultUserConsentProperties[token] || {};
     const hasDefaultCustom = Object.keys(defaultCustom).length > 0;
     const hasDefaultConsent = Object.keys(defaultConsent).length > 0;
-    const hasPerCall = perCallUserProps && Object.keys(perCallUserProps).length > 0;
+    const hasPerCall = wirePerCall && Object.keys(wirePerCall).length > 0;
 
     if (!hasDefaultCustom && !hasDefaultConsent && !hasPerCall) {
       return null;
     }
 
-    const merged = {...(perCallUserProps || {})};
+    const merged = {...(wirePerCall || {})};
 
-    if (hasDefaultCustom || perCallUserProps?.custom_properties) {
+    if (hasDefaultCustom || wirePerCall?.custom_properties) {
       merged.custom_properties = {
         ...defaultCustom,
-        ...(perCallUserProps?.custom_properties || {}),
+        ...(wirePerCall?.custom_properties || {}),
       };
     }
 
-    if (hasDefaultConsent || perCallUserProps?.consent) {
+    if (hasDefaultConsent || wirePerCall?.consent) {
       merged.consent = {
         ...defaultConsent,
-        ...(perCallUserProps?.consent || {}),
+        ...(wirePerCall?.consent || {}),
       };
     }
 
@@ -212,39 +237,24 @@ export default class OursPrivacyMain {
     return this.oursprivacyPersistent.getOptedOut(token);
   }
 
-  async identify(token, externalId, userProperties) {
-    OursPrivacyLogger.log(token, `Identify '${externalId}'`);
+  // identify(userProperties) — caller supplies identifying fields inside the
+  // userProperties bag (most commonly externalId). Merging with store-level
+  // default custom/consent properties is identical to track() — see
+  // _composeUserProperties for the OUR-3669 consent guard.
+  async identify(token, userProperties) {
+    OursPrivacyLogger.log(token, `Identify`, userProperties);
 
     const visitorId = this.oursprivacyPersistent.getVisitorId(token);
     const distinctId = uuidv4();
 
-    const customProps = this._defaultUserCustomProperties[token] || {};
-    const consentProps = this._defaultUserConsentProperties[token] || {};
-
-    const identifyUserProps = {
-      external_id: externalId,
-      ...(userProperties || {}),
-    };
-
-    if (Object.keys(customProps).length > 0) {
-      identifyUserProps.custom_properties = {
-        ...customProps,
-        ...(userProperties && userProperties.custom_properties ? userProperties.custom_properties : {}),
-      };
-    }
-    if (Object.keys(consentProps).length > 0) {
-      identifyUserProps.consent = {
-        ...consentProps,
-        ...(userProperties && userProperties.consent ? userProperties.consent : {}),
-      };
-    }
+    const mergedUserProps = this._composeUserProperties(token, userProperties);
 
     const eventData = {
       event: "$identify",
       visitor_id: visitorId,
       distinct_id: distinctId,
       eventProperties: null,
-      userProperties: identifyUserProps,
+      userProperties: mergedUserProps,
       defaultProperties: this.getDefaultProperties(token),
     };
 
@@ -267,8 +277,6 @@ export default class OursPrivacyMain {
       return;
     }
 
-    // No state mutation while opted out — no attribution, no identity
-    // stitching, no event. The deep link is silently dropped.
     if (this.oursprivacyPersistent.getOptedOut(token)) {
       OursPrivacyLogger.log(token, "trackDeepLink skipped: user is opted out.");
       return;
@@ -278,22 +286,15 @@ export default class OursPrivacyMain {
 
     const attribution = parseAttributionFromURL(url);
 
-    // If ours_visitor_id is in the URL, stitch web → app identity
     if (attribution.oursVisitorId) {
       await this.setVisitorId(token, attribution.oursVisitorId);
     }
 
-    // Replace (not merge) attribution default properties with this link's
-    // parsed fields. A new deep link is a new attribution context — stale
-    // keys from a previous link must not carry over.
     this._attributionDefaultProperties[token] = {
       ...(attribution.utmParams || {}),
       ...(attribution.clickIds || {}),
     };
 
-    // Fire a $deep_link_opened event. Attribution data lives in
-    // defaultProperties (via getDefaultProperties); only the raw URL
-    // goes into eventProperties to avoid duplicating typed schema fields.
     await this.track(token, "$deep_link_opened", {
       url: attribution.rawURL,
     });
@@ -325,17 +326,17 @@ export default class OursPrivacyMain {
       return;
     }
 
-    if (options.default_event_properties) {
-      this.updateDefaultEventProperties(token, options.default_event_properties);
+    if (options.defaultEventProperties) {
+      this.updateDefaultEventProperties(token, options.defaultEventProperties);
     }
-    if (options.default_user_custom_properties) {
-      this.updateDefaultUserCustomProperties(token, options.default_user_custom_properties);
+    if (options.defaultUserCustomProperties) {
+      this.updateDefaultUserCustomProperties(token, options.defaultUserCustomProperties);
     }
-    if (options.default_user_consent_properties) {
-      this.updateDefaultUserConsentProperties(token, options.default_user_consent_properties);
+    if (options.defaultUserConsentProperties) {
+      this.updateDefaultUserConsentProperties(token, options.defaultUserConsentProperties);
     }
-    if (options.visitor_id) {
-      await this.setVisitorId(token, options.visitor_id);
+    if (options.visitorId) {
+      await this.setVisitorId(token, options.visitorId);
     }
     if (options.initialURL) {
       await this.trackDeepLink(token, options.initialURL);
