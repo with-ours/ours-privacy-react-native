@@ -18,6 +18,18 @@ const waitForFetchCalls = async (count, attempts = 20) => {
   expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(count);
 };
 
+// Captures the AppState 'change' handler the SDK registers so the test
+// can simulate the app moving to background.
+const installAppStateCapture = () => {
+  const RN = require("react-native");
+  const captured = {handler: null, removed: false};
+  RN.AppState.addEventListener = jest.fn((event, handler) => {
+    if (event === "change") captured.handler = handler;
+    return {remove: jest.fn(() => { captured.removed = true; })};
+  });
+  return captured;
+};
+
 describe("OursPrivacy integration flows", () => {
   beforeEach(() => {
     jest.resetModules();
@@ -304,5 +316,58 @@ describe("OursPrivacy integration flows", () => {
     const body2 = JSON.parse(fetchMock.mock.calls[0][1].body);
     const s5 = body2.data.find((e) => e.event === "no_user_props_anywhere");
     expect(s5.userProperties).toBeNull();
+  });
+
+  it("flushes queued events when the app moves to background", async () => {
+    fetchMock.mockResponse(JSON.stringify({success: true}), {status: 200});
+
+    const appState = installAppStateCapture();
+
+    const {OursPrivacy} = require("oursprivacy-react-native");
+    const op = new OursPrivacy();
+
+    await op.init("test-token", {
+      serverURL: "https://api.oursprivacy.com",
+      visitorId: "preset-visitor-bg",
+    });
+
+    op.track("Backgrounded Event", {step: 1});
+    await flushAsyncWork();
+
+    expect(appState.handler).toEqual(expect.any(Function));
+    expect(fetchMock.mock.calls).toHaveLength(0);
+
+    // Simulate the OS pushing the app to background.
+    appState.handler("background");
+
+    await waitForFetchCalls(1);
+
+    const [url, options] = fetchMock.mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(url).toBe("https://api.oursprivacy.com/ingest");
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].event).toBe("Backgrounded Event");
+  });
+
+  it("does not flush on transitions that are not background/inactive", async () => {
+    fetchMock.mockResponse(JSON.stringify({success: true}), {status: 200});
+
+    const appState = installAppStateCapture();
+
+    const {OursPrivacy} = require("oursprivacy-react-native");
+    const op = new OursPrivacy();
+
+    await op.init("test-token", {
+      serverURL: "https://api.oursprivacy.com",
+      visitorId: "preset-visitor-bg2",
+    });
+
+    op.track("Foreground Only", {step: 1});
+    await flushAsyncWork();
+
+    appState.handler("active");
+    await flushAsyncWork();
+
+    expect(fetchMock.mock.calls).toHaveLength(0);
   });
 });
