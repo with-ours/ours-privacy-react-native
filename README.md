@@ -23,6 +23,7 @@ This SDK is pure JavaScript. It does not ship native iOS or Android modules.
   - [Default Properties](#default-properties)
   - [Configuration](#configuration)
   - [Identity](#identity)
+  - [Deep Link Attribution](#deep-link-attribution)
   - [Privacy Controls](#privacy-controls)
 - [Payload Structure](#payload-structure)
 - [FAQ](#faq)
@@ -441,7 +442,7 @@ await op.setVisitorId('550e8400-e29b-41d4-a716-446655440000');
 
 Parse a deep link URL for marketing attribution data and fire a `$deep_link_opened` event. Extracts UTM parameters, ad network click IDs, and `ours_visitor_id` for cross-platform identity stitching.
 
-Parsed attribution params are merged into defaultProperties, so they appear on all subsequent `track()` calls.
+Parsed attribution params are merged into `defaultProperties`, so they appear on all subsequent `track()` calls. Calling `trackDeepLink` again **replaces** the prior attribution rather than merging, so stale UTM keys don't leak into events triggered by a later link.
 
 Await the returned promise before calling `track()` to ensure attribution and visitor identity are fully applied.
 
