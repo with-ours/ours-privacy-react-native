@@ -1,4 +1,4 @@
-import {Platform, Dimensions} from "react-native";
+import {Platform, Dimensions, AppState} from "react-native";
 import {OursPrivacyCore} from "./oursprivacy-core";
 import {OursPrivacyType} from "./oursprivacy-constants";
 import {OursPrivacyConfig} from "./oursprivacy-config";
@@ -45,6 +45,8 @@ export default class OursPrivacyMain {
     this._defaultUserCustomProperties = {};
     this._defaultUserConsentProperties = {};
     this._attributionDefaultProperties = {};
+    this._flushOnBackgroundEnabled = true;
+    this._appStateSubscription = null;
   }
 
   /**
@@ -65,6 +67,20 @@ export default class OursPrivacyMain {
     await this._setOptedOutTrackingFlag(token, !!options.optOutTrackingByDefault);
 
     await this._applyInitializationOptions(token, options);
+
+    this._subscribeToAppState(token);
+  }
+
+  _subscribeToAppState(token) {
+    if (this._appStateSubscription || !AppState || typeof AppState.addEventListener !== "function") {
+      return;
+    }
+    this._appStateSubscription = AppState.addEventListener("change", (nextState) => {
+      if (!this._flushOnBackgroundEnabled) return;
+      if (nextState === "background") {
+        this.flush(token);
+      }
+    });
   }
 
   /**
@@ -200,9 +216,10 @@ export default class OursPrivacyMain {
   }
 
   setFlushOnBackground(token, flushOnBackground) {
+    this._flushOnBackgroundEnabled = !!flushOnBackground;
     OursPrivacyLogger.log(
       token,
-      `setFlushOnBackground(${String(flushOnBackground)}) is ignored in JavaScript mode.`
+      `Set flushOnBackground: ${this._flushOnBackgroundEnabled}`
     );
   }
 

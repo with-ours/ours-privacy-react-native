@@ -373,11 +373,11 @@ op.setLoggingEnabled(true);
 
 #### `op.setFlushOnBackground(flushOnBackground)`
 
-This method has no effect in the current SDK.
+Toggle automatic flushing when the app moves to the background. Enabled by default.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `flushOnBackground` | `boolean` | Yes | Ignored |
+| `flushOnBackground` | `boolean` | Yes | `true` to flush on background (default), `false` to disable. |
 
 **Returns:** `void`
 

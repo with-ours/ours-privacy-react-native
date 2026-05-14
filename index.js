@@ -1,6 +1,5 @@
 "use strict";
 
-import {Platform} from "react-native";
 import OursPrivacyMain from "./javascript/oursprivacy-main"
 
 const ERROR_MESSAGE = {
@@ -82,18 +81,12 @@ export class OursPrivacy {
   }
 
   /**
-   * Compatibility API retained from the earlier native-backed SDK surface.
-   * In the current JavaScript runtime this is a safe no-op.
+   * Enable or disable flushing the event queue when the app moves to the
+   * background. Enabled by default. Works on iOS and Android via AppState.
    */
   setFlushOnBackground(flushOnBackground) {
     this._requireInit();
-    if (Platform.OS === "ios") {
-      this.oursprivacyImpl.setFlushOnBackground(this.token, flushOnBackground);
-    } else {
-      console.warn(
-        "OursPrivacy setFlushOnBackground was called and ignored because this method only works on iOS."
-      );
-    }
+    this.oursprivacyImpl.setFlushOnBackground(this.token, flushOnBackground);
   }
 
   /**
