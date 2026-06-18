@@ -38,5 +38,11 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "overrides": {
+    "ws": "7.5.11",
+    "@react-native-community/cli-server-api": {
+      "ws": "6.2.3"
+    }
   }
 }
