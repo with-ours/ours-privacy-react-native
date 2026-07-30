@@ -1,4 +1,5 @@
 import {OursPrivacyType} from "oursprivacy-react-native/javascript/oursprivacy-constants";
+import packageJson from "../package.json";
 
 jest.mock("oursprivacy-react-native/javascript/oursprivacy-core", () => ({
   OursPrivacyCore: jest.fn().mockImplementation(() => ({
@@ -223,7 +224,7 @@ describe("OursPrivacyMain", () => {
         defaultProperties: expect.objectContaining({
           device_type: "mobile",
           os_name: expect.any(String),
-          version: expect.any(String),
+          version: expect.stringMatching(/^react-native@/),
         }),
       })
     );
@@ -569,6 +570,11 @@ describe("OursPrivacyMain", () => {
     await oursprivacyMain.trackDeepLink(token, "myapp://open?utm_source=test");
     const propsAfter = oursprivacyMain.getDefaultProperties(token);
     expect(propsAfter.utm_source).toBe("test");
+  });
+
+  it("getDefaultProperties should report version as react-native@<semver>", () => {
+    const props = oursprivacyMain.getDefaultProperties(token);
+    expect(props.version).toBe(`react-native@${packageJson.version}`);
   });
 
   describe("trackDeepLink", () => {

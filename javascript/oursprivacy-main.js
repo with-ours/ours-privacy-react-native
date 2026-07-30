@@ -99,7 +99,7 @@ export default class OursPrivacyMain {
       device_type: "mobile",
       os_name: OS === "ios" ? "iOS" : OS === "android" ? "Android" : OS,
       os_version: String(Version),
-      version: packageJson.version,
+      version: `react-native@${packageJson.version}`,
       screen_width: width,
       screen_height: height,
     };
