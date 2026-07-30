@@ -1,6 +1,6 @@
 {
   "name": "@oursprivacy/react-native",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "Official React Native Tracking Library for OursPrivacy Analytics",
   "main": "index.js",
   "types": "index.d.ts",
