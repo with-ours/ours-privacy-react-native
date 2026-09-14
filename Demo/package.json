@@ -30,7 +30,7 @@
     "@types/react": "^19.2.18",
     "@types/react-test-renderer": "^19.0.0",
     "eslint": "^8.19.0",
-    "jest": "^30.5.0",
+    "jest": "^30.5.1",
     "prettier": "2.8.8",
     "react-native-dotenv": "^3.4.12",
     "react-test-renderer": "19.2.8",
