@@ -30,6 +30,18 @@ const getArgValue = (flag, fallback) => {
 };
 const captureDir = path.resolve(getArgValue("--dir", "tmp/captures"));
 
+// Token the Demo app was built with (Demo/.env), if available.
+async function readDemoToken() {
+  try {
+    const env = await fs.readFile(path.resolve("Demo/.env"), "utf8");
+    const match = env.match(/^OURSPRIVACY_TOKEN=(.*)$/m);
+    return match ? match[1].trim().replace(/^["']|["']$/g, "") : null;
+  } catch {
+    return null;
+  }
+}
+const expectedToken = await readDemoToken();
+
 // ---------------------------------------------------------------------------
 // Load captures
 // ---------------------------------------------------------------------------
@@ -84,14 +96,6 @@ function findEvent(name) {
 
 function findAllEvents(name) {
   return allEvents.filter((e) => e.event === name);
-}
-
-function findEventAfter(name, afterIndex) {
-  return allEvents.find((e, i) => i > afterIndex && e.event === name);
-}
-
-function eventIndex(name) {
-  return allEvents.findIndex((e) => e.event === name);
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +174,9 @@ if (buttonEvent) {
   );
   assert(
     "button_pressed has token",
-    buttonEvent._token === "demo-token",
+    expectedToken
+      ? buttonEvent._token === expectedToken
+      : typeof buttonEvent._token === "string" && buttonEvent._token.length > 0,
     `got: ${buttonEvent._token}`
   );
 

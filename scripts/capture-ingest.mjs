@@ -63,7 +63,7 @@ const server = http.createServer(async (request, response) => {
   }
 
   const body = await readRequestBody(request);
-  let parsedBody = null;
+  let parsedBody;
 
   try {
     parsedBody = JSON.parse(body);
