@@ -51,7 +51,6 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-persistent", () => {
           loadSuperProperties: jest.fn(),
           persistSuperProperties: jest.fn(),
           loadOptedOut: jest.fn(),
-          persistOptedOut: jest.fn(),
           loadIdentity: jest.fn(),
           persistIdentity: jest.fn(),
           getIdentity: jest.fn(),
@@ -84,20 +83,8 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-config", () => ({
 }));
 
 const {
-  OursPrivacyNetwork,
-} = require("oursprivacy-react-native/javascript/oursprivacy-network");
-
-const {
-  OursPrivacyCore,
-} = require("oursprivacy-react-native/javascript/oursprivacy-core");
-
-const {
   OursPrivacyQueueManager,
 } = require("oursprivacy-react-native/javascript/oursprivacy-queue");
-
-const {
-  OursPrivacyPersistent,
-} = require("oursprivacy-react-native/javascript/oursprivacy-persistent");
 
 const {
   OursPrivacyConfig,

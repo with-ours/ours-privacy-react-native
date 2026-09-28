@@ -59,7 +59,6 @@ const {
 } = require("oursprivacy-react-native/javascript/oursprivacy-network");
 
 describe("OursPrivacyQueueManager", () => {
-  let oursprivacyPersistent;
   const token = "test-token";
   const type = OursPrivacyType.EVENTS;
   const data = { event: "testEvent" };
@@ -108,7 +107,7 @@ describe("OursPrivacyQueueManager", () => {
 
   it("flushes the queue", async () => {
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
-    OursPrivacyQueueManager.getQueue.mockImplementation((token, type) => {
+    OursPrivacyQueueManager.getQueue.mockImplementation(() => {
       return [data];
     });
     await OursPrivacyCore().flush(token);
@@ -117,7 +116,7 @@ describe("OursPrivacyQueueManager", () => {
 
   it("do not flush the queue if opted out", async () => {
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(true);
-    OursPrivacyQueueManager.getQueue.mockImplementation((token, type) => {
+    OursPrivacyQueueManager.getQueue.mockImplementation(() => {
       return [data];
     });
     await OursPrivacyCore().flush(token);
@@ -126,7 +125,7 @@ describe("OursPrivacyQueueManager", () => {
 
   it("not flushes the queue if there is no data", async () => {
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
-    OursPrivacyQueueManager.getQueue.mockImplementation((token, type) => {
+    OursPrivacyQueueManager.getQueue.mockImplementation(() => {
       return [];
     });
     await OursPrivacyCore().flush(token);

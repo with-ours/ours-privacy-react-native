@@ -43,7 +43,7 @@ export const OursPrivacyCore = (storage) => {
     }, config.getFlushInterval(token));
   };
 
-  const isValidAndSerializable = (token, obj, depth = 1) => {
+  const isValidAndSerializable = (token, obj) => {
     try {
       JSON.stringify(obj);
     } catch (error) {
