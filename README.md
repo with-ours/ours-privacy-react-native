@@ -40,7 +40,7 @@ npm install @oursprivacy/react-native
 npm install @react-native-async-storage/async-storage
 ```
 
-Install `@react-native-async-storage/async-storage` directly in your app if you want persistent storage in bare React Native projects. Without it, the SDK falls back to in-memory storage.
+Install `@react-native-async-storage/async-storage` directly in your app if you want persistent storage in bare React Native projects. RN 0.76 apps should use Async Storage 2.2; the RN 0.87 demo uses Async Storage 3.1. The SDK accepts either major version as an optional peer.
 
 ### 2. Initialize
 

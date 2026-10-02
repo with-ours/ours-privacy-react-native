@@ -48,9 +48,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm pkg set devDependencies.react-native=0.76.9 devDependencies.react=18.3.1
+      - run: npm pkg set devDependencies.react-native=0.76.9 devDependencies.react=18.3.1 "devDependencies.@react-native-async-storage/async-storage=2.2.0"
       - run: npm install --package-lock=false --ignore-scripts
-      - run: node -e "const assert=require('node:assert/strict'); assert.equal(require('react-native/package.json').version, '0.76.9'); assert.equal(require('react/package.json').version, '18.3.1')"
+      - run: node -e "const assert=require('node:assert/strict'); assert.equal(require('react-native/package.json').version, '0.76.9'); assert.equal(require('react/package.json').version, '18.3.1'); assert.equal(require('@react-native-async-storage/async-storage/package.json').version, '2.2.0')"
       - run: npm test -- --runInBand
       - run: npm run typecheck
 

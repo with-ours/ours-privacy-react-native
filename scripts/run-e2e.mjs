@@ -34,7 +34,7 @@ function androidDevice() {
     .find(id => id?.startsWith('emulator-'));
 }
 
-async function ensureAndroidEmulator() {
+async function ensureAndroidEmulator(onLaunch) {
   let device = androidDevice();
   if (device) return {device};
   const avd = commandOutput(tool('emulator'), ['-list-avds']).split('\n').map(s => s.trim()).find(Boolean);
@@ -43,9 +43,11 @@ async function ensureAndroidEmulator() {
   const emulator = spawn(tool('emulator'), ['-avd', avd, '-no-audio', '-no-boot-anim'], {
     stdio: 'ignore', detached: true,
   });
+  onLaunch(emulator);
   const deadline = Date.now() + 180_000;
   while (Date.now() < deadline) {
     await delay(2_000);
+    if (emulator.exitCode !== null) throw new Error('Android emulator exited before booting');
     device = androidDevice();
     if (!device) continue;
     if (commandOutput(tool('adb'), ['-s', device, 'shell', 'getprop', 'sys.boot_completed']).trim() === '1') {
@@ -108,10 +110,10 @@ async function waitForCaptures(captureDir, timeoutSeconds) {
   throw new Error(`Timed out waiting for payloads: ${missing.join(', ')}`);
 }
 
-function stop(child) {
+function stop(child, processGroup = false) {
   if (!child?.pid || child.exitCode !== null) return;
   try {
-    process.kill(child.spawnargs[0] === 'npm' ? -child.pid : child.pid, 'SIGTERM');
+    process.kill(processGroup ? -child.pid : child.pid, 'SIGTERM');
   } catch (error) {
     if (error.code !== 'ESRCH') console.error(error);
   }
@@ -133,8 +135,7 @@ async function main() {
     recorder = start('node', [path.join(root, 'scripts', 'capture-ingest.mjs'), '--dir', captureDir], root);
     await waitForHealth('http://127.0.0.1:4010/health', recorder, 15_000);
     if (platform === 'android') {
-      const android = await ensureAndroidEmulator();
-      emulator = android.emulator;
+      const android = await ensureAndroidEmulator(child => { emulator = child; });
       spawnSync(tool('adb'), ['-s', android.device, 'shell', 'am', 'force-stop', 'com.example'], {stdio: 'ignore'});
       spawnSync(tool('adb'), ['-s', android.device, 'shell', 'pm', 'clear', 'com.example'], {stdio: 'ignore'});
     }
@@ -145,9 +146,9 @@ async function main() {
     await run('node', [path.join(root, 'scripts', 'e2e-assertions.mjs'), '--dir', captureDir], root);
     console.log(`${platform} E2E passed`);
   } finally {
-    stop(metro);
+    stop(metro, true);
     stop(recorder);
-    stop(emulator);
+    stop(emulator, true);
     if (previousEnv === null) await fs.rm(envPath, {force: true});
     else await fs.writeFile(envPath, previousEnv);
   }
