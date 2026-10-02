@@ -4,7 +4,7 @@
 // tooling does not attempt to wire up native modules that no longer exist.
 module.exports = {
   dependencies: {
-    'oursprivacy-react-native': {
+    '@oursprivacy/react-native': {
       platforms: {
         android: null,
         ios: null,

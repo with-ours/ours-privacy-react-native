@@ -1,9 +1,9 @@
-import {OursPrivacy} from "oursprivacy-react-native";
-import OursPrivacyMain from "oursprivacy-react-native/javascript/oursprivacy-main";
+import {OursPrivacy} from "@oursprivacy/react-native";
+import OursPrivacyMain from "@oursprivacy/react-native/javascript/oursprivacy-main";
 
 // OursPrivacy always uses JS mode. Mock OursPrivacyMain so index.test.js
 // verifies the wrapper delegates correctly without executing JS SDK internals.
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-main", () => ({
+jest.mock("@oursprivacy/react-native/javascript/oursprivacy-main", () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(() => ({
       initialize: jest.fn().mockResolvedValue(undefined),

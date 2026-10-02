@@ -76,7 +76,11 @@ jobs:
 
       - run: npm test
 
-      - run: npx tsc --noEmit
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - run: npm run test:runner
 
       - name: Pack tarball
         run: npm pack

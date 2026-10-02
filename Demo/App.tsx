@@ -76,7 +76,7 @@ console.log(
 oursprivacy.init(OURSPRIVACY_TOKEN, initOptions).then(async () => {
   if (E2E_AUTOFIRE !== 'true') return;
 
-  const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+  const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
   console.log('[E2E] auto-fire sequence starting');
 
   // Phase 1: Basic track
@@ -220,7 +220,6 @@ function App(): React.JSX.Element {
     <View style={backgroundStyle}>
       <StatusBar
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
       />
       <ScrollView style={backgroundStyle}>
         <View style={{ paddingRight: safePadding }}>

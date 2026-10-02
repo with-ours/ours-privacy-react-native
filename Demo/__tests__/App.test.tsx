@@ -1,13 +1,10 @@
-/**
- * @format
- */
-
 import React from 'react';
-import ReactTestRenderer from 'react-test-renderer';
+import {render} from '@testing-library/react-native';
 import App from '../App';
 
-test('renders correctly', async () => {
-  await ReactTestRenderer.act(() => {
-    ReactTestRenderer.create(<App />);
-  });
+test('shows the SDK demo actions', async () => {
+  const screen = await render(<App />);
+  expect(screen.getByText('OursPrivacy Demo')).toBeTruthy();
+  expect(screen.getByRole('button', {name: 'Track Event'})).toBeTruthy();
+  expect(screen.getByRole('button', {name: 'Opt Out'})).toBeTruthy();
 });

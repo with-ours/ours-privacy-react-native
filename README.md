@@ -5,7 +5,7 @@
 
 Privacy-first analytics for React Native.
 
-This SDK is pure JavaScript. It does not ship native iOS or Android modules.
+This SDK is pure JavaScript. It does not ship native iOS or Android modules. It supports Node 22+, React 18+, and React Native 0.76+. CI tests the React Native 0.76 floor and the current 0.87 demo.
 
 - [npm](https://www.npmjs.com/package/@oursprivacy/react-native)
 - [GitHub](https://github.com/with-ours/ours-privacy-react-native)

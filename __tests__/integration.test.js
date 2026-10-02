@@ -47,7 +47,7 @@ describe("OursPrivacy integration flows", () => {
   it("runs init -> track -> flush through the real JS stack", async () => {
     fetchMock.mockResponseOnce(JSON.stringify({success: true}), {status: 200});
 
-    const {OursPrivacy} = require("oursprivacy-react-native");
+    const {OursPrivacy} = require("@oursprivacy/react-native");
     const op = new OursPrivacy();
 
     await op.init("test-token", {
@@ -95,7 +95,7 @@ describe("OursPrivacy integration flows", () => {
   it("drops pre-opt-out queued events across optOut -> optIn -> track -> flush", async () => {
     fetchMock.mockResponseOnce(JSON.stringify({success: true}), {status: 200});
 
-    const {OursPrivacy} = require("oursprivacy-react-native");
+    const {OursPrivacy} = require("@oursprivacy/react-native");
     const op = new OursPrivacy();
 
     await op.init("test-token", {
@@ -132,7 +132,7 @@ describe("OursPrivacy integration flows", () => {
   it("deep link attribution: initialURL → warm deep link → set visitor → opt cycle → reset", async () => {
     fetchMock.mockResponse(JSON.stringify({success: true}), {status: 200});
 
-    const {OursPrivacy} = require("oursprivacy-react-native");
+    const {OursPrivacy} = require("@oursprivacy/react-native");
     const op = new OursPrivacy();
 
     // Step 1: Init with initialURL — should fire $deep_link_opened and set attribution
@@ -253,7 +253,7 @@ describe("OursPrivacy integration flows", () => {
   it("3-arg track: top-level user props, custom_properties + consent merge, null when empty", async () => {
     fetchMock.mockResponse(JSON.stringify({success: true}), {status: 200});
 
-    const {OursPrivacy} = require("oursprivacy-react-native");
+    const {OursPrivacy} = require("@oursprivacy/react-native");
     const op = new OursPrivacy();
 
     await op.init("test-token", {
@@ -323,7 +323,7 @@ describe("OursPrivacy integration flows", () => {
 
     const appState = installAppStateCapture();
 
-    const {OursPrivacy} = require("oursprivacy-react-native");
+    const {OursPrivacy} = require("@oursprivacy/react-native");
     const op = new OursPrivacy();
 
     await op.init("test-token", {
@@ -354,7 +354,7 @@ describe("OursPrivacy integration flows", () => {
 
     const appState = installAppStateCapture();
 
-    const {OursPrivacy} = require("oursprivacy-react-native");
+    const {OursPrivacy} = require("@oursprivacy/react-native");
     const op = new OursPrivacy();
 
     await op.init("test-token", {

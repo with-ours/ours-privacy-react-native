@@ -1,6 +1,6 @@
 {
   "name": "@oursprivacy/react-native",
-  "version": "3.1.1",
+  "version": "4.0.0",
   "description": "Official React Native Tracking Library for OursPrivacy Analytics",
   "main": "index.js",
   "types": "index.d.ts",
@@ -11,8 +11,12 @@
     "lint": "eslint .",
     "qa:capture": "node scripts/capture-ingest.mjs",
     "qa:check-captures": "node scripts/check-captures.mjs",
-    "e2e": "node scripts/run-e2e.mjs",
-    "e2e:assertions": "node scripts/e2e-assertions.mjs"
+    "e2e": "npm run e2e:android",
+    "e2e:assertions": "node scripts/e2e-assertions.mjs",
+    "format": "prettier --write .",
+    "e2e:android": "node scripts/run-e2e.mjs android",
+    "e2e:ios": "node scripts/run-e2e.mjs ios",
+    "test:runner": "node --test scripts/*.test.mjs"
   },
   "author": "OursPrivacy",
   "license": "Apache-2.0",
@@ -47,14 +51,14 @@
     "globals": "^17.12.0",
     "jest": "^30.3.0",
     "jest-fetch-mock": "^3.0.3",
-    "metro-react-native-babel-preset": "^0.77.0",
-    "react-native": "^0.87.0",
-    "react-test-renderer": "^19.1.0",
-    "typescript": "^5.6.0"
+    "react-native": "0.87.1",
+    "typescript": "^7.0.2",
+    "prettier": "^3.6.2",
+    "react": "19.3.0"
   },
   "jest": {
     "modulePathIgnorePatterns": [
-      "<rootDir>/Samples/"
+      "<rootDir>/Demo/"
     ],
     "testMatch": [
       "<rootDir>/__tests__/*.test.js"
@@ -78,22 +82,25 @@
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-native-async-storage)/)"
     ],
     "moduleNameMapper": {
-      "^oursprivacy-react-native/(.*)$": "<rootDir>/$1",
-      "^oursprivacy-react-native$": "<rootDir>/index.js"
+      "^@oursprivacy/react-native/(.*)$": "<rootDir>/$1",
+      "^@oursprivacy/react-native$": "<rootDir>/index.js"
     }
   },
   "dependencies": {
     "@babel/runtime": "^7.0.0",
-    "@react-native-async-storage/async-storage": "^2.2.0"
+    "@react-native-async-storage/async-storage": "^3.1.1"
   },
   "peerDependencies": {
-    "react": ">=16.8.0",
-    "react-native": ">=0.60.0"
+    "react": ">=18",
+    "react-native": ">=0.76"
   },
   "overrides": {
     "fast-xml-parser": ">=5.3.4",
     "@istanbuljs/load-nyc-config": {
       "js-yaml": "^3.15.1"
     }
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

@@ -1,4 +1,4 @@
-import { OursPrivacyNetwork } from "oursprivacy-react-native/javascript/oursprivacy-network";
+import { OursPrivacyNetwork } from "@oursprivacy/react-native/javascript/oursprivacy-network";
 import fetchMock from "jest-fetch-mock";
 
 fetchMock.enableMocks();

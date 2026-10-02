@@ -1,7 +1,7 @@
-import {OursPrivacyType} from "oursprivacy-react-native/javascript/oursprivacy-constants";
+import {OursPrivacyType} from "@oursprivacy/react-native/javascript/oursprivacy-constants";
 import packageJson from "../package.json";
 
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-core", () => ({
+jest.mock("@oursprivacy/react-native/javascript/oursprivacy-core", () => ({
   OursPrivacyCore: jest.fn().mockImplementation(() => ({
     initialize: jest.fn(),
     startProcessingQueue: jest.fn(),
@@ -10,7 +10,7 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-core", () => ({
   })),
 }));
 
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-queue", () => ({
+jest.mock("@oursprivacy/react-native/javascript/oursprivacy-queue", () => ({
   OursPrivacyQueueManager: {
     initialize: jest.fn(),
     enqueue: jest.fn(),
@@ -20,13 +20,13 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-queue", () => ({
   },
 }));
 
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-network", () => ({
+jest.mock("@oursprivacy/react-native/javascript/oursprivacy-network", () => ({
   OursPrivacyNetwork: {
     sendRequest: jest.fn(),
   },
 }));
 
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-persistent", () => {
+jest.mock("@oursprivacy/react-native/javascript/oursprivacy-persistent", () => {
   return {
     OursPrivacyPersistent: {
       getInstance: jest.fn().mockImplementation(() => {
@@ -68,7 +68,7 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-persistent", () => {
   };
 });
 
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-config", () => ({
+jest.mock("@oursprivacy/react-native/javascript/oursprivacy-config", () => ({
   OursPrivacyConfig: {
     getInstance: jest.fn().mockReturnValue({
       getFlushInterval: jest.fn().mockReturnValue(1000),
@@ -84,11 +84,11 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-config", () => ({
 
 const {
   OursPrivacyQueueManager,
-} = require("oursprivacy-react-native/javascript/oursprivacy-queue");
+} = require("@oursprivacy/react-native/javascript/oursprivacy-queue");
 
 const {
   OursPrivacyConfig,
-} = require("oursprivacy-react-native/javascript/oursprivacy-config");
+} = require("@oursprivacy/react-native/javascript/oursprivacy-config");
 
 describe("OursPrivacyMain", () => {
   let oursprivacyMain;
@@ -97,7 +97,7 @@ describe("OursPrivacyMain", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.isolateModules(async () => {
-      const OursPrivacyMain = require("oursprivacy-react-native/javascript/oursprivacy-main")
+      const OursPrivacyMain = require("@oursprivacy/react-native/javascript/oursprivacy-main")
         .default;
       oursprivacyMain = new OursPrivacyMain(token);
       OursPrivacyConfig.getInstance().getLoggingEnabled.mockReturnValue(true);

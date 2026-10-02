@@ -1,5 +1,11 @@
-type OursPrivacyType = any;
-type OursPrivacyProperties = {[key: string]: OursPrivacyType};
+export type OursPrivacyPropertyValue =
+  | string
+  | number
+  | boolean
+  | null
+  | OursPrivacyPropertyValue[]
+  | {[key: string]: OursPrivacyPropertyValue};
+export type OursPrivacyProperties = Record<string, OursPrivacyPropertyValue>;
 
 export type OursPrivacyAsyncStorage = {
   getItem(key: string): Promise<string | null>;
@@ -13,9 +19,9 @@ export type OursPrivacyInitOptions = {
   serverURL?: string;
   visitorId?: string;
   initialURL?: string;
-  defaultEventProperties?: Record<string, any>;
-  defaultUserCustomProperties?: Record<string, any>;
-  defaultUserConsentProperties?: Record<string, any>;
+  defaultEventProperties?: OursPrivacyProperties;
+  defaultUserCustomProperties?: OursPrivacyProperties;
+  defaultUserConsentProperties?: Record<string, boolean>;
   storage?: OursPrivacyAsyncStorage;
 };
 
@@ -34,8 +40,8 @@ export type OursPrivacyUserProperties = {
   companyName?: string;
   jobTitle?: string;
   ip?: string;
-  customProperties?: Record<string, any>;
-  consent?: Record<string, any>;
+  customProperties?: OursPrivacyProperties;
+  consent?: Record<string, boolean>;
 };
 
 export class OursPrivacy {
@@ -56,9 +62,9 @@ export class OursPrivacy {
   ): void;
   reset(): void;
   getVisitorId(): string | null;
-  updateDefaultEventProperties(properties: Record<string, any>): void;
-  updateDefaultUserCustomProperties(properties: Record<string, any>): void;
-  updateDefaultUserConsentProperties(properties: Record<string, any>): void;
+  updateDefaultEventProperties(properties: OursPrivacyProperties): void;
+  updateDefaultUserCustomProperties(properties: OursPrivacyProperties): void;
+  updateDefaultUserConsentProperties(properties: Record<string, boolean>): void;
   trackDeepLink(url: string): Promise<void>;
   setVisitorId(visitorId: string): Promise<void>;
   flush(): void;

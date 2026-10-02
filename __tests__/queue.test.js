@@ -1,6 +1,6 @@
-import { OursPrivacyType } from "oursprivacy-react-native/javascript/oursprivacy-constants";
+import { OursPrivacyType } from "@oursprivacy/react-native/javascript/oursprivacy-constants";
 
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-persistent", () => ({
+jest.mock("@oursprivacy/react-native/javascript/oursprivacy-persistent", () => ({
   OursPrivacyPersistent: {
     getInstance: jest.fn().mockReturnValue({
       loadQueue: jest.fn().mockResolvedValue([]),
@@ -17,9 +17,9 @@ describe("OursPrivacyQueueManager", () => {
 
   beforeEach(() => {
     jest.isolateModules(async () => {
-      OursPrivacyQueueManager = require("oursprivacy-react-native/javascript/oursprivacy-queue")
+      OursPrivacyQueueManager = require("@oursprivacy/react-native/javascript/oursprivacy-queue")
         .OursPrivacyQueueManager;
-      const OursPrivacyPersistent = require("oursprivacy-react-native/javascript/oursprivacy-persistent")
+      const OursPrivacyPersistent = require("@oursprivacy/react-native/javascript/oursprivacy-persistent")
         .OursPrivacyPersistent;
       oursprivacyPersistent = OursPrivacyPersistent.getInstance();
       await OursPrivacyQueueManager.clearQueue(token, type);

@@ -1,10 +1,10 @@
 import {
   parseAttributionFromURL,
-} from "oursprivacy-react-native/javascript/oursprivacy-attribution";
+} from "@oursprivacy/react-native/javascript/oursprivacy-attribution";
 import {
   UTM_PARAMS,
   CLICK_IDS,
-} from "oursprivacy-react-native/javascript/oursprivacy-schema";
+} from "@oursprivacy/react-native/javascript/oursprivacy-schema";
 
 describe("parseAttributionFromURL", () => {
   it("should parse all UTM parameters", () => {

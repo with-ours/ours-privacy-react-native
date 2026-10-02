@@ -41,6 +41,7 @@ async function readDemoToken() {
   }
 }
 const expectedToken = await readDemoToken();
+const sdkVersion = JSON.parse(await fs.readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 // ---------------------------------------------------------------------------
 // Load captures
@@ -194,7 +195,7 @@ if (buttonEvent) {
   );
   assert(
     "button_pressed defaultProperties has version",
-    typeof dp.version === "string" && dp.version.length > 0,
+    dp.version === `react-native@${sdkVersion}`,
     `got: ${dp.version}`
   );
 

@@ -2,12 +2,15 @@
   "compilerOptions": {
     "strict": true,
     "noEmit": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "target": "es2017",
-    "module": "commonjs",
+    "module": "esnext",
     "skipLibCheck": false,
     "esModuleInterop": true,
     "types": []
   },
-  "include": ["index.d.ts"]
+  "include": [
+    "index.d.ts",
+    "__tests__/declarations.test.ts"
+  ]
 }
