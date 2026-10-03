@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish (e.g., 1.1.0)"
+        description: 'Version to publish (e.g., 1.1.0)'
         required: true
 
 permissions: {}
@@ -77,6 +77,8 @@ jobs:
       - run: npm test
 
       - run: npm run lint
+
+      - run: npm run format:check
 
       - run: npm run typecheck
 

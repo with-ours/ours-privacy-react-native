@@ -1,0 +1,8 @@
+node_modules/
+Demo/node_modules/
+Demo/ios/Pods/
+Demo/ios/build/
+Demo/android/build/
+Demo/android/app/build/
+tmp/
+coverage/

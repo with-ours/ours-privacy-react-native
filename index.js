@@ -1,24 +1,24 @@
-"use strict";
+'use strict';
 
-import OursPrivacyMain from "./javascript/oursprivacy-main"
+import OursPrivacyMain from './javascript/oursprivacy-main';
 
 const ERROR_MESSAGE = {
-  INVALID_OBJECT: " is not a valid json object",
-  INVALID_STRING: " is not a valid string",
+  INVALID_OBJECT: ' is not a valid json object',
+  INVALID_STRING: ' is not a valid string',
 };
 
 const PARAMS = {
-  TOKEN: "token",
-  EVENT_NAME: "eventName",
-  PROPERTIES: "properties",
-  USER_PROPERTIES: "userProperties",
-  OPTIONS: "options",
-  URL: "url",
-  VISITOR_ID: "visitorId",
+  TOKEN: 'token',
+  EVENT_NAME: 'eventName',
+  PROPERTIES: 'properties',
+  USER_PROPERTIES: 'userProperties',
+  OPTIONS: 'options',
+  URL: 'url',
+  VISITOR_ID: 'visitorId',
 };
 
 const NOT_INITIALIZED_ERROR =
-  "OursPrivacy.init(token, options) must be called before any other method.";
+  'OursPrivacy.init(token, options) must be called before any other method.';
 
 /**
  * The primary class for integrating OursPrivacy with your app.
@@ -156,7 +156,12 @@ export class OursPrivacy {
     if (!ObjectHelper.isValidOrUndefined(userProperties)) {
       ObjectHelper.raiseError(PARAMS.USER_PROPERTIES);
     }
-    this.oursprivacyImpl.track(this.token, eventName, eventProperties, userProperties);
+    this.oursprivacyImpl.track(
+      this.token,
+      eventName,
+      eventProperties,
+      userProperties,
+    );
   }
 
   /**
@@ -184,7 +189,10 @@ export class OursPrivacy {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.oursprivacyImpl.updateDefaultEventProperties(this.token, properties || {});
+    this.oursprivacyImpl.updateDefaultEventProperties(
+      this.token,
+      properties || {},
+    );
   }
 
   /**
@@ -195,7 +203,10 @@ export class OursPrivacy {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.oursprivacyImpl.updateDefaultUserCustomProperties(this.token, properties || {});
+    this.oursprivacyImpl.updateDefaultUserCustomProperties(
+      this.token,
+      properties || {},
+    );
   }
 
   /**
@@ -206,7 +217,10 @@ export class OursPrivacy {
     if (!ObjectHelper.isValidOrUndefined(properties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
-    this.oursprivacyImpl.updateDefaultUserConsentProperties(this.token, properties || {});
+    this.oursprivacyImpl.updateDefaultUserConsentProperties(
+      this.token,
+      properties || {},
+    );
   }
 
   /**
@@ -253,7 +267,7 @@ export class OursPrivacy {
 
 class StringHelper {
   static isValid(str) {
-    return typeof str === "string" && !/^\s*$/.test(str);
+    return typeof str === 'string' && !/^\s*$/.test(str);
   }
 
   static isValidOrUndefined(str) {
@@ -267,7 +281,7 @@ class StringHelper {
 
 class ObjectHelper {
   static isValid(obj) {
-    return typeof obj === "object";
+    return typeof obj === 'object';
   }
 
   static isValidOrUndefined(obj) {

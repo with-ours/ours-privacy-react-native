@@ -16,6 +16,7 @@ This SDK is pure JavaScript. It does not ship native iOS or Android modules. It 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [Upgrading to 4.0](#upgrading-to-40)
 - [Complete Example](#complete-example)
 - [API Reference](#api-reference)
   - [Initialization](#initialization)
@@ -31,6 +32,16 @@ This SDK is pure JavaScript. It does not ship native iOS or Android modules. It 
 
 ---
 
+## Upgrading to 4.0
+
+Version 4.0 requires Node 22+, React 18+, and React Native 0.76+. Upgrade the app's React Native toolchain before installing this SDK version.
+
+`@react-native-async-storage/async-storage` is now an optional peer. Install it directly in your app to keep visitor identity and queued events across restarts. Use Async Storage 2.2 with React Native 0.76 or Async Storage 3.1 with the React Native 0.87 demo. Without it, the SDK falls back to in-memory storage.
+
+TypeScript event, custom, and consent property values must be JSON-compatible. Replace functions, class instances, and other unserializable values before calling `track()` or setting default properties. Optional `undefined` values remain valid and are omitted during JSON serialization. Consent can include boolean flags or string values.
+
+---
+
 ## Quick Start
 
 ### 1. Install
@@ -41,6 +52,7 @@ npm install @react-native-async-storage/async-storage
 ```
 
 Install `@react-native-async-storage/async-storage` directly in your app if you want persistent storage in bare React Native projects. RN 0.76 apps should use Async Storage 2.2; the RN 0.87 demo uses Async Storage 3.1. The SDK accepts either major version as an optional peer.
+Without it, the SDK falls back to in-memory storage.
 
 ### 2. Initialize
 
@@ -138,24 +150,24 @@ const op = new OursPrivacy();
 
 Initialize the SDK. Must be called before any tracking method.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `token` | `string` | Yes | Your project token |
-| `options` | `OursPrivacyInitOptions` | No | Initialization options (see below) |
+| Parameter | Type                     | Required | Description                        |
+| --------- | ------------------------ | -------- | ---------------------------------- |
+| `token`   | `string`                 | Yes      | Your project token                 |
+| `options` | `OursPrivacyInitOptions` | No       | Initialization options (see below) |
 
 **`OursPrivacyInitOptions` shape (all camelCase):**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `trackAutomaticEvents` | `boolean` | Reserved for future automatic event tracking |
-| `optOutTrackingByDefault` | `boolean` | If `true`, tracking starts opted out (default: `false`) |
-| `visitorId` | `string` | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events |
-| `defaultEventProperties` | `object` | Properties merged into `eventProperties` on every `track()` call |
-| `defaultUserCustomProperties` | `object` | Properties merged into `userProperties.custom_properties` on every event |
-| `defaultUserConsentProperties` | `object` | Properties merged into `userProperties.consent` on every event |
-| `serverURL` | `string` | Override the base URL used for requests, for example a local QA capture server |
-| `initialURL` | `string` | Deep link URL to parse on init — extracts UTM params, click IDs, and `ours_visitor_id` (see [Deep Link Attribution](#deep-link-attribution)) |
-| `storage` | `OursPrivacyAsyncStorage` | Custom AsyncStorage adapter |
+| Field                          | Type                      | Description                                                                                                                                  |
+| ------------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `trackAutomaticEvents`         | `boolean`                 | Reserved for future automatic event tracking                                                                                                 |
+| `optOutTrackingByDefault`      | `boolean`                 | If `true`, tracking starts opted out (default: `false`)                                                                                      |
+| `visitorId`                    | `string`                  | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events                                                                        |
+| `defaultEventProperties`       | `object`                  | Properties merged into `eventProperties` on every `track()` call                                                                             |
+| `defaultUserCustomProperties`  | `object`                  | Properties merged into `userProperties.custom_properties` on every event                                                                     |
+| `defaultUserConsentProperties` | `object`                  | JSON-compatible values merged into `userProperties.consent` on every event                                                                   |
+| `serverURL`                    | `string`                  | Override the base URL used for requests, for example a local QA capture server                                                               |
+| `initialURL`                   | `string`                  | Deep link URL to parse on init — extracts UTM params, click IDs, and `ours_visitor_id` (see [Deep Link Attribution](#deep-link-attribution)) |
+| `storage`                      | `OursPrivacyAsyncStorage` | Custom AsyncStorage adapter                                                                                                                  |
 
 **Returns:** `Promise<void>`
 
@@ -180,10 +192,10 @@ await op.init('YOUR_API_TOKEN', {
 
 Track an event with optional properties.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `eventName` | `string` | Yes | Name of the event |
-| `properties` | `object` | No | Key/value pairs to attach to the event |
+| Parameter    | Type     | Required | Description                            |
+| ------------ | -------- | -------- | -------------------------------------- |
+| `eventName`  | `string` | Yes      | Name of the event                      |
+| `properties` | `object` | No       | Key/value pairs to attach to the event |
 
 **Returns:** `void`
 
@@ -199,30 +211,30 @@ Associate all future `track()` calls with the given user identity. Call this aft
 
 Pass identifying fields inside the `userProperties` bag — most commonly `externalId` (your system's user ID). Any default custom or consent properties registered via `updateDefault*` are merged in automatically.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userProperties` | `OursPrivacyUserProperties` | No | User properties to attach to this identity |
+| Parameter        | Type                        | Required | Description                                |
+| ---------------- | --------------------------- | -------- | ------------------------------------------ |
+| `userProperties` | `OursPrivacyUserProperties` | No       | User properties to attach to this identity |
 
 **`OursPrivacyUserProperties` shape (all camelCase):**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `email` | `string` | User's email address |
-| `externalId` | `string` | ID from your own system |
-| `phoneNumber` | `string` | User's phone number |
-| `firstName` | `string` | First name |
-| `lastName` | `string` | Last name |
-| `gender` | `string` | Gender |
-| `dateOfBirth` | `string` | Date of birth (ISO 8601, e.g. `1990-04-12`) |
-| `city` | `string` | City |
-| `state` | `string` | State / region |
-| `zip` | `string` | Postal / ZIP code |
-| `country` | `string` | Country (ISO 3166-1 alpha-2 preferred) |
-| `companyName` | `string` | Company name |
-| `jobTitle` | `string` | Job title |
-| `ip` | `string` | Client IP (only set this if you have a reliable source — the server will infer otherwise) |
-| `customProperties` | `object` | Arbitrary custom user attributes |
-| `consent` | `object` | Consent flags (e.g. `{ marketing: true }`) |
+| Field              | Type     | Description                                                                               |
+| ------------------ | -------- | ----------------------------------------------------------------------------------------- |
+| `email`            | `string` | User's email address                                                                      |
+| `externalId`       | `string` | ID from your own system                                                                   |
+| `phoneNumber`      | `string` | User's phone number                                                                       |
+| `firstName`        | `string` | First name                                                                                |
+| `lastName`         | `string` | Last name                                                                                 |
+| `gender`           | `string` | Gender                                                                                    |
+| `dateOfBirth`      | `string` | Date of birth (ISO 8601, e.g. `1990-04-12`)                                               |
+| `city`             | `string` | City                                                                                      |
+| `state`            | `string` | State / region                                                                            |
+| `zip`              | `string` | Postal / ZIP code                                                                         |
+| `country`          | `string` | Country (ISO 3166-1 alpha-2 preferred)                                                    |
+| `companyName`      | `string` | Company name                                                                              |
+| `jobTitle`         | `string` | Job title                                                                                 |
+| `ip`               | `string` | Client IP (only set this if you have a reliable source — the server will infer otherwise) |
+| `customProperties` | `object` | Arbitrary custom user attributes                                                          |
+| `consent`          | `object` | Consent values (e.g. `{ marketing: true }` or `{ analytics: 'granted' }`)                 |
 
 The SDK converts these camelCase fields to the snake_case wire format (`externalId` → `external_id`, `dateOfBirth` → `date_of_birth`, etc.) before sending.
 
@@ -276,9 +288,9 @@ These methods can be called at init time via `options`, or at any point afterwar
 
 Merge properties into `eventProperties` on every future `track()` call. Properties are merged shallowly — later calls overwrite earlier ones for the same key.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `properties` | `object` | Yes | Key/value pairs to merge into default event properties |
+| Parameter    | Type     | Required | Description                                            |
+| ------------ | -------- | -------- | ------------------------------------------------------ |
+| `properties` | `object` | Yes      | Key/value pairs to merge into default event properties |
 
 **Returns:** `void`
 
@@ -301,9 +313,9 @@ op.track('Button Pressed'); // eventProperties includes app_version, environment
 
 Merge properties into `userProperties.custom_properties` on every future event. Useful for attaching user attributes that should travel with every event.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `properties` | `object` | Yes | Key/value pairs to merge into default user custom properties |
+| Parameter    | Type     | Required | Description                                                  |
+| ------------ | -------- | -------- | ------------------------------------------------------------ |
+| `properties` | `object` | Yes      | Key/value pairs to merge into default user custom properties |
 
 **Returns:** `void`
 
@@ -323,9 +335,9 @@ op.updateDefaultUserCustomProperties({ tier: 'enterprise', seats: 50 });
 
 Merge properties into `userProperties.consent` on every future event. Use this to send the user's consent state alongside all analytics events.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `properties` | `object` | Yes | Key/value pairs to merge into default user consent properties |
+| Parameter    | Type     | Required | Description                                                   |
+| ------------ | -------- | -------- | ------------------------------------------------------------- |
+| `properties` | `object` | Yes      | Key/value pairs to merge into default user consent properties |
 
 **Returns:** `void`
 
@@ -347,9 +359,9 @@ op.updateDefaultUserConsentProperties({ marketing: true });
 
 Override the base URL after initialization.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `serverURL` | `string` | Yes | Base URL for API requests |
+| Parameter   | Type     | Required | Description               |
+| ----------- | -------- | -------- | ------------------------- |
+| `serverURL` | `string` | Yes      | Base URL for API requests |
 
 **Returns:** `void`
 
@@ -359,9 +371,9 @@ Override the base URL after initialization.
 
 Enable or disable debug logging. All logging is disabled by default.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `loggingEnabled` | `boolean` | Yes | Whether to enable SDK logging |
+| Parameter        | Type      | Required | Description                   |
+| ---------------- | --------- | -------- | ----------------------------- |
+| `loggingEnabled` | `boolean` | Yes      | Whether to enable SDK logging |
 
 **Returns:** `void`
 
@@ -375,9 +387,9 @@ op.setLoggingEnabled(true);
 
 Toggle automatic flushing when the app moves to the background. Enabled by default.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `flushOnBackground` | `boolean` | Yes | `true` to flush on background (default), `false` to disable. |
+| Parameter           | Type      | Required | Description                                                  |
+| ------------------- | --------- | -------- | ------------------------------------------------------------ |
+| `flushOnBackground` | `boolean` | Yes      | `true` to flush on background (default), `false` to disable. |
 
 **Returns:** `void`
 
@@ -391,9 +403,9 @@ op.setFlushOnBackground(false);
 
 Set the maximum number of events sent in a single network request. Maximum value is 50; values above 50 are clamped to 50.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `flushBatchSize` | `number` | Yes | Number of events per batch (max 50) |
+| Parameter        | Type     | Required | Description                         |
+| ---------------- | -------- | -------- | ----------------------------------- |
+| `flushBatchSize` | `number` | Yes      | Number of events per batch (max 50) |
 
 **Returns:** `void`
 
@@ -424,9 +436,9 @@ Update the visitor ID after initialization. Use this for web-to-app identity sti
 
 Sets `is_manually_set_id: true` on all subsequent events.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `visitorId` | `string` | Yes | The Ours Privacy visitor ID to adopt |
+| Parameter   | Type     | Required | Description                          |
+| ----------- | -------- | -------- | ------------------------------------ |
+| `visitorId` | `string` | Yes      | The Ours Privacy visitor ID to adopt |
 
 **Returns:** `Promise<void>`
 
@@ -446,9 +458,9 @@ Parsed attribution params are merged into `defaultProperties`, so they appear on
 
 Await the returned promise before calling `track()` to ensure attribution and visitor identity are fully applied.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `url` | `string` | Yes | The deep link or initial URL to parse |
+| Parameter | Type     | Required | Description                           |
+| --------- | -------- | -------- | ------------------------------------- |
+| `url`     | `string` | Yes      | The deep link or initial URL to parse |
 
 **Returns:** `Promise<void>`
 
@@ -478,22 +490,22 @@ await op.init('YOUR_API_TOKEN', {
 
 **Supported parameters:**
 
-| Category | Parameters |
-|----------|-----------|
-| UTM | `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term` |
-| Google | `gclid`, `gad_source`, `dclid`, `gbraid`, `wbraid` |
-| Meta | `fbclid`, `fbc`, `fbp` |
-| Microsoft | `msclkid` |
-| TikTok | `ttclid` |
-| Twitter/X | `twclid` |
-| LinkedIn | `li_fat_id` |
-| Reddit | `rdt_cid` |
-| Snapchat | `sccid` |
-| Pinterest | `epik` |
-| Quora | `qclid` |
-| AppLovin | `aleid`, `alart`, `axwrt` |
-| Other | `clickid`, `clid`, `ndclid`, `irclickid`, `im_ref`, `sacid`, `basis_cid` |
-| Identity | `ours_visitor_id` — cross-platform visitor stitching |
+| Category  | Parameters                                                               |
+| --------- | ------------------------------------------------------------------------ |
+| UTM       | `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`    |
+| Google    | `gclid`, `gad_source`, `dclid`, `gbraid`, `wbraid`                       |
+| Meta      | `fbclid`, `fbc`, `fbp`                                                   |
+| Microsoft | `msclkid`                                                                |
+| TikTok    | `ttclid`                                                                 |
+| Twitter/X | `twclid`                                                                 |
+| LinkedIn  | `li_fat_id`                                                              |
+| Reddit    | `rdt_cid`                                                                |
+| Snapchat  | `sccid`                                                                  |
+| Pinterest | `epik`                                                                   |
+| Quora     | `qclid`                                                                  |
+| AppLovin  | `aleid`, `alart`, `axwrt`                                                |
+| Other     | `clickid`, `clid`, `ndclid`, `irclickid`, `im_ref`, `sacid`, `basis_cid` |
+| Identity  | `ours_visitor_id` — cross-platform visitor stitching                     |
 
 **AppLovin example:**
 
@@ -501,7 +513,9 @@ When a user clicks an AppLovin ad, the deep link will contain `aleid` (click ID)
 
 ```js
 // Deep link: myapp://open?aleid=click_abc&alart=user_xyz&utm_source=applovin
-await op.trackDeepLink('myapp://open?aleid=click_abc&alart=user_xyz&utm_source=applovin');
+await op.trackDeepLink(
+  'myapp://open?aleid=click_abc&alart=user_xyz&utm_source=applovin',
+);
 
 // All subsequent events will include aleid, alart, and utm_source in defaultProperties
 ```
@@ -583,7 +597,7 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
         "os_version": "17.0",
         "device_vendor": "Apple",
         "device_model": "iPhone 16 Pro",
-        "version": "1.2.0"
+        "version": "react-native@4.0.0"
       }
     }
   ]
@@ -592,18 +606,18 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
 
 **Key fields:**
 
-| Field | Description |
-|-------|-------------|
-| `token` | Your project token |
-| `is_manually_set_id` | `true` when visitor ID was set via `init()` options, `setVisitorId()`, or `ours_visitor_id` in a deep link |
-| `data` | Array of event objects in this batch |
-| `event` | Event name |
-| `visitor_id` | Stable visitor UUID for this install (no prefix) |
-| `distinct_id` | Per-event UUID generated for this event occurrence |
-| `eventProperties` | Properties from `track()` merged with default event properties |
-| `userProperties.custom_properties` | From `identify()` and `updateDefaultUserCustomProperties()` |
-| `userProperties.consent` | From `identify()` and `updateDefaultUserConsentProperties()` |
-| `defaultProperties` | Automatically collected device/SDK metadata |
+| Field                              | Description                                                                                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `token`                            | Your project token                                                                                         |
+| `is_manually_set_id`               | `true` when visitor ID was set via `init()` options, `setVisitorId()`, or `ours_visitor_id` in a deep link |
+| `data`                             | Array of event objects in this batch                                                                       |
+| `event`                            | Event name                                                                                                 |
+| `visitor_id`                       | Stable visitor UUID for this install (no prefix)                                                           |
+| `distinct_id`                      | Per-event UUID generated for this event occurrence                                                         |
+| `eventProperties`                  | Properties from `track()` merged with default event properties                                             |
+| `userProperties.custom_properties` | From `identify()` and `updateDefaultUserCustomProperties()`                                                |
+| `userProperties.consent`           | From `identify()` and `updateDefaultUserConsentProperties()`                                               |
+| `defaultProperties`                | Automatically collected device/SDK metadata                                                                |
 
 ---
 
@@ -619,7 +633,7 @@ Events are batched and sent every 10 seconds by default. Call `flush()` to send 
 
 **What platforms are supported?**
 
-- React Native >= 0.60
+- React Native >= 0.76
 - iOS and Android apps using React Native
 - Expo and other JavaScript-mode environments
 

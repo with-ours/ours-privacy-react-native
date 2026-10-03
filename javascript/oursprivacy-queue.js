@@ -1,4 +1,4 @@
-import {OursPrivacyPersistent} from "./oursprivacy-persistent";
+import { OursPrivacyPersistent } from './oursprivacy-persistent';
 
 export const OursPrivacyQueueManager = (() => {
   let _queues = {};
@@ -6,7 +6,7 @@ export const OursPrivacyQueueManager = (() => {
 
   const getPersistent = () => {
     if (!oursprivacyPersistent) {
-        oursprivacyPersistent = OursPrivacyPersistent.getInstance();
+      oursprivacyPersistent = OursPrivacyPersistent.getInstance();
     }
     return oursprivacyPersistent;
   };

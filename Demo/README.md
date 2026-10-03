@@ -33,7 +33,7 @@ npm run e2e:android
 
 The command starts the first installed emulator if none is running, configures the demo with a temporary local token and capture URL, starts the local capture server and Metro, builds and launches the app, and validates the captured event payloads. It restores the previous `Demo/.env` when it exits. No Ours account or external ingest service is needed. CI runs this same command inside an Android emulator.
 
-An optional iOS simulator run uses `npm run e2e:ios` from the root. Install CocoaPods first with `cd Demo && bundle install && cd ios && bundle exec pod install`.
+An optional iOS simulator run uses `npm run e2e:ios` from the root. Install the locked CocoaPods first with `cd Demo && bundle install && cd ios && bundle exec pod install --deployment`.
 
 ## Manual demo
 

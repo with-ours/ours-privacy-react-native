@@ -34,19 +34,27 @@ function Header() {
   );
 }
 
-import { OURSPRIVACY_SERVER_URL, OURSPRIVACY_TOKEN, E2E_AUTOFIRE } from '@env';
-import { OursPrivacy } from '@oursprivacy/react-native';
+import {OURSPRIVACY_SERVER_URL, OURSPRIVACY_TOKEN, E2E_AUTOFIRE} from '@env';
+import {OursPrivacy} from '@oursprivacy/react-native';
 
-type SectionProps = PropsWithChildren<{ title: string }>;
+type SectionProps = PropsWithChildren<{title: string}>;
 
-function Section({ children, title }: SectionProps): React.JSX.Element {
+function Section({children, title}: SectionProps): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
   return (
     <View style={styles.sectionContainer}>
-      <Text style={[styles.sectionTitle, { color: isDarkMode ? Colors.white : Colors.black }]}>
+      <Text
+        style={[
+          styles.sectionTitle,
+          {color: isDarkMode ? Colors.white : Colors.black},
+        ]}>
         {title}
       </Text>
-      <Text style={[styles.sectionDescription, { color: isDarkMode ? Colors.light : Colors.dark }]}>
+      <Text
+        style={[
+          styles.sectionDescription,
+          {color: isDarkMode ? Colors.light : Colors.dark},
+        ]}>
         {children}
       </Text>
     </View>
@@ -62,10 +70,10 @@ const SIMULATED_COLD_START_URL =
 
 const initOptions = {
   trackAutomaticEvents: false,
-  defaultEventProperties: { demo_app: true },
-  defaultUserCustomProperties: { test_user: true },
+  defaultEventProperties: {demo_app: true},
+  defaultUserCustomProperties: {test_user: true},
   initialURL: SIMULATED_COLD_START_URL,
-  ...(OURSPRIVACY_SERVER_URL ? { serverURL: OURSPRIVACY_SERVER_URL } : {}),
+  ...(OURSPRIVACY_SERVER_URL ? {serverURL: OURSPRIVACY_SERVER_URL} : {}),
 };
 
 console.log(
@@ -76,27 +84,28 @@ console.log(
 oursprivacy.init(OURSPRIVACY_TOKEN, initOptions).then(async () => {
   if (E2E_AUTOFIRE !== 'true') return;
 
-  const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+  const delay = (ms: number) =>
+    new Promise<void>(resolve => setTimeout(resolve, ms));
   console.log('[E2E] auto-fire sequence starting');
 
   // Phase 1: Basic track
   await delay(500);
-  oursprivacy.track('button_pressed', { button: 'e2e_auto' });
+  oursprivacy.track('button_pressed', {button: 'e2e_auto'});
   console.log('[E2E] tracked button_pressed');
 
   // Phase 2: Identify
   oursprivacy.identify({
     email: 'e2e-user@example.com',
     externalId: 'e2e-user-123',
-    customProperties: { plan: 'e2e' },
+    customProperties: {plan: 'e2e'},
   });
   oursprivacy.flush();
   await delay(1500);
   console.log('[E2E] identified + flushed');
 
   // Phase 3: Update defaults then track
-  oursprivacy.updateDefaultEventProperties({ last_action: 'update_defaults' });
-  oursprivacy.updateDefaultUserConsentProperties({ marketing: true });
+  oursprivacy.updateDefaultEventProperties({last_action: 'update_defaults'});
+  oursprivacy.updateDefaultUserConsentProperties({marketing: true});
   oursprivacy.track('defaults_updated');
   oursprivacy.flush();
   await delay(1500);
@@ -104,7 +113,7 @@ oursprivacy.init(OURSPRIVACY_TOKEN, initOptions).then(async () => {
 
   // Phase 4: Opt-out — events below must NOT appear in captures
   oursprivacy.optOutTracking();
-  oursprivacy.track('should_not_appear', { leaked: true });
+  oursprivacy.track('should_not_appear', {leaked: true});
   oursprivacy.flush();
   await delay(500);
   console.log('[E2E] opted out + attempted track (should be suppressed)');
@@ -118,7 +127,7 @@ oursprivacy.init(OURSPRIVACY_TOKEN, initOptions).then(async () => {
 
   // Phase 6: Deep link (warm start)
   await oursprivacy.trackDeepLink(
-    'myapp://products/456?utm_source=applovin&utm_medium=display&aleid=warm_aleid_789&alart=warm_alart_abc&ours_visitor_id=e2e-web-visitor-id'
+    'myapp://products/456?utm_source=applovin&utm_medium=display&aleid=warm_aleid_789&alart=warm_alart_abc&ours_visitor_id=e2e-web-visitor-id',
   );
   oursprivacy.track('post_deep_link');
   oursprivacy.flush();
@@ -145,12 +154,14 @@ oursprivacy.init(OURSPRIVACY_TOKEN, initOptions).then(async () => {
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
-  const backgroundStyle = { backgroundColor: isDarkMode ? Colors.darker : Colors.lighter };
+  const backgroundStyle = {
+    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  };
   const safePadding = '5%';
 
   const handleTrack = () => {
     console.log('[OursPrivacy] visitor_id:', oursprivacy.getVisitorId());
-    oursprivacy.track('button_pressed', { button: 'Track Event' });
+    oursprivacy.track('button_pressed', {button: 'Track Event'});
     oursprivacy.flush();
     console.log('[OursPrivacy] tracked + flushed');
   };
@@ -159,15 +170,18 @@ function App(): React.JSX.Element {
     oursprivacy.identify({
       email: 'demo-user@example.com',
       externalId: 'demo-user-123',
-      customProperties: { plan: 'demo' },
+      customProperties: {plan: 'demo'},
     });
     oursprivacy.flush();
     console.log('[OursPrivacy] identified + flushed');
   };
 
   const handleUpdateDefaults = () => {
-    oursprivacy.updateDefaultEventProperties({ last_action: 'update_defaults' });
-    oursprivacy.updateDefaultUserConsentProperties({ marketing: true, analytics: true });
+    oursprivacy.updateDefaultEventProperties({last_action: 'update_defaults'});
+    oursprivacy.updateDefaultUserConsentProperties({
+      marketing: true,
+      analytics: true,
+    });
     oursprivacy.track('defaults_updated');
     oursprivacy.flush();
     console.log('[OursPrivacy] defaults updated + tracked + flushed');
@@ -191,67 +205,96 @@ function App(): React.JSX.Element {
     console.log('[OursPrivacy] trackDeepLink:', url);
     await oursprivacy.trackDeepLink(url);
     oursprivacy.flush();
-    console.log('[OursPrivacy] deep link tracked + flushed. visitor_id:', oursprivacy.getVisitorId());
+    console.log(
+      '[OursPrivacy] deep link tracked + flushed. visitor_id:',
+      oursprivacy.getVisitorId(),
+    );
   };
 
   const handleSetVisitorId = async () => {
     const newId = 'manually-set-visitor-id-' + Date.now();
     console.log('[OursPrivacy] setVisitorId:', newId);
     await oursprivacy.setVisitorId(newId);
-    oursprivacy.track('after_set_visitor_id', { new_visitor_id: newId });
+    oursprivacy.track('after_set_visitor_id', {new_visitor_id: newId});
     oursprivacy.flush();
-    console.log('[OursPrivacy] visitor_id set + tracked + flushed. visitor_id:', oursprivacy.getVisitorId());
+    console.log(
+      '[OursPrivacy] visitor_id set + tracked + flushed. visitor_id:',
+      oursprivacy.getVisitorId(),
+    );
   };
 
   const handleTrackAfterAttribution = () => {
     // This should include attribution from the most recent deep link in defaultProperties
     console.log('[OursPrivacy] tracking after attribution...');
-    oursprivacy.track('post_attribution_event', { source: 'manual_test' });
+    oursprivacy.track('post_attribution_event', {source: 'manual_test'});
     oursprivacy.flush();
     console.log('[OursPrivacy] post-attribution event tracked + flushed');
   };
 
   const handleReset = () => {
     oursprivacy.reset();
-    console.log('[OursPrivacy] reset. new visitor_id:', oursprivacy.getVisitorId());
+    console.log(
+      '[OursPrivacy] reset. new visitor_id:',
+      oursprivacy.getVisitorId(),
+    );
   };
 
   return (
     <View style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-      />
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <ScrollView style={backgroundStyle}>
-        <View style={{ paddingRight: safePadding }}>
+        <View style={{paddingRight: safePadding}}>
           <Header />
         </View>
-        <View style={{
-          backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          paddingHorizontal: safePadding,
-          paddingBottom: safePadding,
-          gap: 12,
-        }}>
+        <View
+          style={{
+            backgroundColor: isDarkMode ? Colors.black : Colors.white,
+            paddingHorizontal: safePadding,
+            paddingBottom: safePadding,
+            gap: 12,
+          }}>
           <Section title="Track Event">
-            Calls track('button_pressed') + flush(). Check console for visitor_id.
+            Calls track('button_pressed') + flush(). Check console for
+            visitor_id.
           </Section>
           <Button onPress={handleTrack} title="Track Event" color="#841584" />
 
           <Section title="Identify">
             Calls identify with email, external_id, and custom_properties.
           </Section>
-          <Button onPress={handleIdentify} title="Identify User" color="#1a73e8" />
+          <Button
+            onPress={handleIdentify}
+            title="Identify User"
+            color="#1a73e8"
+          />
 
           <Section title="Update Default Properties">
             Updates default event + consent properties, then tracks an event.
           </Section>
-          <Button onPress={handleUpdateDefaults} title="Update Defaults + Track" color="#0f9d58" />
+          <Button
+            onPress={handleUpdateDefaults}
+            title="Update Defaults + Track"
+            color="#0f9d58"
+          />
 
           <Section title="Deep Link Attribution">
             Tests trackDeepLink() with UTMs, click IDs, and ours_visitor_id.
           </Section>
-          <Button onPress={handleTrackDeepLink} title="Track Deep Link (warm start)" color="#6200ee" />
-          <Button onPress={handleTrackAfterAttribution} title="Track After Attribution" color="#6200ee" />
-          <Button onPress={handleSetVisitorId} title="Set Visitor ID Manually" color="#03dac5" />
+          <Button
+            onPress={handleTrackDeepLink}
+            title="Track Deep Link (warm start)"
+            color="#6200ee"
+          />
+          <Button
+            onPress={handleTrackAfterAttribution}
+            title="Track After Attribution"
+            color="#6200ee"
+          />
+          <Button
+            onPress={handleSetVisitorId}
+            title="Set Visitor ID Manually"
+            color="#03dac5"
+          />
 
           <Section title="Privacy Controls">
             Opt out stops all tracking. Opt in resumes and sends $opt_in event.

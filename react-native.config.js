@@ -8,7 +8,7 @@ module.exports = {
       platforms: {
         android: null,
         ios: null,
-      }
-    }
-  }
+      },
+    },
+  },
 };

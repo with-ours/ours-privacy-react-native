@@ -7,68 +7,67 @@
 
 version: 2
 updates:
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
-      - "github-actions"
+      - 'dependencies'
+      - 'github-actions'
     commit-message:
-      prefix: "fix"
+      prefix: 'fix'
     groups:
       actions-minor-patch:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
 
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
-      - "npm"
+      - 'dependencies'
+      - 'npm'
     commit-message:
-      prefix: "fix"
-      prefix-development: "chore"
+      prefix: 'fix'
+      prefix-development: 'chore'
     groups:
       all-deps:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
 
-  - package-ecosystem: "npm"
-    directory: "/Demo"
+  - package-ecosystem: 'npm'
+    directory: '/Demo'
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: 'weekly'
+      day: 'monday'
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
-      - "npm"
-      - "demo"
+      - 'dependencies'
+      - 'npm'
+      - 'demo'
     commit-message:
-      prefix: "fix"
+      prefix: 'fix'
     groups:
       all-deps:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'

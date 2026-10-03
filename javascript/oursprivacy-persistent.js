@@ -5,11 +5,11 @@ import {
   getOptedOutKey as getOutedOutKey,
   getQueueKey,
   getAppHasOpenedBeforeKey,
-} from "./oursprivacy-constants";
+} from './oursprivacy-constants';
 
-import {AsyncStorageAdapter} from "./oursprivacy-storage";
-import {uuidv4} from "./oursprivacy-utils";
-import {OursPrivacyLogger} from "./oursprivacy-logger";
+import { AsyncStorageAdapter } from './oursprivacy-storage';
+import { uuidv4 } from './oursprivacy-utils';
+import { OursPrivacyLogger } from './oursprivacy-logger';
 
 export class OursPrivacyPersistent {
   static instance;
@@ -17,7 +17,7 @@ export class OursPrivacyPersistent {
   static getInstance(storage) {
     if (!OursPrivacyPersistent.instance) {
       OursPrivacyPersistent.instance = new OursPrivacyPersistent(
-        new AsyncStorageAdapter(storage)
+        new AsyncStorageAdapter(storage),
       );
     }
     return OursPrivacyPersistent.instance;
@@ -59,10 +59,10 @@ export class OursPrivacyPersistent {
       this._identity[token].visitorId = uuidv4();
       await this.storageAdapter.setItem(
         getVisitorIdKey(token),
-        this._identity[token].visitorId
+        this._identity[token].visitorId,
       );
     }
-    OursPrivacyLogger.log(token, "visitorId:", this._identity[token].visitorId);
+    OursPrivacyLogger.log(token, 'visitorId:', this._identity[token].visitorId);
   }
 
   async loadIdentity(token) {
@@ -90,13 +90,13 @@ export class OursPrivacyPersistent {
     }
     await this.storageAdapter.setItem(
       getVisitorIdKey(token),
-      this._identity[token].visitorId
+      this._identity[token].visitorId,
     );
   }
 
   async loadSuperProperties(token) {
     const superPropertiesString = await this.storageAdapter.getItem(
-      getSuperPropertiesKey(token)
+      getSuperPropertiesKey(token),
     );
     this._superProperties[token] = superPropertiesString
       ? JSON.parse(superPropertiesString)
@@ -110,7 +110,7 @@ export class OursPrivacyPersistent {
   updateSuperProperties(token, superProperties) {
     this._superProperties = {
       ...this._superProperties,
-      [token]: {...superProperties},
+      [token]: { ...superProperties },
     };
   }
 
@@ -120,13 +120,13 @@ export class OursPrivacyPersistent {
     }
     await this.storageAdapter.setItem(
       getSuperPropertiesKey(token),
-      JSON.stringify(this._superProperties[token])
+      JSON.stringify(this._superProperties[token]),
     );
   }
 
   async loadTimeEvents(token) {
     const timeEventsString = await this.storageAdapter.getItem(
-      getTimeEventsKey(token)
+      getTimeEventsKey(token),
     );
     this._timeEvents[token] = timeEventsString
       ? JSON.parse(timeEventsString)
@@ -138,7 +138,7 @@ export class OursPrivacyPersistent {
   }
 
   updateTimeEvents(token, timeEvents) {
-    this._timeEvents = {...this._timeEvents, [token]: {...timeEvents}};
+    this._timeEvents = { ...this._timeEvents, [token]: { ...timeEvents } };
   }
 
   async persistTimeEvents(token) {
@@ -147,15 +147,15 @@ export class OursPrivacyPersistent {
     }
     await this.storageAdapter.setItem(
       getTimeEventsKey(token),
-      JSON.stringify(this._timeEvents[token])
+      JSON.stringify(this._timeEvents[token]),
     );
   }
 
   async loadOptOut(token) {
     const optOutString = await this.storageAdapter.getItem(
-      getOutedOutKey(token)
+      getOutedOutKey(token),
     );
-    this._optedOut[token] = optOutString === "true";
+    this._optedOut[token] = optOutString === 'true';
   }
 
   getOptedOut(token) {
@@ -163,7 +163,7 @@ export class OursPrivacyPersistent {
   }
 
   updateOptedOut(token, optOut) {
-    this._optedOut = {...this._optedOut, [token]: optOut};
+    this._optedOut = { ...this._optedOut, [token]: optOut };
   }
 
   async persistOptedOut(token) {
@@ -172,13 +172,13 @@ export class OursPrivacyPersistent {
     }
     await this.storageAdapter.setItem(
       getOutedOutKey(token),
-      this._optedOut[token].toString()
+      this._optedOut[token].toString(),
     );
   }
 
   async loadQueue(token, type) {
     const queueString = await this.storageAdapter.getItem(
-      getQueueKey(token, type)
+      getQueueKey(token, type),
     );
     return queueString ? JSON.parse(queueString) : [];
   }
@@ -186,15 +186,15 @@ export class OursPrivacyPersistent {
   async saveQueue(token, type, queue) {
     await this.storageAdapter.setItem(
       getQueueKey(token, type),
-      JSON.stringify(queue)
+      JSON.stringify(queue),
     );
   }
 
   async loadAppHasOpenedBefore(token) {
     const appHasOpenedBeforeString = await this.storageAdapter.getItem(
-      getAppHasOpenedBeforeKey(token)
+      getAppHasOpenedBeforeKey(token),
     );
-    this._appHasOpenedBefore[token] = appHasOpenedBeforeString === "true";
+    this._appHasOpenedBefore[token] = appHasOpenedBeforeString === 'true';
   }
 
   getAppHasOpenedBefore(token) {
@@ -214,11 +214,11 @@ export class OursPrivacyPersistent {
     }
     await this.storageAdapter.setItem(
       getAppHasOpenedBeforeKey(token),
-      this._appHasOpenedBefore[token].toString()
+      this._appHasOpenedBefore[token].toString(),
     );
   }
 
-  async reset(token, {preserveVisitorId = false} = {}) {
+  async reset(token, { preserveVisitorId = false } = {}) {
     if (!preserveVisitorId) {
       await this.storageAdapter.removeItem(getVisitorIdKey(token));
     }

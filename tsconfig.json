@@ -9,8 +9,5 @@
     "esModuleInterop": true,
     "types": []
   },
-  "include": [
-    "index.d.ts",
-    "__tests__/declarations.test.ts"
-  ]
+  "include": ["index.d.ts", "__tests__/declarations.test.ts"]
 }
