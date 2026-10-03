@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish (e.g., 1.1.0)"
+        description: 'Version to publish (e.g., 1.1.0)'
         required: true
 
 permissions: {}
@@ -76,7 +76,13 @@ jobs:
 
       - run: npm test
 
-      - run: npx tsc --noEmit
+      - run: npm run lint
+
+      - run: npm run format:check
+
+      - run: npm run typecheck
+
+      - run: npm run test:runner
 
       - name: Pack tarball
         run: npm pack

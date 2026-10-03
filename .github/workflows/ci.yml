@@ -14,33 +14,132 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  test:
-    name: Test
+  sdk:
+    name: SDK (Node ${{ matrix.node }}, RN 0.87)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npm test
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test -- --runInBand
+      - run: npm run test:runner
 
-  typecheck:
-    name: Type Check
+  sdk-floor:
+    name: SDK (Node 22, RN 0.76)
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
+      - run: npm pkg set devDependencies.react-native=0.76.9 devDependencies.react=18.3.1 "devDependencies.@react-native-async-storage/async-storage=2.2.0"
+      - run: npm install --package-lock=false --ignore-scripts
+      - run: node -e "const assert=require('node:assert/strict'); assert.equal(require('react-native/package.json').version, '0.76.9'); assert.equal(require('react/package.json').version, '18.3.1'); assert.equal(require('@react-native-async-storage/async-storage/package.json').version, '2.2.0')"
+      - run: npm test -- --runInBand
+      - run: npm run typecheck
+
+  demo-static:
+    name: Demo static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Demo
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Demo/package-lock.json
       - run: npm ci
-      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test -- --runInBand
+
+  android-e2e:
+    name: Demo Android E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Demo/package-lock.json
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - run: npm ci
+        working-directory: Demo
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: npm run e2e:android
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    needs: [sdk, sdk-floor, demo-static]
+    if: always()
+    steps:
+      - name: Require SDK and demo checks
+        env:
+          SDK_RESULT: ${{ needs.sdk.result }}
+          FLOOR_RESULT: ${{ needs.sdk-floor.result }}
+          DEMO_RESULT: ${{ needs.demo-static.result }}
+        run: |
+          for result in "$SDK_RESULT" "$FLOOR_RESULT" "$DEMO_RESULT"; do
+            test "$result" = success
+          done
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: [sdk, sdk-floor, demo-static, android-e2e]
+    if: always()
+    steps:
+      - name: Require SDK, demo, and Android E2E checks
+        env:
+          SDK_RESULT: ${{ needs.sdk.result }}
+          FLOOR_RESULT: ${{ needs.sdk-floor.result }}
+          DEMO_RESULT: ${{ needs.demo-static.result }}
+          ANDROID_RESULT: ${{ needs.android-e2e.result }}
+        run: |
+          for result in "$SDK_RESULT" "$FLOOR_RESULT" "$DEMO_RESULT" "$ANDROID_RESULT"; do
+            test "$result" = success
+          done

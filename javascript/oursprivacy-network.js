@@ -1,4 +1,4 @@
-import {OursPrivacyLogger} from "./oursprivacy-logger";
+import { OursPrivacyLogger } from './oursprivacy-logger';
 
 export class OursPrivacyHttpError extends Error {
   constructor(message, errorCode) {
@@ -22,9 +22,9 @@ export const OursPrivacyNetwork = (() => {
 
     try {
       const response = await fetch(url, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           token,
@@ -43,13 +43,13 @@ export const OursPrivacyNetwork = (() => {
       if (!response.ok) {
         throw new OursPrivacyHttpError(
           `HTTP error! status: ${response.status}`,
-          response.status
+          response.status,
         );
       }
 
       OursPrivacyLogger.log(
         token,
-        `OursPrivacy batch sent successfully, endpoint: ${endpoint}`
+        `OursPrivacy batch sent successfully, endpoint: ${endpoint}`,
       );
 
       return responseBody;
@@ -57,17 +57,20 @@ export const OursPrivacyNetwork = (() => {
       if (error.code === 400) {
         throw new OursPrivacyHttpError(
           `HTTP error! status: ${error.code}`,
-          error.code
+          error.code,
         );
       }
       OursPrivacyLogger.warn(
         token,
-        `API request to ${url} has failed with reason: ${error.message}`
+        `API request to ${url} has failed with reason: ${error.message}`,
       );
       const maxRetries = 5;
       const backoff = Math.min(2 ** retryCount * 2000, 60000);
       if (retryCount < maxRetries) {
-        OursPrivacyLogger.log(token, `Retrying in ${backoff / 1000} seconds...`);
+        OursPrivacyLogger.log(
+          token,
+          `Retrying in ${backoff / 1000} seconds...`,
+        );
         await new Promise((resolve) => setTimeout(resolve, backoff));
         return sendRequest({
           token,
@@ -81,7 +84,7 @@ export const OursPrivacyNetwork = (() => {
         OursPrivacyLogger.warn(token, `Max retries reached. Giving up.`);
         throw new OursPrivacyHttpError(
           `HTTP error! status: ${error.code}`,
-          error.code
+          error.code,
         );
       }
     }

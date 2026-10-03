@@ -1,6 +1,6 @@
-import { OursPrivacyType } from "oursprivacy-react-native/javascript/oursprivacy-constants";
+import { OursPrivacyType } from '@oursprivacy/react-native/javascript/oursprivacy-constants';
 
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-queue", () => ({
+jest.mock('@oursprivacy/react-native/javascript/oursprivacy-queue', () => ({
   OursPrivacyQueueManager: {
     initialize: jest.fn(),
     enqueue: jest.fn(),
@@ -10,21 +10,24 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-queue", () => ({
   },
 }));
 
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-persistent", () => ({
-  OursPrivacyPersistent: {
-    getInstance: jest.fn().mockReturnValue({
-      getOptedOut: jest.fn(),
-    }),
-  },
-}));
+jest.mock(
+  '@oursprivacy/react-native/javascript/oursprivacy-persistent',
+  () => ({
+    OursPrivacyPersistent: {
+      getInstance: jest.fn().mockReturnValue({
+        getOptedOut: jest.fn(),
+      }),
+    },
+  }),
+);
 
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-network", () => ({
+jest.mock('@oursprivacy/react-native/javascript/oursprivacy-network', () => ({
   OursPrivacyNetwork: {
     sendRequest: jest.fn(),
   },
 }));
 
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-config", () => ({
+jest.mock('@oursprivacy/react-native/javascript/oursprivacy-config', () => ({
   OursPrivacyConfig: {
     getInstance: jest.fn().mockReturnValue({
       getFlushInterval: jest.fn().mockReturnValue(1000),
@@ -35,7 +38,7 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-config", () => ({
   },
 }));
 
-jest.mock("oursprivacy-react-native/javascript/oursprivacy-logger", () => ({
+jest.mock('@oursprivacy/react-native/javascript/oursprivacy-logger', () => ({
   OursPrivacyLogger: {
     log: jest.fn(),
     error: jest.fn(),
@@ -44,24 +47,24 @@ jest.mock("oursprivacy-react-native/javascript/oursprivacy-logger", () => ({
 
 const {
   OursPrivacyCore,
-} = require("oursprivacy-react-native/javascript/oursprivacy-core");
+} = require('@oursprivacy/react-native/javascript/oursprivacy-core');
 
 const {
   OursPrivacyQueueManager,
-} = require("oursprivacy-react-native/javascript/oursprivacy-queue");
+} = require('@oursprivacy/react-native/javascript/oursprivacy-queue');
 
 const {
   OursPrivacyPersistent,
-} = require("oursprivacy-react-native/javascript/oursprivacy-persistent");
+} = require('@oursprivacy/react-native/javascript/oursprivacy-persistent');
 
 const {
   OursPrivacyNetwork,
-} = require("oursprivacy-react-native/javascript/oursprivacy-network");
+} = require('@oursprivacy/react-native/javascript/oursprivacy-network');
 
-describe("OursPrivacyQueueManager", () => {
-  const token = "test-token";
+describe('OursPrivacyQueueManager', () => {
+  const token = 'test-token';
   const type = OursPrivacyType.EVENTS;
-  const data = { event: "testEvent" };
+  const data = { event: 'testEvent' };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -71,41 +74,41 @@ describe("OursPrivacyQueueManager", () => {
     });
   });
 
-  it("initializes the OursPrivacy queue for events", async () => {
+  it('initializes the OursPrivacy queue for events', async () => {
     await OursPrivacyCore().initialize(token);
     expect(OursPrivacyQueueManager.initialize).toHaveBeenCalledWith(
       token,
-      expect.any(String)
+      expect.any(String),
     );
   });
 
-  it("adds data to the OursPrivacy queue if not opted out and data is valid", async () => {
+  it('adds data to the OursPrivacy queue if not opted out and data is valid', async () => {
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
     await OursPrivacyCore().addToOursPrivacyQueue(token, type, data);
     expect(OursPrivacyQueueManager.enqueue).toHaveBeenCalledWith(
       token,
       type,
-      expect.any(Object)
+      expect.any(Object),
     );
   });
 
-  it("do not add data to the OursPrivacy queue if opted out", async () => {
+  it('do not add data to the OursPrivacy queue if opted out', async () => {
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(true);
     await OursPrivacyCore().addToOursPrivacyQueue(token, type, data);
     expect(OursPrivacyQueueManager.enqueue).toHaveBeenCalledTimes(0);
   });
 
-  it("do not add data to the OursPrivacy queue if data is not valid", async () => {
+  it('do not add data to the OursPrivacy queue if data is not valid', async () => {
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
     // mock JSON.stringify to throw an error
-    jest.spyOn(JSON, "stringify").mockImplementationOnce(() => {
-      throw new Error("mock error");
+    jest.spyOn(JSON, 'stringify').mockImplementationOnce(() => {
+      throw new Error('mock error');
     });
     await OursPrivacyCore().addToOursPrivacyQueue(token, type, data);
     expect(OursPrivacyQueueManager.enqueue).toHaveBeenCalledTimes(0);
   });
 
-  it("flushes the queue", async () => {
+  it('flushes the queue', async () => {
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
     OursPrivacyQueueManager.getQueue.mockImplementation(() => {
       return [data];
@@ -114,7 +117,7 @@ describe("OursPrivacyQueueManager", () => {
     expect(OursPrivacyNetwork.sendRequest).toHaveBeenCalled();
   });
 
-  it("do not flush the queue if opted out", async () => {
+  it('do not flush the queue if opted out', async () => {
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(true);
     OursPrivacyQueueManager.getQueue.mockImplementation(() => {
       return [data];
@@ -123,7 +126,7 @@ describe("OursPrivacyQueueManager", () => {
     expect(OursPrivacyNetwork.sendRequest).toHaveBeenCalledTimes(0);
   });
 
-  it("not flushes the queue if there is no data", async () => {
+  it('not flushes the queue if there is no data', async () => {
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
     OursPrivacyQueueManager.getQueue.mockImplementation(() => {
       return [];
@@ -132,28 +135,32 @@ describe("OursPrivacyQueueManager", () => {
     expect(OursPrivacyNetwork.sendRequest).toHaveBeenCalledTimes(0);
   });
 
-  it("passes isManuallySetId from config to sendRequest", async () => {
-    const { OursPrivacyConfig } = require("oursprivacy-react-native/javascript/oursprivacy-config");
-    OursPrivacyConfig.getInstance().getIsManuallySetId.mockReturnValueOnce(true);
+  it('passes isManuallySetId from config to sendRequest', async () => {
+    const {
+      OursPrivacyConfig,
+    } = require('@oursprivacy/react-native/javascript/oursprivacy-config');
+    OursPrivacyConfig.getInstance().getIsManuallySetId.mockReturnValueOnce(
+      true,
+    );
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
     OursPrivacyQueueManager.getQueue.mockImplementation(() => [data]);
 
     await OursPrivacyCore().flush(token);
 
     expect(OursPrivacyNetwork.sendRequest).toHaveBeenCalledWith(
-      expect.objectContaining({ isManuallySetId: true })
+      expect.objectContaining({ isManuallySetId: true }),
     );
   });
 
-  it("enqueues event data without adding session metadata", async () => {
+  it('enqueues event data without adding session metadata', async () => {
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
     const eventData = {
-      event: "Purchase",
-      visitor_id: "uuid-123",
-      distinct_id: "per-event-uuid",
+      event: 'Purchase',
+      visitor_id: 'uuid-123',
+      distinct_id: 'per-event-uuid',
       eventProperties: { price: 99 },
       userProperties: null,
-      defaultProperties: { device_type: "mobile" },
+      defaultProperties: { device_type: 'mobile' },
     };
 
     await OursPrivacyCore().addToOursPrivacyQueue(token, type, eventData);
@@ -161,7 +168,7 @@ describe("OursPrivacyQueueManager", () => {
     expect(OursPrivacyQueueManager.enqueue).toHaveBeenCalledWith(
       token,
       type,
-      eventData
+      eventData,
     );
   });
 });
