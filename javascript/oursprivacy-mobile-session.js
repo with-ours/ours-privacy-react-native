@@ -427,10 +427,55 @@ export class MobileSession {
     });
   }
 
-  disableTracking() {
+  rotateSession() {
+    const atMs = this.wallNow();
+    const monotonicMs = this.monotonicNow();
+    return this._serialize(async () => {
+      await this._load();
+      const wasForegrounded = this.foregrounded;
+      const automaticEnabled = this.automaticEnabled;
+      const engagement = this._engagementFact(atMs, monotonicMs, 0);
+      if (engagement) this._recordFacts([engagement]);
+      this._discardSession(false);
+      if (wasForegrounded) {
+        this._startSession(atMs);
+        this.foregrounded = true;
+        this.automaticEnabled = automaticEnabled;
+        this.engagementMarkMs = monotonicMs;
+      }
+      await this._persist();
+      return engagement ? [engagement] : [];
+    });
+  }
+
+  announceRotatedSession() {
     return this._serialize(async () => {
       await this._load();
       if (
+        this.disabled ||
+        !this.foregrounded ||
+        !this.automaticEnabled ||
+        this.state.sessionStartSent
+      ) {
+        return [];
+      }
+      const fact = {
+        event: '$mobile_session_start',
+        defaultProperties: this._snapshot(this.state.startedAtMs),
+      };
+      this.state.sessionStartSent = true;
+      this._recordFacts([fact]);
+      await this._persist();
+      return [fact];
+    });
+  }
+
+  disableTracking(firstOpenAccepted = false) {
+    return this._serialize(async () => {
+      await this._load();
+      if (firstOpenAccepted) {
+        this.state.firstOpenSent = true;
+      } else if (
         this.state.pendingEvents.some(
           (record) =>
             record.fact.event === '$mobile_first_open' &&

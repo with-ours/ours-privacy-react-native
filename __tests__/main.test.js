@@ -15,6 +15,7 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-queue', () => ({
     initialize: jest.fn(),
     enqueue: jest.fn(),
     getQueue: jest.fn().mockReturnValue([]),
+    hasAcceptedFirstOpen: jest.fn().mockReturnValue(false),
     spliceQueue: jest.fn(),
     clearQueue: jest.fn().mockResolvedValue(undefined),
   },

@@ -46,6 +46,11 @@ const suspendPeriodicNetworkFlush = () => {
     .mockReturnValue(60 * 60 * 1000);
 };
 
+const persistedQueueItems = (value) => {
+  const parsed = JSON.parse(value);
+  return Array.isArray(parsed) ? parsed : parsed.items;
+};
+
 describe('OursPrivacy integration flows', () => {
   beforeEach(() => {
     jest.resetModules();
@@ -392,7 +397,7 @@ describe('OursPrivacy integration flows', () => {
       setItem: async (key, value) => {
         if (key.includes('_QUEUE') && failQueueWrite) {
           failQueueWrite = false;
-          failedId = JSON.parse(value)[0].distinct_id;
+          failedId = persistedQueueItems(value)[0].distinct_id;
           throw new Error('queue write failed');
         }
         values.set(key, value);
@@ -593,7 +598,7 @@ describe('OursPrivacy integration flows', () => {
       setItem: async (key, value) => {
         if (key.includes('_QUEUE') && failQueueWrite) {
           failQueueWrite = false;
-          const [attempted] = JSON.parse(value);
+          const [attempted] = persistedQueueItems(value);
           failedId = attempted.distinct_id;
           throw new Error('queue write failed');
         }
@@ -811,6 +816,196 @@ describe('OursPrivacy integration flows', () => {
     );
   });
 
+  it('keeps a sent first-open consumed across a failed marker write, crash, opt-out, and opt-in', async () => {
+    const values = new Map();
+    let failMarker = true;
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => {
+        if (
+          key.includes('_MOBILE_SESSION_V1') &&
+          JSON.parse(value).pendingEvents?.some(
+            (record) =>
+              record.fact.event === '$mobile_first_open' &&
+              record.queueAccepted === true,
+          ) &&
+          failMarker
+        ) {
+          failMarker = false;
+          throw new Error('marker write failed');
+        }
+        values.set(key, value);
+      },
+      removeItem: async (key) => values.delete(key),
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const token = 'crash-accepted-token';
+    const first = new OursPrivacy();
+    await expect(
+      first.init(token, { storage, trackAutomaticEvents: true }),
+    ).rejects.toThrow('marker write failed');
+    const firstOpen = OursPrivacyQueueManager.getQueue(
+      token,
+      OursPrivacyType.EVENTS,
+    )[0];
+    expect(firstOpen.event).toBe('$mobile_first_open');
+    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    await first.oursprivacyImpl.core.flush(token);
+    expect(
+      OursPrivacyQueueManager.getQueue(token, OursPrivacyType.EVENTS),
+    ).toEqual([]);
+
+    jest.resetModules();
+    const {
+      OursPrivacy: ReloadedOursPrivacy,
+    } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager: ReloadedQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const reloaded = new ReloadedOursPrivacy();
+    await reloaded.init(token, {
+      storage,
+      trackAutomaticEvents: true,
+      optOutTrackingByDefault: true,
+    });
+    await reloaded.optInTracking();
+    expect(
+      ReloadedQueueManager.getQueue(token, OursPrivacyType.EVENTS).filter(
+        (item) => item.event === '$mobile_first_open',
+      ),
+    ).toEqual([]);
+  });
+
+  it('restores first-open eligibility across a failed queue write, crash, opt-out, and opt-in', async () => {
+    const values = new Map();
+    let failedId;
+    let failQueue = true;
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => {
+        if (key.includes('_QUEUE') && failQueue) {
+          failQueue = false;
+          failedId = persistedQueueItems(value)[0].distinct_id;
+          throw new Error('queue write failed');
+        }
+        values.set(key, value);
+      },
+      removeItem: async (key) => values.delete(key),
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const token = 'crash-unaccepted-token';
+    const first = new OursPrivacy();
+    await expect(
+      first.init(token, { storage, trackAutomaticEvents: true }),
+    ).rejects.toThrow('queue write failed');
+
+    jest.resetModules();
+    const {
+      OursPrivacy: ReloadedOursPrivacy,
+    } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const reloaded = new ReloadedOursPrivacy();
+    await reloaded.init(token, {
+      storage,
+      trackAutomaticEvents: true,
+      optOutTrackingByDefault: true,
+    });
+    await reloaded.optInTracking();
+    const firstOpens = OursPrivacyQueueManager.getQueue(
+      token,
+      OursPrivacyType.EVENTS,
+    ).filter((item) => item.event === '$mobile_first_open');
+    expect(firstOpens).toHaveLength(1);
+    expect(firstOpens[0].distinct_id).not.toBe(failedId);
+  });
+
+  it.each(['setVisitorId', 'reset'])(
+    'counts time spent in slow session storage after %s rotation',
+    async (action) => {
+      const appState = installAppStateCapture();
+      suspendPeriodicNetworkFlush();
+      const values = new Map();
+      let holdNextSessionWrite = false;
+      let blocked = false;
+      let releaseWrite;
+      const held = new Promise((resolve) => {
+        releaseWrite = resolve;
+      });
+      const storage = {
+        getItem: async (key) => values.get(key) ?? null,
+        setItem: async (key, value) => {
+          if (key.includes('_MOBILE_SESSION_V1') && holdNextSessionWrite) {
+            holdNextSessionWrite = false;
+            blocked = true;
+            await held;
+          }
+          values.set(key, value);
+        },
+        removeItem: async (key) => values.delete(key),
+      };
+      const { OursPrivacy } = require('@oursprivacy/react-native');
+      const {
+        OursPrivacyQueueManager,
+      } = require('../javascript/oursprivacy-queue');
+      const {
+        OursPrivacyType,
+      } = require('../javascript/oursprivacy-constants');
+      const token = `slow-${action}-token`;
+      const op = new OursPrivacy();
+      await op.init(token, { storage, trackAutomaticEvents: true });
+      op.setFlushOnBackground(false);
+      holdNextSessionWrite = true;
+      const rotationAtMs = Date.now();
+      const rotation =
+        action === 'setVisitorId'
+          ? op.setVisitorId('new-visitor')
+          : op.oursprivacyImpl.reset(token);
+      await flushAsyncWork(100);
+      expect(blocked).toBe(true);
+      await jest.advanceTimersByTimeAsync(5_000);
+      releaseWrite();
+      await rotation;
+      await jest.advanceTimersByTimeAsync(5_000);
+      await appState.handler('background');
+
+      const queued = OursPrivacyQueueManager.getQueue(
+        token,
+        OursPrivacyType.EVENTS,
+      );
+      const starts = queued.filter(
+        (item) => item.event === '$mobile_session_start',
+      );
+      expect(starts).toHaveLength(2);
+      expect(
+        Date.parse(starts[1].defaultProperties.mobile_session_started_at),
+      ).toBe(rotationAtMs);
+      expect(Date.parse(starts[1].defaultProperties.mobile_occurred_at)).toBe(
+        rotationAtMs,
+      );
+      const rotatedSid = starts[1].defaultProperties.sid;
+      expect(
+        queued
+          .filter(
+            (item) =>
+              item.event === '$mobile_session_engagement' &&
+              item.defaultProperties.sid === rotatedSid,
+          )
+          .reduce(
+            (total, item) =>
+              total + item.eventProperties.engagement_duration_ms,
+            0,
+          ),
+      ).toBe(10_000);
+    },
+  );
+
   it('reports opt-out persistence failure and succeeds on retry across restart', async () => {
     const values = new Map();
     let failOptOut = true;
@@ -968,7 +1163,7 @@ describe('OursPrivacy integration flows', () => {
       setItem: async (key, value) => {
         if (
           key.includes('_QUEUE') &&
-          JSON.parse(value).some(
+          persistedQueueItems(value).some(
             (item) => item.event === '$mobile_first_open',
           ) &&
           failFirstOpen

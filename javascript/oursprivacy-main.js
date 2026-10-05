@@ -91,7 +91,12 @@ export default class OursPrivacyMain {
       await this._applyInitializationOptions(token, options);
 
       if (this.oursprivacyPersistent.getOptedOut(token)) {
-        await this._mobileSession.disableTracking();
+        await this._mobileSession.disableTracking(
+          OursPrivacyQueueManager.hasAcceptedFirstOpen(
+            token,
+            OursPrivacyType.EVENTS,
+          ),
+        );
         await OursPrivacyQueueManager.clearQueue(token, OursPrivacyType.EVENTS);
       } else {
         await this._enqueuePendingFacts(token);
@@ -289,10 +294,11 @@ export default class OursPrivacyMain {
         this._isMobilePlatform();
       this._stopCheckpoint();
       if (resumeForeground) {
-        await this._mobileSession.background();
+        await this._mobileSession.rotateSession();
         await this._enqueuePendingFacts(token);
+      } else {
+        await this._mobileSession.resetSession();
       }
-      await this._mobileSession.resetSession();
       await this.oursprivacyPersistent.reset(token);
       this.config.setIsManuallySetId(token, false);
       this._defaultEventProperties[token] = {};
@@ -300,7 +306,7 @@ export default class OursPrivacyMain {
       this._defaultUserConsentProperties[token] = {};
       this._attributionDefaultProperties[token] = {};
       if (resumeForeground) {
-        await this._mobileSession.foreground(this._trackAutomaticEvents, false);
+        await this._mobileSession.announceRotatedSession();
         await this._enqueuePendingFacts(token);
         this._startCheckpoint(token);
       }
@@ -462,7 +468,12 @@ export default class OursPrivacyMain {
     return this._serialize(async () => {
       await persistOptOut;
       this._stopCheckpoint();
-      await this._mobileSession.disableTracking();
+      await this._mobileSession.disableTracking(
+        OursPrivacyQueueManager.hasAcceptedFirstOpen(
+          token,
+          OursPrivacyType.EVENTS,
+        ),
+      );
       await OursPrivacyQueueManager.clearQueue(token, OursPrivacyType.EVENTS);
       OursPrivacyLogger.log(token, 'User has opted out of tracking');
       await this.oursprivacyPersistent.reset(token, {
@@ -538,17 +549,17 @@ export default class OursPrivacyMain {
     if (previous !== visitorId) {
       this._stopCheckpoint();
       if (resumeForeground) {
-        await this._mobileSession.background();
+        await this._mobileSession.rotateSession();
         await this._enqueuePendingFacts(token);
+      } else {
+        await this._mobileSession.resetSession();
       }
-      await this._mobileSession.resetSession();
     }
     this.config.setIsManuallySetId(token, true);
     this.oursprivacyPersistent.updateVisitorId(token, visitorId);
     await this.oursprivacyPersistent.persistVisitorId(token);
     if (resumeForeground) {
-      await this._enqueuePendingFacts(token);
-      await this._mobileSession.foreground(this._trackAutomaticEvents, false);
+      await this._mobileSession.announceRotatedSession();
       await this._enqueuePendingFacts(token);
       this._startCheckpoint(token);
     }

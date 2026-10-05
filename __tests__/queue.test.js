@@ -43,7 +43,7 @@ describe('OursPrivacyQueueManager', () => {
     expect(oursprivacyPersistent.saveQueue).toHaveBeenCalledWith(
       token,
       type,
-      expect.any(Array),
+      expect.objectContaining({ items: expect.any(Array) }),
     );
   });
 
