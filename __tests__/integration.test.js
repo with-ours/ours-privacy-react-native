@@ -11,6 +11,9 @@ const flushAsyncWork = async (turns = 5) => {
 const waitForFetchCalls = async (count, attempts = 20) => {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     if (fetchMock.mock.calls.length >= count) {
+      // Native Response bodies finish asynchronously. Let the response parsing
+      // and queue cleanup settle before the next phase resets the fetch mock.
+      await jest.advanceTimersByTimeAsync(0);
       return;
     }
     await flushAsyncWork(1);
