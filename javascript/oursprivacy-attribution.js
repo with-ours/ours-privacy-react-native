@@ -14,9 +14,9 @@
  * @see oursprivacy-schema.js (auto-generated, do not edit)
  */
 
-import {UTM_PARAMS, CLICK_IDS} from "./oursprivacy-schema";
+import { UTM_PARAMS, CLICK_IDS } from './oursprivacy-schema';
 
-const OURS_VISITOR_ID_PARAM = "ours_visitor_id";
+const OURS_VISITOR_ID_PARAM = 'ours_visitor_id';
 
 /**
  * Parse query parameters from a URL string.
@@ -24,31 +24,31 @@ const OURS_VISITOR_ID_PARAM = "ours_visitor_id";
  * which is polyfill-dependent and inconsistent across RN environments.
  */
 function parseQueryParams(url) {
-  if (!url || typeof url !== "string") {
+  if (!url || typeof url !== 'string') {
     return {};
   }
-  const queryStart = url.indexOf("?");
+  const queryStart = url.indexOf('?');
   if (queryStart === -1) {
     return {};
   }
   const queryString = url.substring(queryStart + 1);
   // Strip any fragment
-  const fragmentStart = queryString.indexOf("#");
+  const fragmentStart = queryString.indexOf('#');
   const cleanQuery =
     fragmentStart === -1
       ? queryString
       : queryString.substring(0, fragmentStart);
 
   const params = {};
-  const pairs = cleanQuery.split("&");
+  const pairs = cleanQuery.split('&');
   for (let i = 0; i < pairs.length; i++) {
     const pair = pairs[i];
-    const eqIndex = pair.indexOf("=");
+    const eqIndex = pair.indexOf('=');
     if (eqIndex === -1) continue;
     const key = pair.substring(0, eqIndex);
     const value = pair.substring(eqIndex + 1);
     try {
-      params[key] = decodeURIComponent(value.replace(/\+/g, " "));
+      params[key] = decodeURIComponent(value.replace(/\+/g, ' '));
     } catch (_) {
       params[key] = value;
     }
@@ -65,7 +65,7 @@ function extractParams(queryParams, keys) {
   let found = false;
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
-    if (queryParams[key] !== undefined && queryParams[key] !== "") {
+    if (queryParams[key] !== undefined && queryParams[key] !== '') {
       result[key] = queryParams[key];
       found = true;
     }
@@ -91,8 +91,8 @@ export function parseAttributionFromURL(url) {
     utmParams: extractParams(queryParams, UTM_PARAMS),
     clickIds: extractParams(queryParams, CLICK_IDS),
     oursVisitorId: queryParams[OURS_VISITOR_ID_PARAM] || null,
-    rawURL: url || "",
+    rawURL: url || '',
   };
 }
 
-export {UTM_PARAMS, CLICK_IDS, OURS_VISITOR_ID_PARAM};
+export { UTM_PARAMS, CLICK_IDS, OURS_VISITOR_ID_PARAM };

@@ -1,5 +1,23 @@
-type OursPrivacyType = any;
-type OursPrivacyProperties = {[key: string]: OursPrivacyType};
+export type OursPrivacyPropertyValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | OursPrivacyPropertyValue[]
+  | { [key: string]: OursPrivacyPropertyValue };
+export type OursPrivacyProperties = Record<string, OursPrivacyPropertyValue>;
+
+type SerializableProperty<T> = T extends
+  string | number | boolean | null | undefined
+  ? T
+  : T extends (...args: never[]) => unknown
+    ? never
+    : T extends readonly (infer Item)[]
+      ? SerializableProperty<Item>[]
+      : T extends object
+        ? { [K in keyof T]: SerializableProperty<T[K]> }
+        : never;
 
 export type OursPrivacyAsyncStorage = {
   getItem(key: string): Promise<string | null>;
@@ -13,9 +31,9 @@ export type OursPrivacyInitOptions = {
   serverURL?: string;
   visitorId?: string;
   initialURL?: string;
-  defaultEventProperties?: Record<string, any>;
-  defaultUserCustomProperties?: Record<string, any>;
-  defaultUserConsentProperties?: Record<string, any>;
+  defaultEventProperties?: OursPrivacyProperties;
+  defaultUserCustomProperties?: OursPrivacyProperties;
+  defaultUserConsentProperties?: OursPrivacyProperties;
   storage?: OursPrivacyAsyncStorage;
 };
 
@@ -34,8 +52,8 @@ export type OursPrivacyUserProperties = {
   companyName?: string;
   jobTitle?: string;
   ip?: string;
-  customProperties?: Record<string, any>;
-  consent?: Record<string, any>;
+  customProperties?: OursPrivacyProperties;
+  consent?: OursPrivacyProperties;
 };
 
 export class OursPrivacy {
@@ -49,16 +67,18 @@ export class OursPrivacy {
   optInTracking(): void;
   optOutTracking(): void;
   identify(userProperties?: OursPrivacyUserProperties): Promise<void>;
-  track(
+  track<T extends object>(
     eventName: string,
-    eventProperties?: OursPrivacyProperties,
-    userProperties?: OursPrivacyUserProperties
+    eventProperties?: T & SerializableProperty<T>,
+    userProperties?: OursPrivacyUserProperties,
   ): void;
   reset(): void;
   getVisitorId(): string | null;
-  updateDefaultEventProperties(properties: Record<string, any>): void;
-  updateDefaultUserCustomProperties(properties: Record<string, any>): void;
-  updateDefaultUserConsentProperties(properties: Record<string, any>): void;
+  updateDefaultEventProperties<T extends object>(
+    properties: T & SerializableProperty<T>,
+  ): void;
+  updateDefaultUserCustomProperties(properties: OursPrivacyProperties): void;
+  updateDefaultUserConsentProperties(properties: OursPrivacyProperties): void;
   trackDeepLink(url: string): Promise<void>;
   setVisitorId(visitorId: string): Promise<void>;
   flush(): void;

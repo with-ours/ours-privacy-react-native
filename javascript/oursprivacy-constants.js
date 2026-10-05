@@ -1,8 +1,9 @@
 export const OursPrivacyType = {
-  EVENTS: "/ingest",
+  EVENTS: '/ingest',
 };
 
-export const getQueueKey = (token, type) => `OURSPRIVACY_${token}_${type}_QUEUE`;
+export const getQueueKey = (token, type) =>
+  `OURSPRIVACY_${token}_${type}_QUEUE`;
 
 // Storage key string kept as-is for backwards compatibility with existing installs.
 export const getVisitorIdKey = (token) => `OURSPRIVACY_${token}_DEVICE_ID`;

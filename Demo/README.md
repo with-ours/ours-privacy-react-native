@@ -1,126 +1,46 @@
 # Demo App
 
-This is the local React Native integration app used to test the packaged SDK on iOS and Android.
+This bare React Native app exercises the packaged Ours Privacy SDK on Android and iOS. It installs the SDK from the repository through `file:..`, so a clean checkout needs no prebuilt tarball.
 
-## What It Covers
+## Install
 
-The Demo exercises the main SDK flows exposed in `App.tsx`:
-
-- `track()`
-- `identify()`
-- `updateDefaultEventProperties()`
-- `updateDefaultUserConsentProperties()`
-- `optOutTracking()`
-- `optInTracking()`
-- `reset()`
-
-The `ios/` and `android/` folders are required. This Demo is a bare React Native app, so those native project shells are how `run-ios` and `run-android` work.
-
-## Pick an SDK Source
-
-The Demo can resolve `@oursprivacy/react-native` two ways. Set `OURSPRIVACY_SDK_SOURCE` in `Demo/.env`:
-
-| Value | Resolves to | When to use |
-|-------|-------------|-------------|
-| `npm` (default) | Whatever is installed in `Demo/node_modules/@oursprivacy/react-native` (e.g. a packed tgz or a published version) | Verifying the published artifact |
-| `local` | The repo root — Metro aliases the package and watches the SDK source | Iterating on SDK changes; edits to `index.js`, `javascript/*` reload immediately |
-
-No `package.json` edit is needed to switch — Metro reads the env var on startup. Restart Metro after toggling.
-
-### When using `local`
+Use Node 22 or 24. From the repository root:
 
 ```sh
-# From Demo/
-echo "OURSPRIVACY_SDK_SOURCE=local" >> .env
-npm install   # still needed once for react-native / async-storage
+npm ci
+cd Demo && npm ci
 ```
 
-### When using `npm` with a freshly packed tgz
+The native shells follow React Native 0.87.1. Android builds need JDK 17, Android SDK Platform 37, Build Tools 37, and Android Studio with an API 35 emulator image. iOS builds need Xcode and CocoaPods.
 
-From the repo root:
+## Static checks
+
+From `Demo/`:
 
 ```sh
-npm pack
+npm run lint
+npm run typecheck
+npm test -- --runInBand
 ```
 
-Then from `Demo/`:
+## One-command payload E2E
+
+From the repository root, after installing the Android tooling and creating at least one Android Virtual Device:
 
 ```sh
-npm install ../oursprivacy-react-native-*.tgz
-npm install
+npm run e2e:android
 ```
 
-## Configure Environment
+The command starts the first installed emulator if none is running, configures the demo with a temporary local token and capture URL, starts the local capture server and Metro, builds and launches the app, and validates the captured event payloads. It restores the previous `Demo/.env` when it exits. No Ours account or external ingest service is needed. CI runs this same command inside an Android emulator.
 
-Set values in `Demo/.env`:
+An optional iOS simulator run uses `npm run e2e:ios` from the root. Install the locked CocoaPods first with `cd Demo && bundle install && cd ios && bundle exec pod install --deployment`.
 
-```sh
-OURSPRIVACY_TOKEN=demo-token
-OURSPRIVACY_SERVER_URL=http://127.0.0.1:4010
-OURSPRIVACY_SDK_SOURCE=npm   # or `local`
-```
+## Manual demo
 
-Use these server URLs:
+Copy `.env.example` to `.env` and set `OURSPRIVACY_TOKEN` for a test source. The default SDK source is the local `file:..` installation in `Demo/node_modules`. Set `OURSPRIVACY_SDK_SOURCE=local` to have Metro watch edits to the repository's SDK JavaScript files without reinstalling. Restart Metro after changing the source mode.
 
-- iOS simulator: `http://127.0.0.1:4010`
-- Android emulator: `http://10.0.2.2:4010`
-- Physical Android device with `adb reverse`: `http://127.0.0.1:4010`
-- Physical iPhone on the same Wi-Fi: `http://<your-mac-lan-ip>:4010`
+For local payload capture, set `OURSPRIVACY_SERVER_URL` to `http://10.0.2.2:4010` for an Android emulator or `http://127.0.0.1:4010` for an iOS simulator, then run `npm run qa:capture` from the root. Android devices connected by USB can use `adb reverse tcp:4010 tcp:4010` and `http://127.0.0.1:4010`.
 
-## Local Payload Capture
+Run `npm run android` or `npm run ios` from `Demo/`. The app exposes buttons for tracking, identification, consent, deep links, opt-out, opt-in, and reset.
 
-From the repo root, start the local capture server:
-
-```sh
-npm run qa:capture
-```
-
-After using the Demo app, validate captured payloads:
-
-```sh
-npm run qa:check-captures -- --require-event button_pressed --require-event '$identify'
-```
-
-## Run the Demo
-
-Start Metro:
-
-```sh
-npm start
-```
-
-In a second terminal:
-
-### iOS
-
-```sh
-cd ios
-bundle install
-bundle exec pod install
-cd ..
-npm run ios
-```
-
-### Android
-
-```sh
-npm run android
-```
-
-## Manual QA Checklist
-
-Before merging SDK changes, verify:
-
-- app launches without redboxes
-- `Track Event` stores a captured `button_pressed` request
-- `Identify User` stores a captured `$identify` request
-- `Update Defaults + Track` changes the next payload
-- `Opt Out` suppresses new events
-- `Opt In` resumes tracking and sends `$opt_in`
-- `Reset` changes `visitor_id`
-- relaunch preserves `visitor_id` until `reset()`
-
-## Notes
-
-- The Demo installs `@react-native-async-storage/async-storage` directly so persistence works in bare React Native builds.
-- Metro reconnect noise and inspector port warnings are not SDK failures by themselves.
+To verify a published release, install its exact version in `Demo/`, run the manual flow against a test source, and check captured `defaultProperties.version` plus the event shape.

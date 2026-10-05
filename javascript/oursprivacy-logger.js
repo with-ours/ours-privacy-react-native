@@ -1,4 +1,4 @@
-import {OursPrivacyConfig} from "./oursprivacy-config";
+import { OursPrivacyConfig } from './oursprivacy-config';
 
 export class OursPrivacyLogger {
   static _shouldLog(token) {
@@ -6,7 +6,7 @@ export class OursPrivacyLogger {
   }
 
   static _prependPrefix(args) {
-    return ["[OursPrivacy]", ...args];
+    return ['[OursPrivacy]', ...args];
   }
 
   static log(token, ...args) {

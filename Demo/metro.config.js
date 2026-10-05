@@ -18,7 +18,9 @@ function readEnvFile(filePath) {
 
 const envFromFile = readEnvFile(path.resolve(__dirname, '.env'));
 const sdkSource =
-  process.env.OURSPRIVACY_SDK_SOURCE || envFromFile.OURSPRIVACY_SDK_SOURCE || 'npm';
+  process.env.OURSPRIVACY_SDK_SOURCE ||
+  envFromFile.OURSPRIVACY_SDK_SOURCE ||
+  'npm';
 const useLocalSdk = sdkSource === 'local';
 const sdkRoot = path.resolve(__dirname, '..');
 

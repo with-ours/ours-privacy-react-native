@@ -2,9 +2,9 @@ import {
   defaultBatchSize,
   defaultFlushInterval,
   defaultServerURL,
-} from "./oursprivacy-constants";
+} from './oursprivacy-constants';
 
-import {OursPrivacyLogger} from "./oursprivacy-logger";
+import { OursPrivacyLogger } from './oursprivacy-logger';
 
 export class OursPrivacyConfig {
   static instance;
@@ -83,10 +83,12 @@ export class OursPrivacyConfig {
   }
 
   setIsManuallySetId(token, isManuallySetId) {
-    this._config[token] = {...this._config[token], isManuallySetId};
+    this._config[token] = { ...this._config[token], isManuallySetId };
   }
 
   getIsManuallySetId(token) {
-    return (this._config[token] && this._config[token].isManuallySetId) || false;
+    return (
+      (this._config[token] && this._config[token].isManuallySetId) || false
+    );
   }
 }

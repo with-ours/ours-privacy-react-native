@@ -50,7 +50,6 @@ buck-out/
 
 # Demo Apps and Samples - exclude from npm package
 Demo/
-Samples/
 *Demo*
 *demo*
 /OursPrivacyDemo
@@ -78,3 +77,6 @@ tmp/
 # Misc
 babel.config.js
 .nvmrc
+.prettierrc.json
+eslint.config.mjs
+tsconfig.json

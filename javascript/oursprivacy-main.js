@@ -1,26 +1,26 @@
-import {Platform, Dimensions, AppState} from "react-native";
-import {OursPrivacyCore} from "./oursprivacy-core";
-import {OursPrivacyType} from "./oursprivacy-constants";
-import {OursPrivacyConfig} from "./oursprivacy-config";
-import {OursPrivacyPersistent} from "./oursprivacy-persistent";
-import {OursPrivacyQueueManager} from "./oursprivacy-queue";
-import {OursPrivacyLogger} from "./oursprivacy-logger";
-import packageJson from "../package.json";
-import {uuidv4} from "./oursprivacy-utils";
-import {parseAttributionFromURL} from "./oursprivacy-attribution";
+import { Platform, Dimensions, AppState } from 'react-native';
+import { OursPrivacyCore } from './oursprivacy-core';
+import { OursPrivacyType } from './oursprivacy-constants';
+import { OursPrivacyConfig } from './oursprivacy-config';
+import { OursPrivacyPersistent } from './oursprivacy-persistent';
+import { OursPrivacyQueueManager } from './oursprivacy-queue';
+import { OursPrivacyLogger } from './oursprivacy-logger';
+import packageJson from '../package.json';
+import { uuidv4 } from './oursprivacy-utils';
+import { parseAttributionFromURL } from './oursprivacy-attribution';
 
 // Caller-facing user-property field names are camelCase. The wire format
 // (and server schema in @ours/types) is snake_case. Translate at the wire
 // boundary here so the rest of the SDK and the queue payload stay snake_case.
 const USER_PROPS_WIRE_MAP = {
-  externalId: "external_id",
-  phoneNumber: "phone_number",
-  firstName: "first_name",
-  lastName: "last_name",
-  dateOfBirth: "date_of_birth",
-  companyName: "company_name",
-  jobTitle: "job_title",
-  customProperties: "custom_properties",
+  externalId: 'external_id',
+  phoneNumber: 'phone_number',
+  firstName: 'first_name',
+  lastName: 'last_name',
+  dateOfBirth: 'date_of_birth',
+  companyName: 'company_name',
+  jobTitle: 'job_title',
+  customProperties: 'custom_properties',
 };
 
 function toWireUserProperties(userProps) {
@@ -59,12 +59,15 @@ export default class OursPrivacyMain {
     await this.oursprivacyPersistent.initializationCompletePromise(token);
 
     const serverURL =
-      (options && options.serverURL) || "https://cdn.oursprivacy.com";
+      (options && options.serverURL) || 'https://cdn.oursprivacy.com';
     this.setServerURL(token, serverURL);
 
     // Set opt-out flag BEFORE applying options so that initialURL processing
     // (which may fire $deep_link_opened) respects the opted-out state.
-    await this._setOptedOutTrackingFlag(token, !!options.optOutTrackingByDefault);
+    await this._setOptedOutTrackingFlag(
+      token,
+      !!options.optOutTrackingByDefault,
+    );
 
     await this._applyInitializationOptions(token, options);
 
@@ -72,15 +75,22 @@ export default class OursPrivacyMain {
   }
 
   _subscribeToAppState(token) {
-    if (this._appStateSubscription || !AppState || typeof AppState.addEventListener !== "function") {
+    if (
+      this._appStateSubscription ||
+      !AppState ||
+      typeof AppState.addEventListener !== 'function'
+    ) {
       return;
     }
-    this._appStateSubscription = AppState.addEventListener("change", (nextState) => {
-      if (!this._flushOnBackgroundEnabled) return;
-      if (nextState === "background") {
-        this.flush(token);
-      }
-    });
+    this._appStateSubscription = AppState.addEventListener(
+      'change',
+      (nextState) => {
+        if (!this._flushOnBackgroundEnabled) return;
+        if (nextState === 'background') {
+          this.flush(token);
+        }
+      },
+    );
   }
 
   /**
@@ -91,22 +101,22 @@ export default class OursPrivacyMain {
    * Zod schema — unknown keys are silently stripped server-side.
    */
   getDefaultProperties(token) {
-    const {OS, Version, constants} = Platform;
-    const {Model, Manufacturer, Brand} = constants || {};
-    const {width, height} = Dimensions.get("screen");
+    const { OS, Version, constants } = Platform;
+    const { Model, Manufacturer, Brand } = constants || {};
+    const { width, height } = Dimensions.get('screen');
 
     const props = {
-      device_type: "mobile",
-      os_name: OS === "ios" ? "iOS" : OS === "android" ? "Android" : OS,
+      device_type: 'mobile',
+      os_name: OS === 'ios' ? 'iOS' : OS === 'android' ? 'Android' : OS,
       os_version: String(Version),
       version: `react-native@${packageJson.version}`,
       screen_width: width,
       screen_height: height,
     };
-    if (OS === "ios") {
-      props.device_vendor = "Apple";
+    if (OS === 'ios') {
+      props.device_vendor = 'Apple';
       if (Model) props.device_model = Model;
-    } else if (OS === "android") {
+    } else if (OS === 'android') {
       props.device_vendor = Manufacturer || Brand || undefined;
       if (Model) props.device_model = Model;
     }
@@ -132,7 +142,7 @@ export default class OursPrivacyMain {
     if (this.oursprivacyPersistent.getOptedOut(token)) {
       OursPrivacyLogger.log(
         token,
-        `User has opted out of tracking, skipping tracking.`
+        `User has opted out of tracking, skipping tracking.`,
       );
       return;
     }
@@ -140,7 +150,7 @@ export default class OursPrivacyMain {
     OursPrivacyLogger.log(
       token,
       `Track '${eventName}' with properties`,
-      properties
+      properties,
     );
 
     const visitorId = this.oursprivacyPersistent.getVisitorId(token);
@@ -157,12 +167,17 @@ export default class OursPrivacyMain {
       event: eventName,
       visitor_id: visitorId,
       distinct_id: distinctId,
-      eventProperties: Object.keys(rawEventProps).length > 0 ? rawEventProps : null,
+      eventProperties:
+        Object.keys(rawEventProps).length > 0 ? rawEventProps : null,
       userProperties: mergedUserProps,
       defaultProperties: this.getDefaultProperties(token),
     };
 
-    await this.core.addToOursPrivacyQueue(token, OursPrivacyType.EVENTS, eventData);
+    await this.core.addToOursPrivacyQueue(
+      token,
+      OursPrivacyType.EVENTS,
+      eventData,
+    );
   }
 
   // Accepts camelCase userProperties at the caller surface and produces wire-format
@@ -184,7 +199,7 @@ export default class OursPrivacyMain {
       return null;
     }
 
-    const merged = {...(wirePerCall || {})};
+    const merged = { ...(wirePerCall || {}) };
 
     if (hasDefaultCustom || wirePerCall?.custom_properties) {
       merged.custom_properties = {
@@ -219,7 +234,7 @@ export default class OursPrivacyMain {
     this._flushOnBackgroundEnabled = !!flushOnBackground;
     OursPrivacyLogger.log(
       token,
-      `Set flushOnBackground: ${this._flushOnBackgroundEnabled}`
+      `Set flushOnBackground: ${this._flushOnBackgroundEnabled}`,
     );
   }
 
@@ -230,8 +245,8 @@ export default class OursPrivacyMain {
   async optOutTracking(token) {
     await this._setOptedOutTrackingFlag(token, true);
     await OursPrivacyQueueManager.clearQueue(token, OursPrivacyType.EVENTS);
-    OursPrivacyLogger.log(token, "User has opted out of tracking");
-    await this.oursprivacyPersistent.reset(token, {preserveVisitorId: true});
+    OursPrivacyLogger.log(token, 'User has opted out of tracking');
+    await this.oursprivacyPersistent.reset(token, { preserveVisitorId: true });
     this._defaultEventProperties[token] = {};
     this._defaultUserCustomProperties[token] = {};
     this._defaultUserConsentProperties[token] = {};
@@ -240,8 +255,8 @@ export default class OursPrivacyMain {
 
   async optInTracking(token) {
     await this._setOptedOutTrackingFlag(token, false);
-    OursPrivacyLogger.log(token, "User has opted in to tracking");
-    await this.track(token, "$opt_in");
+    OursPrivacyLogger.log(token, 'User has opted in to tracking');
+    await this.track(token, '$opt_in');
   }
 
   async _setOptedOutTrackingFlag(token, optedOut) {
@@ -266,7 +281,7 @@ export default class OursPrivacyMain {
     const mergedUserProps = this._composeUserProperties(token, userProperties);
 
     const eventData = {
-      event: "$identify",
+      event: '$identify',
       visitor_id: visitorId,
       distinct_id: distinctId,
       eventProperties: null,
@@ -274,7 +289,11 @@ export default class OursPrivacyMain {
       defaultProperties: this.getDefaultProperties(token),
     };
 
-    await this.core.addToOursPrivacyQueue(token, OursPrivacyType.EVENTS, eventData);
+    await this.core.addToOursPrivacyQueue(
+      token,
+      OursPrivacyType.EVENTS,
+      eventData,
+    );
   }
 
   getVisitorId(token) {
@@ -288,13 +307,16 @@ export default class OursPrivacyMain {
   }
 
   async trackDeepLink(token, url) {
-    if (!url || typeof url !== "string") {
-      OursPrivacyLogger.log(token, "trackDeepLink called with invalid URL, skipping.");
+    if (!url || typeof url !== 'string') {
+      OursPrivacyLogger.log(
+        token,
+        'trackDeepLink called with invalid URL, skipping.',
+      );
       return;
     }
 
     if (this.oursprivacyPersistent.getOptedOut(token)) {
-      OursPrivacyLogger.log(token, "trackDeepLink skipped: user is opted out.");
+      OursPrivacyLogger.log(token, 'trackDeepLink skipped: user is opted out.');
       return;
     }
 
@@ -311,7 +333,7 @@ export default class OursPrivacyMain {
       ...(attribution.clickIds || {}),
     };
 
-    await this.track(token, "$deep_link_opened", {
+    await this.track(token, '$deep_link_opened', {
       url: attribution.rawURL,
     });
   }
@@ -338,7 +360,7 @@ export default class OursPrivacyMain {
   }
 
   async _applyInitializationOptions(token, options) {
-    if (!options || typeof options !== "object") {
+    if (!options || typeof options !== 'object') {
       return;
     }
 
@@ -346,10 +368,16 @@ export default class OursPrivacyMain {
       this.updateDefaultEventProperties(token, options.defaultEventProperties);
     }
     if (options.defaultUserCustomProperties) {
-      this.updateDefaultUserCustomProperties(token, options.defaultUserCustomProperties);
+      this.updateDefaultUserCustomProperties(
+        token,
+        options.defaultUserCustomProperties,
+      );
     }
     if (options.defaultUserConsentProperties) {
-      this.updateDefaultUserConsentProperties(token, options.defaultUserConsentProperties);
+      this.updateDefaultUserConsentProperties(
+        token,
+        options.defaultUserConsentProperties,
+      );
     }
     if (options.visitorId) {
       await this.setVisitorId(token, options.visitorId);
