@@ -27,6 +27,8 @@ export type OursPrivacyAsyncStorage = {
 
 export type OursPrivacyInitOptions = {
   trackAutomaticEvents?: boolean;
+  appVersion?: string;
+  appBuild?: string;
   optOutTrackingByDefault?: boolean;
   serverURL?: string;
   visitorId?: string;
@@ -72,6 +74,7 @@ export class OursPrivacy {
     eventProperties?: T & SerializableProperty<T>,
     userProperties?: OursPrivacyUserProperties,
   ): void;
+  trackScreen(screenName: string): void;
   reset(): void;
   getVisitorId(): string | null;
   updateDefaultEventProperties<T extends object>(

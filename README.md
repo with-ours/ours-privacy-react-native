@@ -17,10 +17,12 @@ This SDK is pure JavaScript. It does not ship native iOS or Android modules. It 
 
 - [Quick Start](#quick-start)
 - [Upgrading to 4.0](#upgrading-to-40)
+- [Mobile Instrumentation](#mobile-instrumentation)
 - [Complete Example](#complete-example)
 - [API Reference](#api-reference)
   - [Initialization](#initialization)
   - [Core Tracking](#core-tracking)
+  - [Screen Tracking](#screen-tracking)
   - [Default Properties](#default-properties)
   - [Configuration](#configuration)
   - [Identity](#identity)
@@ -39,6 +41,8 @@ Version 4.0 requires Node 22+, React 18+, and React Native 0.76+. Upgrade the ap
 `@react-native-async-storage/async-storage` is now an optional peer. Install it directly in your app to keep visitor identity and queued events across restarts. Use Async Storage 2.2 with React Native 0.76 or Async Storage 3.1 with the React Native 0.87 demo. Without it, the SDK falls back to in-memory storage.
 
 TypeScript event, custom, and consent property values must be JSON-compatible. Replace functions, class instances, and other unserializable values before calling `track()` or setting default properties. Optional `undefined` values remain valid and are omitted during JSON serialization. Consent can include boolean flags or string values.
+
+Earlier React Native SDK versions emitted no lifecycle or screen events through `trackAutomaticEvents`. To adopt the `$mobile_*` contract, opt in with `trackAutomaticEvents: true` for lifecycle events and call `trackScreen()` from your navigator for screen views. Existing custom `track()` calls continue to work with automatic tracking off. The canonical `$mobile_*` events are the inputs specified for the planned Mobile Analytics reporting slice; legacy event names are not interchangeable with them.
 
 ---
 
@@ -94,6 +98,28 @@ op.flush();
 
 ---
 
+## Mobile Instrumentation
+
+On iOS and Android, every tracked event carries the SDK-owned `defaultProperties` `sid`, `mobile_session_started_at`, `mobile_occurred_at`, `mobile_platform`, and `mobile_contract_version: 1`. The host may supply `appVersion` and `appBuild` at initialization; these appear as `app_version` and `app_build`. `version` continues to identify the React Native SDK (`react-native@<SDK version>`). The SDK does not infer the host app version or build from its own package. `mobile_occurred_at` is captured when the event is queued, as an ISO-8601 UTC timestamp with millisecond precision. The SDK does not set top-level `time`.
+
+`trackAutomaticEvents` defaults to `false`. Set it to `true` to emit the automatic lifecycle events below. Manual `track()` and `trackScreen()` work with it off and still carry session metadata. Full tracking opt-out suppresses both automatic and manual events and clears unsent queued events. An opted-out launch does not consume the first-open marker.
+
+| Canonical event              | Trigger                                                                              | Event properties                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| `$mobile_first_open`         | First eligible tracked foreground open for this installation and source token        | None                                                         |
+| `$mobile_app_open`           | Each tracked foreground entry, including cold start                                  | None                                                         |
+| `$mobile_session_start`      | First tracked foreground entry or the next entry after 30 minutes of inactivity      | None                                                         |
+| `$mobile_session_engagement` | Positive foreground-time delta at a checkpoint, tracked screen change, or background | `engagement_duration_ms` (integer); `screen_name` when known |
+| `$mobile_session_end`        | Best effort when an expired session is observed                                      | None                                                         |
+| `$mobile_app_update`         | First tracked open after a previously observed host version/build changes            | `previous_app_version`, `previous_app_build` when known      |
+| `$mobile_screen_view`        | An explicit `trackScreen()` call with a new active screen                            | `screen_name`                                                |
+
+`$mobile_screen_view` requires a route signal from your app; this JavaScript SDK does not observe React Navigation routes. Screen engagement belongs to the previously active screen when a new screen is tracked. Engagement duration is measured in integer milliseconds; a session becomes engaged after 10 accumulated foreground seconds. A session keeps its `sid` on a foreground return before 30 minutes of inactivity and rotates at 30 minutes. A visitor ID change, reset, or full opt-out discards the current session. The first tracked open remains first-open eligible until an eligible event is queued.
+
+Canonical SDK telemetry contains lifecycle state, device/SDK metadata, and developer-supplied stable screen labels. It does not inspect screen content or collect advertising device IDs, patient fields, crash details, or network payloads automatically. Do not put PHI in screen labels, custom event names, or manually supplied attribution values. Deep-link URLs supplied to `trackDeepLink()` or `initialURL` currently appear in the `$deep_link_opened` event; keep sensitive values out of those URLs.
+
+---
+
 ## Complete Example
 
 ```js
@@ -107,7 +133,8 @@ async function getClient() {
   if (!op) {
     op = new OursPrivacy();
     await op.init('YOUR_API_TOKEN', {
-      defaultEventProperties: { app_version: '2.0.0' },
+      appVersion: '2.0.0',
+      appBuild: '42',
     });
   }
   return op;
@@ -159,7 +186,9 @@ Initialize the SDK. Must be called before any tracking method.
 
 | Field                          | Type                      | Description                                                                                                                                  |
 | ------------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `trackAutomaticEvents`         | `boolean`                 | Reserved for future automatic event tracking                                                                                                 |
+| `trackAutomaticEvents`         | `boolean`                 | Emit canonical mobile lifecycle events when `true` (default: `false`)                                                                        |
+| `appVersion`                   | `string`                  | Host app version, sent as `defaultProperties.app_version`                                                                                    |
+| `appBuild`                     | `string`                  | Host app build, sent as `defaultProperties.app_build`                                                                                        |
 | `optOutTrackingByDefault`      | `boolean`                 | If `true`, tracking starts opted out (default: `false`)                                                                                      |
 | `visitorId`                    | `string`                  | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events                                                                        |
 | `defaultEventProperties`       | `object`                  | Properties merged into `eventProperties` on every `track()` call                                                                             |
@@ -178,7 +207,10 @@ await op.init('YOUR_API_TOKEN');
 // With options
 await op.init('YOUR_API_TOKEN', {
   visitorId: 'pre-known-id',
-  defaultEventProperties: { platform: 'mobile', app_version: '2.0.0' },
+  appVersion: '2.0.0',
+  appBuild: '42',
+  trackAutomaticEvents: true,
+  defaultEventProperties: { platform: 'mobile' },
   defaultUserCustomProperties: { tier: 'pro' },
   defaultUserConsentProperties: { marketing: true },
 });
@@ -202,6 +234,52 @@ Track an event with optional properties.
 ```js
 op.track('Page View', { page: '/home', referrer: 'google' });
 ```
+
+---
+
+### Screen Tracking
+
+#### `op.trackScreen(screenName)`
+
+Track a visible screen on iOS or Android. `screenName` must be a stable, developer-chosen label of 1–80 characters: start with an ASCII letter, then use only ASCII letters, numbers, spaces, underscores, or hyphens. Leading and trailing whitespace is rejected. Never pass a route path, URL, query string, route parameter, screen title containing patient data, or other dynamic identifier. A duplicate call for the current visible screen does not add another view. Call again when that screen is entered after a background/foreground transition.
+
+**Returns:** `void`
+
+```js
+op.trackScreen('Schedule');
+```
+
+For React Navigation, map fixed route names to approved labels. Initialize `op` before mounting the navigator. The `onReady` call captures the initial screen; `onStateChange` captures later transitions.
+
+```jsx
+import {
+  createNavigationContainerRef,
+  NavigationContainer,
+} from '@react-navigation/native';
+
+const navigationRef = createNavigationContainerRef();
+const screenLabels = new Map([
+  ['HomeRoute', 'Home'],
+  ['ScheduleRoute', 'Schedule'],
+  ['ConfirmationRoute', 'Confirmation'],
+]);
+
+function trackCurrentScreen() {
+  const routeName = navigationRef.getCurrentRoute()?.name;
+  const screenName = routeName && screenLabels.get(routeName);
+  if (screenName) op.trackScreen(screenName);
+}
+
+<NavigationContainer
+  ref={navigationRef}
+  onReady={trackCurrentScreen}
+  onStateChange={trackCurrentScreen}
+>
+  <RootNavigator />
+</NavigationContainer>;
+```
+
+Map route names only. Do not read `route.params` or derive labels from URLs. Automatic lifecycle tracking does not replace this explicit route integration, and `trackScreen()` remains available when `trackAutomaticEvents` is off.
 
 ---
 
@@ -597,7 +675,12 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
         "os_version": "17.0",
         "device_vendor": "Apple",
         "device_model": "iPhone 16 Pro",
-        "version": "react-native@4.0.0"
+        "version": "react-native@4.0.0",
+        "sid": "ccda1be4-cfc1-422e-bec7-9772c5c55ea9",
+        "mobile_session_started_at": "2026-10-05T12:00:00.000Z",
+        "mobile_occurred_at": "2026-10-05T12:00:02.000Z",
+        "mobile_platform": "ios",
+        "mobile_contract_version": 1
       }
     }
   ]
@@ -617,7 +700,7 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
 | `eventProperties`                  | Properties from `track()` merged with default event properties                                             |
 | `userProperties.custom_properties` | From `identify()` and `updateDefaultUserCustomProperties()`                                                |
 | `userProperties.consent`           | From `identify()` and `updateDefaultUserConsentProperties()`                                               |
-| `defaultProperties`                | Automatically collected device/SDK metadata                                                                |
+| `defaultProperties`                | Device/SDK metadata and SDK-owned mobile session fields on iOS and Android                                 |
 
 ---
 

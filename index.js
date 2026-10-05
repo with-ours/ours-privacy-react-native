@@ -10,6 +10,7 @@ const ERROR_MESSAGE = {
 const PARAMS = {
   TOKEN: 'token',
   EVENT_NAME: 'eventName',
+  SCREEN_NAME: 'screenName',
   PROPERTIES: 'properties',
   USER_PROPERTIES: 'userProperties',
   OPTIONS: 'options',
@@ -39,7 +40,8 @@ export class OursPrivacy {
    *
    * @param {string} token Your OursPrivacy project token.
    * @param {OursPrivacyInitOptions} [options] Optional configuration:
-   *   - trackAutomaticEvents: boolean — reserved for future automatic event tracking
+   *   - trackAutomaticEvents: boolean — enable mobile lifecycle events (default false)
+   *   - appVersion, appBuild: string — host app release metadata
    *   - optOutTrackingByDefault: boolean — start in an opted-out state (default false)
    *   - serverURL: string — override the ingest endpoint
    *   - visitorId: string — pre-set the visitor ID (sets is_manually_set_id: true)
@@ -162,6 +164,18 @@ export class OursPrivacy {
       eventProperties,
       userProperties,
     );
+  }
+
+  trackScreen(screenName) {
+    this._requireInit();
+    if (
+      typeof screenName !== 'string' ||
+      screenName.trim() !== screenName ||
+      !/^[A-Za-z][A-Za-z0-9 _-]{0,79}$/.test(screenName)
+    ) {
+      throw new Error(`${PARAMS.SCREEN_NAME} must be a stable screen label`);
+    }
+    this.oursprivacyImpl.trackScreen(this.token, screenName);
   }
 
   /**

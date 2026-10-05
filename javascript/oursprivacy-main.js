@@ -319,6 +319,19 @@ export default class OursPrivacyMain {
     );
   }
 
+  async trackScreen(token, screenName) {
+    return this._serialize(async () => {
+      if (
+        this.oursprivacyPersistent.getOptedOut(token) ||
+        !this._isMobilePlatform()
+      ) {
+        return;
+      }
+      await this._mobileSession.screen(screenName);
+      await this._enqueuePendingFacts(token);
+    });
+  }
+
   async _track(
     token,
     eventName,

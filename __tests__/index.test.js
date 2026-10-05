@@ -16,6 +16,7 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-main', () => ({
     optOutTracking: jest.fn(),
     identify: jest.fn().mockResolvedValue(undefined),
     track: jest.fn(),
+    trackScreen: jest.fn(),
     reset: jest.fn(),
     flush: jest.fn(),
     getVisitorId: jest.fn().mockReturnValue('mock-visitor-id'),
@@ -75,6 +76,7 @@ test(`init throws when token is missing or blank`, async () => {
 test(`methods throw if called before init()`, () => {
   const op = new OursPrivacy();
   expect(() => op.track('e')).toThrow(/init/);
+  expect(() => op.trackScreen('Schedule')).toThrow(/init/);
   expect(() => op.reset()).toThrow(/init/);
   expect(() => op.flush()).toThrow(/init/);
   expect(() => op.getVisitorId()).toThrow(/init/);
@@ -169,6 +171,39 @@ test(`track forwards camelCase userProperties`, async () => {
     { 'Cool Property': 'Property Value' },
     { email: 'user@example.com', customProperties: { plan: 'pro' } },
   );
+});
+
+test('trackScreen forwards a stable label', async () => {
+  const op = await newInitialized();
+  op.trackScreen('Schedule');
+  expect(op.oursprivacyImpl.trackScreen).toHaveBeenCalledWith(
+    'token',
+    'Schedule',
+  );
+});
+
+test.each([
+  '',
+  '   ',
+  ' Schedule',
+  'Schedule ',
+  'Patient/123',
+  'Patient?name=1',
+  '123',
+  'A'.repeat(81),
+  123,
+  null,
+])('trackScreen rejects an unstable label: %p', async (label) => {
+  const op = await newInitialized();
+  expect(() => op.trackScreen(label)).toThrow(/stable screen label/);
+  expect(op.oursprivacyImpl.trackScreen).not.toHaveBeenCalled();
+});
+
+test('trackScreen accepts a label of exactly 80 characters', async () => {
+  const op = await newInitialized();
+  const label = `A${'b'.repeat(79)}`;
+  op.trackScreen(label);
+  expect(op.oursprivacyImpl.trackScreen).toHaveBeenCalledWith('token', label);
 });
 
 test(`it calls reset`, async () => {
