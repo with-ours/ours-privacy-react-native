@@ -144,10 +144,8 @@ if (coldDeepLink) {
     `got: ${dp.aleid}`,
   );
   assert(
-    '$deep_link_opened has url in eventProperties',
-    coldDeepLink.eventProperties &&
-      typeof coldDeepLink.eventProperties.url === 'string',
-    `got: ${coldDeepLink.eventProperties?.url}`,
+    '$deep_link_opened has no URL event property',
+    coldDeepLink.eventProperties === null,
   );
 }
 
@@ -313,6 +311,10 @@ assert(
 );
 
 if (warmDeepLink) {
+  assert(
+    'Warm deep link has no URL event property',
+    warmDeepLink.eventProperties === null,
+  );
   const dp = warmDeepLink.defaultProperties || {};
   assert(
     'Warm deep link has new utm_source=applovin',

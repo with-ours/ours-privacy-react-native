@@ -596,7 +596,7 @@ export default class OursPrivacyMain {
       return;
     }
 
-    OursPrivacyLogger.log(token, `trackDeepLink: ${url}`);
+    OursPrivacyLogger.log(token, 'trackDeepLink processed');
 
     const attribution = parseAttributionFromURL(url);
 
@@ -609,9 +609,7 @@ export default class OursPrivacyMain {
       await this._setVisitorId(token, attribution.oursVisitorId);
     }
 
-    await this._track(token, '$deep_link_opened', {
-      url: attribution.rawURL,
-    });
+    await this._track(token, '$deep_link_opened', undefined, undefined, false);
   }
 
   updateDefaultEventProperties(token, properties) {

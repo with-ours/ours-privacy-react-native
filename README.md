@@ -42,7 +42,7 @@ Version 4.0 requires Node 22+, React 18+, and React Native 0.76+. Upgrade the ap
 
 TypeScript event, custom, and consent property values must be JSON-compatible. Replace functions, class instances, and other unserializable values before calling `track()` or setting default properties. Optional `undefined` values remain valid and are omitted during JSON serialization. Consent can include boolean flags or string values.
 
-Earlier React Native SDK versions emitted no lifecycle or screen events through `trackAutomaticEvents`. To adopt the `$mobile_*` contract, opt in with `trackAutomaticEvents: true` for lifecycle events and call `trackScreen()` from your navigator for screen views. Existing custom `track()` calls continue to work with automatic tracking off. The canonical `$mobile_*` events are the inputs specified for the planned Mobile Analytics reporting slice; legacy event names are not interchangeable with them.
+Earlier React Native SDK versions emitted no lifecycle or screen events through `trackAutomaticEvents`. To adopt the `$mobile_*` contract, opt in with `trackAutomaticEvents: true` for lifecycle events and call `trackScreen()` from your navigator for screen views. Existing custom `track()` calls continue to work with automatic tracking off. The canonical `$mobile_*` events are the inputs specified for the planned Mobile Analytics reporting slice; legacy event names are not interchangeable with them. `$deep_link_opened` keeps its name, but no longer includes `eventProperties.url`; remove any downstream mapping that expects that property and use the allowlisted attribution fields in `defaultProperties` instead.
 
 ---
 
@@ -116,7 +116,7 @@ On iOS and Android, every tracked event carries the SDK-owned `defaultProperties
 
 `$mobile_screen_view` requires a route signal from your app; this JavaScript SDK does not observe React Navigation routes. Screen engagement belongs to the previously active screen when a new screen is tracked. Engagement duration is measured in integer milliseconds; a session becomes engaged after 10 accumulated foreground seconds. A session keeps its `sid` on a foreground return before 30 minutes of inactivity and rotates at 30 minutes. A visitor ID change, reset, or full opt-out discards the current session. The first tracked open remains first-open eligible until an eligible event is queued.
 
-Canonical SDK telemetry contains lifecycle state, device/SDK metadata, and developer-supplied stable screen labels. It does not inspect screen content or collect advertising device IDs, patient fields, crash details, or network payloads automatically. Do not put PHI in screen labels, custom event names, or manually supplied attribution values. Deep-link URLs supplied to `trackDeepLink()` or `initialURL` currently appear in the `$deep_link_opened` event; keep sensitive values out of those URLs.
+Canonical SDK telemetry contains lifecycle state, device/SDK metadata, and developer-supplied stable screen labels. Canonical `$mobile_*` facts carry no user properties or deep-link attribution. The SDK does not inspect screen content or collect advertising device IDs, patient fields, crash details, or network payloads automatically. Deep-link parsing extracts only allowlisted UTM parameters, click IDs, and `ours_visitor_id`; it does not add the full URL to a queued event or diagnostic. Keep PHI out of URLs, UTM values, screen labels, custom event names, and other caller-supplied properties. Click IDs may appear on `$deep_link_opened` and later manual events, but not on canonical `$mobile_*` facts.
 
 ---
 
@@ -532,7 +532,7 @@ await op.setVisitorId('550e8400-e29b-41d4-a716-446655440000');
 
 Parse a deep link URL for marketing attribution data and fire a `$deep_link_opened` event. Extracts UTM parameters, ad network click IDs, and `ours_visitor_id` for cross-platform identity stitching.
 
-Parsed attribution params are merged into `defaultProperties`, so they appear on all subsequent `track()` calls. Calling `trackDeepLink` again **replaces** the prior attribution rather than merging, so stale UTM keys don't leak into events triggered by a later link.
+`$deep_link_opened` has no `eventProperties.url`; its `eventProperties` is `null`. The full URL is not included in SDK diagnostic logs. Parsed attribution params are merged into `defaultProperties`, so they appear on all subsequent `track()` calls. Calling `trackDeepLink` again **replaces** the prior attribution rather than merging, so stale UTM keys don't leak into events triggered by a later link. Keep PHI out of attribution values and use a stable, PHI-free label with `trackScreen()`.
 
 Await the returned promise before calling `track()` to ensure attribution and visitor identity are fully applied.
 

@@ -48,6 +48,15 @@ describe('parseAttributionFromURL', () => {
     expect(result.utmParams).toEqual({ utm_source: 'email' });
   });
 
+  it('keeps patient fields outside the attribution allowlist', () => {
+    const result = parseAttributionFromURL(
+      'https://example.test/open?ours_visitor_id=web-123&utm_source=campaign&gclid=click-123&patient_email=private%40example.test',
+    );
+    expect(result.oursVisitorId).toBe('web-123');
+    expect(result.utmParams).toEqual({ utm_source: 'campaign' });
+    expect(result.clickIds).toEqual({ gclid: 'click-123' });
+  });
+
   it('should return rawURL', () => {
     const url = 'myapp://open?utm_source=google';
     const result = parseAttributionFromURL(url);

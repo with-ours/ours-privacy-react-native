@@ -66,6 +66,7 @@ describe('OursPrivacy integration flows', () => {
   });
 
   it('stitches the initial link before queuing the first mobile open and a manual event', async () => {
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
     const { OursPrivacy } = require('@oursprivacy/react-native');
     const {
       OursPrivacyQueueManager,
@@ -74,7 +75,8 @@ describe('OursPrivacy integration flows', () => {
     const op = new OursPrivacy();
 
     await op.init('mobile-token', {
-      initialURL: 'myapp://open?ours_visitor_id=web-123&utm_source=email',
+      initialURL:
+        'myapp://open?ours_visitor_id=web-123&utm_source=email&gclid=click-123&patient_email=private%40example.test',
       trackAutomaticEvents: true,
       appVersion: '2.0.0',
       appBuild: '42',
@@ -95,10 +97,25 @@ describe('OursPrivacy integration flows', () => {
       'appointment_booked',
     ]);
     const first = queued[1];
+    const deepLink = queued[0];
     const booked = queued[4];
+    expect(deepLink.eventProperties).toBeNull();
+    expect(deepLink.visitor_id).toBe('web-123');
+    expect(deepLink.defaultProperties).toEqual(
+      expect.objectContaining({
+        utm_source: 'email',
+        gclid: 'click-123',
+      }),
+    );
+    expect(JSON.stringify(deepLink)).not.toContain('patient_email');
+    expect(JSON.stringify(deepLink)).not.toContain('myapp://open');
+    expect(JSON.stringify(log.mock.calls)).not.toContain('patient_email');
+    expect(JSON.stringify(log.mock.calls)).not.toContain('myapp://open');
     expect(first.visitor_id).toBe('web-123');
     expect(booked.defaultProperties).toEqual(
       expect.objectContaining({
+        utm_source: 'email',
+        gclid: 'click-123',
         sid: first.defaultProperties.sid,
         mobile_session_started_at: expect.any(String),
         mobile_occurred_at: expect.any(String),
@@ -174,6 +191,60 @@ describe('OursPrivacy integration flows', () => {
         }),
       );
       expect(fact).not.toHaveProperty('time');
+    }
+  });
+
+  it('keeps automatic canonical facts free of caller and attribution data', async () => {
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await op.init('privacy-token', {
+      trackAutomaticEvents: true,
+      initialURL:
+        'myapp://open?utm_source=campaign&gclid=click-123&patient_email=private%40example.test',
+      defaultEventProperties: {
+        patient_email: 'private@example.test',
+        idfa: 'ad-123',
+        gaid: 'ad-456',
+        idfv: 'device-123',
+        app_set_id: 'ad-789',
+      },
+      defaultUserCustomProperties: { patient_id: 'patient-123' },
+      defaultUserConsentProperties: { patient_email: 'private@example.test' },
+    });
+
+    const queued = OursPrivacyQueueManager.getQueue(
+      'privacy-token',
+      OursPrivacyType.EVENTS,
+    );
+    const facts = queued.filter((item) => item.event.startsWith('$mobile_'));
+    expect(facts.map((item) => item.event)).toEqual([
+      '$mobile_first_open',
+      '$mobile_app_open',
+      '$mobile_session_start',
+    ]);
+    for (const fact of facts) {
+      expect(fact.userProperties).toBeNull();
+      expect(fact.eventProperties).toBeNull();
+      for (const key of [
+        'patient_email',
+        'patient_id',
+        'idfa',
+        'gaid',
+        'idfv',
+        'app_set_id',
+        'gclid',
+        'utm_source',
+      ]) {
+        expect(fact.defaultProperties).not.toHaveProperty(key);
+      }
+      expect(JSON.stringify(fact)).not.toContain('private@example.test');
+      expect(JSON.stringify(fact)).not.toContain('ad-123');
+      expect(JSON.stringify(fact)).not.toContain('ad-456');
+      expect(JSON.stringify(fact)).not.toContain('ad-789');
     }
   });
 
@@ -1382,9 +1453,7 @@ describe('OursPrivacy integration flows', () => {
     expect(deepLinkEvent.defaultProperties.utm_source).toBe('google');
     expect(deepLinkEvent.defaultProperties.gclid).toBe('init_gclid');
     expect(deepLinkEvent.defaultProperties.aleid).toBe('init_aleid');
-    // Only URL in eventProperties
-    expect(deepLinkEvent.eventProperties.url).toContain('myapp://open');
-    expect(deepLinkEvent.eventProperties.utm_source).toBeUndefined();
+    expect(deepLinkEvent.eventProperties).toBeNull();
 
     // Step 2: Track after init — attribution should persist in defaultProperties
     fetchMock.resetMocks();
@@ -1418,9 +1487,13 @@ describe('OursPrivacy integration flows', () => {
     expect(deepLinkEvent.defaultProperties.utm_source).toBe('applovin');
     expect(deepLinkEvent.defaultProperties.aleid).toBe('warm_aleid');
     expect(deepLinkEvent.defaultProperties.gclid).toBeUndefined();
+    expect(deepLinkEvent.eventProperties).toBeNull();
     // Visitor ID stitched from ours_visitor_id
     expect(trackEvent.visitor_id).toBe('web-uuid-123');
     expect(trackEvent.visitor_id).not.toBe(visitorIdAfterInit);
+    expect(trackEvent.defaultProperties.utm_source).toBe('applovin');
+    expect(trackEvent.defaultProperties.aleid).toBe('warm_aleid');
+    expect(trackEvent.defaultProperties.gclid).toBeUndefined();
     // is_manually_set_id should be true
     expect(body.is_manually_set_id).toBe(true);
 
