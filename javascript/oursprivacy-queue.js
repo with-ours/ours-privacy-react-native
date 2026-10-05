@@ -3,6 +3,17 @@ import { OursPrivacyPersistent } from './oursprivacy-persistent';
 export const OursPrivacyQueueManager = (() => {
   let _queues = {};
   let oursprivacyPersistent;
+  const pending = new Map();
+
+  const serialize = (token, type, action) => {
+    const key = `${token}:${type}`;
+    const result = (pending.get(key) || Promise.resolve()).then(action);
+    pending.set(
+      key,
+      result.catch(() => {}),
+    );
+    return result;
+  };
 
   const getPersistent = () => {
     if (!oursprivacyPersistent) {
@@ -11,33 +22,33 @@ export const OursPrivacyQueueManager = (() => {
     return oursprivacyPersistent;
   };
 
-  const initialize = async (token, type) => {
-    if (!_queues[token] || !_queues[token][type]) {
-      const queue = await getPersistent().loadQueue(token, type);
-      _queues[token] = {
-        ..._queues[token],
-        [type]: queue,
-      };
-    }
+  const initialize = (token, type) =>
+    serialize(token, type, async () => {
+      if (!_queues[token] || !_queues[token][type]) {
+        const queue = await getPersistent().loadQueue(token, type);
+        _queues[token] = {
+          ..._queues[token],
+          [type]: queue,
+        };
+      }
+    });
+
+  const save = async (token, type, queue) => {
+    await getPersistent().saveQueue(token, type, queue);
+    _queues[token] = { ..._queues[token], [type]: queue };
   };
 
-  const updateQueueInStorage = async (token, type) => {
-    if (!_queues[token] || !_queues[token][type]) {
-      return;
-    }
-    await getPersistent().saveQueue(token, type, _queues[token][type]);
-  };
-
-  const enqueue = async (token, type, data) => {
-    if (!_queues[token] || !_queues[token][type]) {
-      _queues[token] = {
-        ..._queues[token],
-        [type]: [],
-      };
-    }
-    _queues[token][type].push(data);
-    await updateQueueInStorage(token, type);
-  };
+  const enqueue = (token, type, data) =>
+    serialize(token, type, async () => {
+      const queue = _queues[token]?.[type] || [];
+      if (
+        data.distinct_id &&
+        queue.some((item) => item.distinct_id === data.distinct_id)
+      ) {
+        return;
+      }
+      await save(token, type, [...queue, data]);
+    });
 
   const getQueue = (token, type) => {
     if (!_queues[token] || !_queues[token][type]) {
@@ -46,21 +57,17 @@ export const OursPrivacyQueueManager = (() => {
     return [..._queues[token][type]];
   };
 
-  const spliceQueue = async (token, type, start, deleteCount) => {
-    if (!_queues[token] || !_queues[token][type]) {
-      return;
-    }
-    _queues[token][type].splice(start, deleteCount);
-    await updateQueueInStorage(token, type);
-  };
+  const spliceQueue = (token, type, start, deleteCount) =>
+    serialize(token, type, async () => {
+      const queue = _queues[token]?.[type];
+      if (!queue) return;
+      const next = [...queue];
+      next.splice(start, deleteCount);
+      await save(token, type, next);
+    });
 
-  const clearQueue = async (token, type) => {
-    _queues[token] = {
-      ..._queues[token],
-      [type]: [],
-    };
-    await updateQueueInStorage(token, type);
-  };
+  const clearQueue = (token, type) =>
+    serialize(token, type, () => save(token, type, []));
 
   return {
     initialize,

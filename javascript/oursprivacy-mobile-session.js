@@ -1,3 +1,5 @@
+import { uuidv4 } from './oursprivacy-utils';
+
 const storageKey = (token) => `OURSPRIVACY_${token}_MOBILE_SESSION_V1`;
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const ENGAGED_MS = 10 * 1000;
@@ -11,6 +13,7 @@ export class MobileSession {
     uuid,
     appVersion,
     appBuild,
+    getVisitorId,
   }) {
     this.token = token;
     this.storage = storage;
@@ -19,6 +22,7 @@ export class MobileSession {
     this.uuid = uuid;
     this.appVersion = appVersion;
     this.appBuild = appBuild;
+    this.getVisitorId = getVisitorId;
     this.state = null;
     this.foregrounded = false;
     this.automaticEnabled = false;
@@ -32,7 +36,9 @@ export class MobileSession {
   _serialize(action) {
     const result = this.pending.then(async () => {
       const previous = {
-        state: this.state ? { ...this.state } : null,
+        state: this.state
+          ? { ...this.state, pendingEvents: [...this.state.pendingEvents] }
+          : null,
         foregrounded: this.foregrounded,
         automaticEnabled: this.automaticEnabled,
         engagementMarkMs: this.engagementMarkMs,
@@ -82,6 +88,9 @@ export class MobileSession {
         validSession && Number.isSafeInteger(record.foregroundDurationMs)
           ? Math.max(0, record.foregroundDurationMs)
           : 0,
+      pendingEvents: Array.isArray(record.pendingEvents)
+        ? record.pendingEvents
+        : [],
     };
   }
 
@@ -94,6 +103,48 @@ export class MobileSession {
       storageKey(this.token),
       JSON.stringify(this.state),
     );
+  }
+
+  _recordFacts(facts) {
+    if (facts.length === 0) return;
+    this.state.pendingEvents.push(
+      ...facts.map((fact) => ({
+        id: uuidv4(),
+        visitorId: this.getVisitorId?.() ?? null,
+        appVersion: this.appVersion,
+        appBuild: this.appBuild,
+        fact: {
+          ...fact,
+          eventProperties: fact.eventProperties
+            ? { ...fact.eventProperties }
+            : undefined,
+          defaultProperties: { ...fact.defaultProperties },
+        },
+      })),
+    );
+  }
+
+  pendingQueueFacts() {
+    return this._serialize(async () => {
+      await this._load();
+      return this.state.pendingEvents.map((record) => ({
+        ...record,
+        fact: {
+          ...record.fact,
+          defaultProperties: { ...record.fact.defaultProperties },
+        },
+      }));
+    });
+  }
+
+  acknowledgeFact(id) {
+    return this._serialize(async () => {
+      await this._load();
+      this.state.pendingEvents = this.state.pendingEvents.filter(
+        (record) => record.id !== id,
+      );
+      await this._persist();
+    });
   }
 
   _snapshot(atMs) {
@@ -144,7 +195,7 @@ export class MobileSession {
     );
   }
 
-  _discardSession() {
+  _discardSession(clearPending = true) {
     this.foregrounded = false;
     this.automaticEnabled = false;
     this.engagementMarkMs = null;
@@ -154,6 +205,7 @@ export class MobileSession {
     this.state.lastActiveAtMs = null;
     this.state.sessionStartSent = false;
     this.state.foregroundDurationMs = 0;
+    if (clearPending) this.state.pendingEvents = [];
     this.pendingFacts = [];
   }
 
@@ -241,6 +293,7 @@ export class MobileSession {
           this.state.observedAppBuild = this.appBuild;
         }
       }
+      this._recordFacts(facts);
       await this._persist();
       return facts;
     });
@@ -255,6 +308,7 @@ export class MobileSession {
       const engagement = this._engagementFact(atMs, monotonicMs, 0);
       this.foregrounded = false;
       this._touch(atMs);
+      if (engagement) this._recordFacts([engagement]);
       await this._persist();
       return engagement ? [engagement] : [];
     });
@@ -268,6 +322,7 @@ export class MobileSession {
       const engagement = this._engagementFact(atMs, monotonicMs, ENGAGED_MS);
       if (!engagement) return [];
       this._touch(atMs);
+      this._recordFacts([engagement]);
       await this._persist();
       return [engagement];
     });
@@ -303,9 +358,10 @@ export class MobileSession {
         eventProperties: { screen_name: screenName },
         defaultProperties: this._snapshot(atMs),
       };
-      await this._persist();
       if (engagement) facts.push(engagement);
       facts.push(view);
+      this._recordFacts(facts);
+      await this._persist();
       return facts;
     });
   }
@@ -317,10 +373,12 @@ export class MobileSession {
       if (this.disabled) return null;
       if (!this.foregrounded && this._sessionExpired(atMs)) {
         if (this.automaticEnabled && this.state.sessionStartSent) {
-          this.pendingFacts.push({
+          const end = {
             event: '$mobile_session_end',
             defaultProperties: this._snapshot(atMs),
-          });
+          };
+          this.pendingFacts.push(end);
+          this._recordFacts([end]);
         }
         this._startSession(atMs);
       }
@@ -343,7 +401,7 @@ export class MobileSession {
   resetSession() {
     return this._serialize(async () => {
       await this._load();
-      this._discardSession();
+      this._discardSession(false);
       await this._persist();
       return [];
     });
@@ -352,6 +410,13 @@ export class MobileSession {
   disableTracking() {
     return this._serialize(async () => {
       await this._load();
+      if (
+        this.state.pendingEvents.some(
+          (record) => record.fact.event === '$mobile_first_open',
+        )
+      ) {
+        this.state.firstOpenSent = false;
+      }
       this.disabled = true;
       this._discardSession();
       await this._persist();

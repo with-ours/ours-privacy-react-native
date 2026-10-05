@@ -581,6 +581,9 @@ describe('MobileSession', () => {
     const session = new MobileSession(clock.dependencies);
     await session.load();
     await session.foreground(true);
+    for (const record of await session.pendingQueueFacts()) {
+      await session.acknowledgeFact(record.id);
+    }
     expect(await session.disableTracking()).toEqual([]);
 
     const optedIn = new MobileSession(clock.dependencies);

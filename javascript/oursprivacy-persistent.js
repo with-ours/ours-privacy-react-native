@@ -177,14 +177,14 @@ export class OursPrivacyPersistent {
   }
 
   async loadQueue(token, type) {
-    const queueString = await this.storageAdapter.getItem(
+    const queueString = await this.storageAdapter.getItemStrict(
       getQueueKey(token, type),
     );
     return queueString ? JSON.parse(queueString) : [];
   }
 
   async saveQueue(token, type, queue) {
-    await this.storageAdapter.setItem(
+    await this.storageAdapter.setItemStrict(
       getQueueKey(token, type),
       JSON.stringify(queue),
     );

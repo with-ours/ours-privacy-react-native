@@ -233,7 +233,7 @@ describe('OursPrivacyMain', () => {
   });
 
   it('should trigger the flush on the flush call', async () => {
-    oursprivacyMain.flush(token);
+    await oursprivacyMain.flush(token);
     expect(oursprivacyMain.core.flush).toHaveBeenCalledWith(token);
   });
 
