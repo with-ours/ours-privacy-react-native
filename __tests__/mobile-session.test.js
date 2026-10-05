@@ -150,6 +150,61 @@ describe('MobileSession', () => {
     expect(await session.checkpoint()).toEqual([]);
   });
 
+  it('checkpoints at ten accumulated foreground seconds after a screen delta', async () => {
+    const clock = setup();
+    const session = new MobileSession(clock.dependencies);
+    await session.load();
+    await session.foreground(true);
+
+    clock.advance(9_000);
+    const screenFacts = await session.screen('Home');
+    expect(screenFacts[0].eventProperties).toEqual({
+      engagement_duration_ms: 9_000,
+    });
+
+    clock.advance(1_000);
+    const checkpointFacts = await session.checkpoint();
+    expect(checkpointFacts).toEqual([
+      {
+        event: '$mobile_session_engagement',
+        eventProperties: {
+          engagement_duration_ms: 1_000,
+          screen_name: 'Home',
+        },
+        defaultProperties: {
+          sid: 'sid-1',
+          mobile_session_started_at: '2026-10-05T12:00:00.000Z',
+          mobile_occurred_at: '2026-10-05T12:00:10.000Z',
+        },
+      },
+    ]);
+    expect(
+      screenFacts[0].eventProperties.engagement_duration_ms +
+        checkpointFacts[0].eventProperties.engagement_duration_ms,
+    ).toBe(10_000);
+    expect(await session.checkpoint()).toEqual([]);
+  });
+
+  it('carries emitted foreground duration across a process restart', async () => {
+    const clock = setup();
+    const first = new MobileSession(clock.dependencies);
+    await first.load();
+    await first.foreground(true);
+    clock.advance(9_000);
+    expect((await first.background())[0].eventProperties).toEqual({
+      engagement_duration_ms: 9_000,
+    });
+
+    const restarted = new MobileSession(clock.dependencies);
+    await restarted.load();
+    await restarted.foreground(true);
+    clock.advance(1_000);
+    expect((await restarted.checkpoint())[0].eventProperties).toEqual({
+      engagement_duration_ms: 1_000,
+    });
+    expect(await restarted.checkpoint()).toEqual([]);
+  });
+
   it('uses monotonic time when wall time changes during an active foreground', async () => {
     const clock = setup();
     const session = new MobileSession(clock.dependencies);
@@ -302,6 +357,51 @@ describe('MobileSession', () => {
     ).toBe('sid-2');
   });
 
+  it('hands off an announced session end when a manual snapshot observes timeout', async () => {
+    const clock = setup();
+    const session = new MobileSession(clock.dependencies);
+    await session.load();
+    await session.foreground(true);
+    await session.background();
+    clock.advance(30 * 60 * 1000);
+
+    const manualTrack = {
+      event: 'appointment_booked',
+      defaultProperties: await session.snapshot(),
+    };
+    expect(manualTrack.defaultProperties).toEqual({
+      sid: 'sid-2',
+      mobile_session_started_at: '2026-10-05T12:30:00.000Z',
+      mobile_occurred_at: '2026-10-05T12:30:00.000Z',
+    });
+    expect(await session.drainPendingFacts()).toEqual([
+      {
+        event: '$mobile_session_end',
+        defaultProperties: {
+          sid: 'sid-1',
+          mobile_session_started_at: '2026-10-05T12:00:00.000Z',
+          mobile_occurred_at: '2026-10-05T12:30:00.000Z',
+        },
+      },
+    ]);
+    expect(await session.drainPendingFacts()).toEqual([]);
+    expect((await session.snapshot()).sid).toBe('sid-2');
+  });
+
+  it('clears a pending automatic end on full tracking opt-out', async () => {
+    const clock = setup();
+    const session = new MobileSession(clock.dependencies);
+    await session.load();
+    await session.foreground(true);
+    await session.background();
+    clock.advance(30 * 60 * 1000);
+    await session.snapshot();
+
+    expect(await session.disableTracking()).toEqual([]);
+    expect(await session.drainPendingFacts()).toEqual([]);
+    expect(await session.snapshot()).toBeNull();
+  });
+
   it('does not rotate an active foreground after 30 minutes without a checkpoint', async () => {
     const clock = setup();
     const session = new MobileSession(clock.dependencies);
@@ -433,6 +533,27 @@ describe('MobileSession', () => {
     ]);
     expect(facts[0].defaultProperties.sid).toBe('sid-1');
     expect(facts[1].defaultProperties.sid).toBe('sid-2');
+  });
+
+  it('emits an explicit screen view again after a warm foreground entry', async () => {
+    const clock = setup();
+    const session = new MobileSession(clock.dependencies);
+    await session.load();
+    await session.foreground(true);
+    expect((await session.screen('Home')).map((fact) => fact.event)).toEqual([
+      '$mobile_screen_view',
+    ]);
+    expect(await session.screen('Home')).toEqual([]);
+
+    await session.background();
+    clock.advance(1_000);
+    await session.foreground(true);
+    const screenFacts = await session.screen('Home');
+    expect(screenFacts.map((fact) => fact.event)).toEqual([
+      '$mobile_screen_view',
+    ]);
+    expect(screenFacts[0].defaultProperties.sid).toBe('sid-1');
+    expect(await session.screen('Home')).toEqual([]);
   });
 
   it('defaults automatic lifecycle and engagement tracking off', async () => {

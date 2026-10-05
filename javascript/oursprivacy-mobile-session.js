@@ -25,6 +25,7 @@ export class MobileSession {
     this.engagementMarkMs = null;
     this.activeScreen = null;
     this.disabled = false;
+    this.pendingFacts = [];
     this.pending = Promise.resolve();
   }
 
@@ -37,6 +38,7 @@ export class MobileSession {
         engagementMarkMs: this.engagementMarkMs,
         activeScreen: this.activeScreen,
         disabled: this.disabled,
+        pendingFacts: [...this.pendingFacts],
       };
       try {
         return await action();
@@ -76,6 +78,10 @@ export class MobileSession {
       observedAppVersion: record.observedAppVersion ?? null,
       observedAppBuild: record.observedAppBuild ?? null,
       sessionStartSent: validSession && record.sessionStartSent === true,
+      foregroundDurationMs:
+        validSession && Number.isSafeInteger(record.foregroundDurationMs)
+          ? Math.max(0, record.foregroundDurationMs)
+          : 0,
     };
   }
 
@@ -103,8 +109,16 @@ export class MobileSession {
   _engagementFact(atMs, monotonicMs, minimumMs) {
     if (!this.foregrounded || !this.automaticEnabled) return null;
     const durationMs = Math.trunc(monotonicMs - this.engagementMarkMs);
-    if (durationMs <= 0 || durationMs < minimumMs) return null;
+    if (durationMs <= 0) return null;
+    if (
+      minimumMs > 0 &&
+      Math.floor((this.state.foregroundDurationMs + durationMs) / minimumMs) ===
+        Math.floor(this.state.foregroundDurationMs / minimumMs)
+    ) {
+      return null;
+    }
     this.engagementMarkMs = monotonicMs;
+    this.state.foregroundDurationMs += durationMs;
     const eventProperties = { engagement_duration_ms: durationMs };
     if (this.activeScreen) eventProperties.screen_name = this.activeScreen;
     return {
@@ -119,6 +133,7 @@ export class MobileSession {
     this.state.startedAtMs = atMs;
     this.state.lastActiveAtMs = atMs;
     this.state.sessionStartSent = false;
+    this.state.foregroundDurationMs = 0;
   }
 
   _touch(atMs) {
@@ -138,6 +153,8 @@ export class MobileSession {
     this.state.startedAtMs = null;
     this.state.lastActiveAtMs = null;
     this.state.sessionStartSent = false;
+    this.state.foregroundDurationMs = 0;
+    this.pendingFacts = [];
   }
 
   _sessionExpired(atMs) {
@@ -157,6 +174,7 @@ export class MobileSession {
       this.foregrounded = true;
       this.automaticEnabled = automaticEnabled;
       this.engagementMarkMs = monotonicMs;
+      this.activeScreen = null;
       const expired = this._sessionExpired(atMs);
       const facts = [];
       if (expired && automaticEnabled && this.state.sessionStartSent) {
@@ -298,6 +316,12 @@ export class MobileSession {
       await this._load();
       if (this.disabled) return null;
       if (!this.foregrounded && this._sessionExpired(atMs)) {
+        if (this.automaticEnabled && this.state.sessionStartSent) {
+          this.pendingFacts.push({
+            event: '$mobile_session_end',
+            defaultProperties: this._snapshot(atMs),
+          });
+        }
         this._startSession(atMs);
       }
       if (!this.state.sid) this._startSession(atMs);
@@ -305,6 +329,14 @@ export class MobileSession {
       const snapshot = this._snapshot(atMs);
       await this._persist();
       return snapshot;
+    });
+  }
+
+  drainPendingFacts() {
+    return this._serialize(() => {
+      const facts = this.pendingFacts;
+      this.pendingFacts = [];
+      return facts;
     });
   }
 
