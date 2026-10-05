@@ -66,6 +66,18 @@ export const OursPrivacyQueueManager = (() => {
       await save(token, type, next);
     });
 
+  const removeByIds = (token, type, ids) =>
+    serialize(token, type, async () => {
+      const queue = _queues[token]?.[type];
+      if (!queue) return;
+      const sentIds = new Set(ids);
+      await save(
+        token,
+        type,
+        queue.filter((item) => !sentIds.has(item.distinct_id)),
+      );
+    });
+
   const clearQueue = (token, type) =>
     serialize(token, type, () => save(token, type, []));
 
@@ -74,6 +86,7 @@ export const OursPrivacyQueueManager = (() => {
     enqueue,
     getQueue,
     spliceQueue,
+    removeByIds,
     clearQueue,
   };
 })();

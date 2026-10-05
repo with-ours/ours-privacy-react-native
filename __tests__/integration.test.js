@@ -141,6 +141,173 @@ describe('OursPrivacy integration flows', () => {
     expect(booked).not.toHaveProperty('time');
   });
 
+  it('adds Android metadata to automatic facts', async () => {
+    require('react-native').Platform.OS = 'android';
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await op.init('android-auto-token', { trackAutomaticEvents: true });
+
+    const facts = OursPrivacyQueueManager.getQueue(
+      'android-auto-token',
+      OursPrivacyType.EVENTS,
+    );
+    expect(facts.map((item) => item.event)).toEqual([
+      '$mobile_first_open',
+      '$mobile_app_open',
+      '$mobile_session_start',
+    ]);
+    for (const fact of facts) {
+      expect(fact.defaultProperties).toEqual(
+        expect.objectContaining({
+          sid: expect.any(String),
+          mobile_platform: 'android',
+          mobile_contract_version: 1,
+        }),
+      );
+      expect(fact).not.toHaveProperty('time');
+    }
+  });
+
+  it('keeps web events outside the mobile contract', async () => {
+    require('react-native').Platform.OS = 'web';
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await op.init('web-token', { trackAutomaticEvents: true });
+    await op.oursprivacyImpl.track('web-token', 'appointment_booked');
+
+    const queued = OursPrivacyQueueManager.getQueue(
+      'web-token',
+      OursPrivacyType.EVENTS,
+    );
+    expect(queued.map((item) => item.event)).toEqual(['appointment_booked']);
+    expect(queued[0].defaultProperties).not.toHaveProperty('sid');
+    expect(queued[0].defaultProperties).not.toHaveProperty(
+      'mobile_contract_version',
+    );
+    expect(queued[0].defaultProperties).not.toHaveProperty('mobile_platform');
+  });
+
+  it('serializes overlapping flushes and acknowledges only the sent IDs', async () => {
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await op.init('flush-token');
+    op.setFlushBatchSize(1);
+    await op.oursprivacyImpl.track('flush-token', 'first');
+    await op.oursprivacyImpl.track('flush-token', 'second');
+
+    let releaseFirst;
+    const firstGate = new Promise((resolve) => {
+      releaseFirst = resolve;
+    });
+    const sent = [];
+    fetchMock.mockImplementation(async (_url, options) => {
+      const body = JSON.parse(options.body);
+      sent.push(body.data[0].event);
+      if (body.data[0].event === 'first') await firstGate;
+      return { ok: true, json: async () => ({ success: true }) };
+    });
+
+    const firstFlush = op.oursprivacyImpl.core.flush('flush-token');
+    const secondFlush = op.oursprivacyImpl.core.flush('flush-token');
+    await flushAsyncWork(20);
+    const callsWhileFirstPending = fetchMock.mock.calls.length;
+    releaseFirst();
+    await Promise.all([firstFlush, secondFlush]);
+    await flushAsyncWork(100);
+
+    expect(callsWhileFirstPending).toBe(1);
+    expect(sent).toEqual(['first', 'second']);
+    expect(
+      OursPrivacyQueueManager.getQueue('flush-token', OursPrivacyType.EVENTS),
+    ).toEqual([]);
+  });
+
+  it('does not remove a replacement event when an earlier send is acknowledged', async () => {
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await op.init('replacement-token');
+    op.setFlushBatchSize(1);
+    await op.oursprivacyImpl.track('replacement-token', 'original');
+
+    let releaseOriginal;
+    const originalGate = new Promise((resolve) => {
+      releaseOriginal = resolve;
+    });
+    const sent = [];
+    fetchMock.mockImplementation(async (_url, options) => {
+      const event = JSON.parse(options.body).data[0].event;
+      sent.push(event);
+      if (event === 'original') await originalGate;
+      return { ok: true, json: async () => ({ success: true }) };
+    });
+    const flushing = op.oursprivacyImpl.core.flush('replacement-token');
+    await flushAsyncWork(20);
+    await OursPrivacyQueueManager.clearQueue(
+      'replacement-token',
+      OursPrivacyType.EVENTS,
+    );
+    await op.oursprivacyImpl.track('replacement-token', 'replacement');
+    releaseOriginal();
+    await flushing;
+
+    expect(sent).toEqual(['original', 'replacement']);
+    expect(
+      OursPrivacyQueueManager.getQueue(
+        'replacement-token',
+        OursPrivacyType.EVENTS,
+      ),
+    ).toEqual([]);
+  });
+
+  it('removes only the rejected event after HTTP 400 and sends the next event', async () => {
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await op.init('bad-batch-token');
+    op.setFlushBatchSize(1);
+    await op.oursprivacyImpl.track('bad-batch-token', 'invalid');
+    await op.oursprivacyImpl.track('bad-batch-token', 'valid');
+
+    const sent = [];
+    fetchMock.mockImplementation(async (_url, options) => {
+      const event = JSON.parse(options.body).data[0].event;
+      sent.push(event);
+      return {
+        ok: event !== 'invalid',
+        status: event === 'invalid' ? 400 : 200,
+        json: async () => ({ success: event !== 'invalid' }),
+      };
+    });
+    await op.oursprivacyImpl.core.flush('bad-batch-token');
+
+    expect(sent).toEqual(['invalid', 'valid']);
+    expect(
+      OursPrivacyQueueManager.getQueue(
+        'bad-batch-token',
+        OursPrivacyType.EVENTS,
+      ),
+    ).toEqual([]);
+  });
+
   it('handles AppState engagement and warm opens when background flushing is disabled', async () => {
     const appState = installAppStateCapture();
     suspendPeriodicNetworkFlush();
@@ -540,6 +707,310 @@ describe('OursPrivacy integration flows', () => {
       '$mobile_session_start',
     ]);
     expect(queued[0].distinct_id).toBe(firstAttempt[0].distinct_id);
+  });
+
+  it('does not repeat a sent first-open after its session acknowledgement fails and tracking is opted out', async () => {
+    const values = new Map();
+    let failAcknowledgement = true;
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => {
+        if (
+          key.includes('_MOBILE_SESSION_V1') &&
+          JSON.parse(value).pendingEvents?.length === 2 &&
+          failAcknowledgement
+        ) {
+          failAcknowledgement = false;
+          throw new Error('ack write failed');
+        }
+        values.set(key, value);
+      },
+      removeItem: async (key) => values.delete(key),
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await expect(
+      op.init('sent-first-token', { storage, trackAutomaticEvents: true }),
+    ).rejects.toThrow('ack write failed');
+    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    await op.oursprivacyImpl.core.flush('sent-first-token');
+    await waitForFetchCalls(1);
+    expect(
+      OursPrivacyQueueManager.getQueue(
+        'sent-first-token',
+        OursPrivacyType.EVENTS,
+      ),
+    ).toEqual([]);
+
+    await op.oursprivacyImpl.optOutTracking('sent-first-token');
+    await op.oursprivacyImpl.optInTracking('sent-first-token');
+    const queued = OursPrivacyQueueManager.getQueue(
+      'sent-first-token',
+      OursPrivacyType.EVENTS,
+    );
+    expect(queued.some((item) => item.event === '$mobile_first_open')).toBe(
+      false,
+    );
+  });
+
+  it('remembers queue acceptance across restart before opt-out', async () => {
+    const values = new Map();
+    let failAcknowledgement = true;
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => {
+        if (
+          key.includes('_MOBILE_SESSION_V1') &&
+          JSON.parse(value).pendingEvents?.length === 2 &&
+          failAcknowledgement
+        ) {
+          failAcknowledgement = false;
+          throw new Error('ack write failed');
+        }
+        values.set(key, value);
+      },
+      removeItem: async (key) => values.delete(key),
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const first = new OursPrivacy();
+    await expect(
+      first.init('restart-accepted-token', {
+        storage,
+        trackAutomaticEvents: true,
+      }),
+    ).rejects.toThrow('ack write failed');
+    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    await first.oursprivacyImpl.core.flush('restart-accepted-token');
+
+    jest.resetModules();
+    const {
+      OursPrivacy: ReloadedOursPrivacy,
+    } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const reloaded = new ReloadedOursPrivacy();
+    await reloaded.init('restart-accepted-token', {
+      storage,
+      trackAutomaticEvents: true,
+      optOutTrackingByDefault: true,
+    });
+    await reloaded.optInTracking();
+
+    const queued = OursPrivacyQueueManager.getQueue(
+      'restart-accepted-token',
+      OursPrivacyType.EVENTS,
+    );
+    expect(queued.some((item) => item.event === '$mobile_first_open')).toBe(
+      false,
+    );
+  });
+
+  it('reports opt-out persistence failure and succeeds on retry across restart', async () => {
+    const values = new Map();
+    let failOptOut = true;
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => {
+        if (key.endsWith('_OPT_OUT') && value === 'true' && failOptOut) {
+          failOptOut = false;
+          throw new Error('opt-out write failed');
+        }
+        values.set(key, value);
+      },
+      removeItem: async (key) => values.delete(key),
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const op = new OursPrivacy();
+    await op.init('consent-failure-token', { storage });
+
+    await expect(op.optOutTracking()).rejects.toThrow('opt-out write failed');
+    expect(op.hasOptedOutTracking()).toBe(true);
+    await op.optOutTracking();
+
+    jest.resetModules();
+    const {
+      OursPrivacy: ReloadedOursPrivacy,
+    } = require('@oursprivacy/react-native');
+    const reloaded = new ReloadedOursPrivacy();
+    await reloaded.init('consent-failure-token', { storage });
+    expect(reloaded.hasOptedOutTracking()).toBe(true);
+  });
+
+  it('keeps tracking opted out when an opt-in write fails', async () => {
+    const values = new Map();
+    let failOptIn = true;
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => {
+        if (key.endsWith('_OPT_OUT') && value === 'false' && failOptIn) {
+          failOptIn = false;
+          throw new Error('opt-in write failed');
+        }
+        values.set(key, value);
+      },
+      removeItem: async (key) => values.delete(key),
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await op.init('failed-opt-in-token', {
+      storage,
+      optOutTrackingByDefault: true,
+    });
+
+    await expect(op.optInTracking()).rejects.toThrow('opt-in write failed');
+    expect(op.hasOptedOutTracking()).toBe(true);
+    await op.oursprivacyImpl.track('failed-opt-in-token', 'appointment_booked');
+    expect(
+      OursPrivacyQueueManager.getQueue(
+        'failed-opt-in-token',
+        OursPrivacyType.EVENTS,
+      ),
+    ).toEqual([]);
+
+    jest.resetModules();
+    const {
+      OursPrivacy: ReloadedOursPrivacy,
+    } = require('@oursprivacy/react-native');
+    const reloaded = new ReloadedOursPrivacy();
+    await reloaded.init('failed-opt-in-token', { storage });
+    expect(reloaded.hasOptedOutTracking()).toBe(true);
+  });
+
+  it('fails initialization when the saved opt-out flag cannot be read', async () => {
+    const storage = {
+      getItem: async (key) => {
+        if (key.endsWith('_OPT_OUT')) throw new Error('opt-out read failed');
+        return null;
+      },
+      setItem: async () => {},
+      removeItem: async () => {},
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const op = new OursPrivacy();
+    await expect(op.init('consent-read-token', { storage })).rejects.toThrow(
+      'opt-out read failed',
+    );
+  });
+
+  it('keeps app-open tied to AppState while rotating identity and reset sessions', async () => {
+    const appState = installAppStateCapture();
+    suspendPeriodicNetworkFlush();
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await op.init('active-rotation-token', { trackAutomaticEvents: true });
+    op.setFlushOnBackground(false);
+    const initial = OursPrivacyQueueManager.getQueue(
+      'active-rotation-token',
+      OursPrivacyType.EVENTS,
+    );
+    const firstSid = initial[0].defaultProperties.sid;
+
+    await op.setVisitorId('different-visitor');
+    await op.oursprivacyImpl.reset('active-rotation-token');
+    await op.oursprivacyImpl.track(
+      'active-rotation-token',
+      'appointment_booked',
+    );
+    await jest.advanceTimersByTimeAsync(10_000);
+
+    const queued = OursPrivacyQueueManager.getQueue(
+      'active-rotation-token',
+      OursPrivacyType.EVENTS,
+    );
+    expect(
+      queued.filter((item) => item.event === '$mobile_app_open'),
+    ).toHaveLength(1);
+    const booked = queued.find((item) => item.event === 'appointment_booked');
+    expect(booked.defaultProperties.sid).not.toBe(firstSid);
+    expect(
+      queued.find(
+        (item) =>
+          item.event === '$mobile_session_engagement' &&
+          item.defaultProperties.sid === booked.defaultProperties.sid,
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        eventProperties: expect.objectContaining({
+          engagement_duration_ms: 10_000,
+        }),
+      }),
+    );
+
+    await appState.handler('background');
+    await appState.handler('active');
+    expect(
+      OursPrivacyQueueManager.getQueue(
+        'active-rotation-token',
+        OursPrivacyType.EVENTS,
+      ).filter((item) => item.event === '$mobile_app_open'),
+    ).toHaveLength(2);
+  });
+
+  it('does not attach changed attribution or user defaults to a replayed lifecycle fact', async () => {
+    const values = new Map();
+    let failFirstOpen = true;
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => {
+        if (
+          key.includes('_QUEUE') &&
+          JSON.parse(value).some(
+            (item) => item.event === '$mobile_first_open',
+          ) &&
+          failFirstOpen
+        ) {
+          failFirstOpen = false;
+          throw new Error('queue write failed');
+        }
+        values.set(key, value);
+      },
+      removeItem: async (key) => values.delete(key),
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await expect(
+      op.init('context-token', {
+        storage,
+        trackAutomaticEvents: true,
+        initialURL: 'myapp://open?utm_source=before',
+        defaultUserCustomProperties: { plan: 'before' },
+      }),
+    ).rejects.toThrow('queue write failed');
+    const originalVisitor = op.getVisitorId();
+    await op.setVisitorId('visitor-after');
+    op.oursprivacyImpl.updateDefaultUserCustomProperties('context-token', {
+      plan: 'after',
+    });
+    await op.trackDeepLink('myapp://open?utm_source=after');
+
+    const queued = OursPrivacyQueueManager.getQueue(
+      'context-token',
+      OursPrivacyType.EVENTS,
+    );
+    const firstOpen = queued.find(
+      (item) => item.event === '$mobile_first_open',
+    );
+    expect(firstOpen.defaultProperties).not.toHaveProperty('utm_source');
+    expect(firstOpen.userProperties).toBeNull();
+    expect(firstOpen.visitor_id).toBe(originalVisitor);
   });
 
   it('queues a snapshot-observed session end under the old session defaults', async () => {

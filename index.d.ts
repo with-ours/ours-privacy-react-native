@@ -64,8 +64,8 @@ export class OursPrivacy {
   setFlushOnBackground(flushOnBackground: boolean): void;
   setFlushBatchSize(flushBatchSize: number): void;
   hasOptedOutTracking(): Promise<boolean>;
-  optInTracking(): void;
-  optOutTracking(): void;
+  optInTracking(): Promise<void>;
+  optOutTracking(): Promise<void>;
   identify(userProperties?: OursPrivacyUserProperties): Promise<void>;
   track<T extends object>(
     eventName: string,

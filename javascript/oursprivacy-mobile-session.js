@@ -30,6 +30,7 @@ export class MobileSession {
     this.activeScreen = null;
     this.disabled = false;
     this.pendingFacts = [];
+    this.acceptedFactIds = new Set();
     this.pending = Promise.resolve();
   }
 
@@ -110,6 +111,7 @@ export class MobileSession {
     this.state.pendingEvents.push(
       ...facts.map((fact) => ({
         id: uuidv4(),
+        queueAccepted: fact.event === '$mobile_first_open' ? false : undefined,
         visitorId: this.getVisitorId?.() ?? null,
         appVersion: this.appVersion,
         appBuild: this.appBuild,
@@ -137,6 +139,19 @@ export class MobileSession {
     });
   }
 
+  markFactQueued(id) {
+    const record = this.state.pendingEvents.find((item) => item.id === id);
+    if (record?.fact.event !== '$mobile_first_open') return;
+    this.acceptedFactIds.add(id);
+    return this._serialize(async () => {
+      await this._load();
+      this.state.pendingEvents = this.state.pendingEvents.map((record) =>
+        record.id === id ? { ...record, queueAccepted: true } : record,
+      );
+      await this._persist();
+    });
+  }
+
   acknowledgeFact(id) {
     return this._serialize(async () => {
       await this._load();
@@ -144,6 +159,7 @@ export class MobileSession {
         (record) => record.id !== id,
       );
       await this._persist();
+      this.acceptedFactIds.delete(id);
     });
   }
 
@@ -217,7 +233,7 @@ export class MobileSession {
     );
   }
 
-  foreground(automaticEnabled = false) {
+  foreground(automaticEnabled = false, emitOpenFacts = true) {
     const atMs = this.wallNow();
     const monotonicMs = this.monotonicNow();
     return this._serialize(async () => {
@@ -254,17 +270,19 @@ export class MobileSession {
             (this.appBuild != null &&
               previousBuild != null &&
               this.appBuild !== previousBuild));
-        if (!this.state.firstOpenSent) {
+        if (emitOpenFacts && !this.state.firstOpenSent) {
           facts.push({
             event: '$mobile_first_open',
             defaultProperties: { ...snapshot },
           });
           this.state.firstOpenSent = true;
         }
-        facts.push({
-          event: '$mobile_app_open',
-          defaultProperties: { ...snapshot },
-        });
+        if (emitOpenFacts) {
+          facts.push({
+            event: '$mobile_app_open',
+            defaultProperties: { ...snapshot },
+          });
+        }
         if (!this.state.sessionStartSent) {
           facts.push({
             event: '$mobile_session_start',
@@ -272,7 +290,7 @@ export class MobileSession {
           });
           this.state.sessionStartSent = true;
         }
-        if (updated) {
+        if (emitOpenFacts && updated) {
           const eventProperties = {};
           if (previousVersion != null) {
             eventProperties.previous_app_version = previousVersion;
@@ -286,11 +304,13 @@ export class MobileSession {
             defaultProperties: { ...snapshot },
           });
         }
-        if (this.appVersion != null) {
-          this.state.observedAppVersion = this.appVersion;
-        }
-        if (this.appBuild != null) {
-          this.state.observedAppBuild = this.appBuild;
+        if (emitOpenFacts) {
+          if (this.appVersion != null) {
+            this.state.observedAppVersion = this.appVersion;
+          }
+          if (this.appBuild != null) {
+            this.state.observedAppBuild = this.appBuild;
+          }
         }
       }
       this._recordFacts(facts);
@@ -412,7 +432,10 @@ export class MobileSession {
       await this._load();
       if (
         this.state.pendingEvents.some(
-          (record) => record.fact.event === '$mobile_first_open',
+          (record) =>
+            record.fact.event === '$mobile_first_open' &&
+            record.queueAccepted !== true &&
+            !this.acceptedFactIds.has(record.id),
         )
       ) {
         this.state.firstOpenSent = false;
@@ -420,6 +443,7 @@ export class MobileSession {
       this.disabled = true;
       this._discardSession();
       await this._persist();
+      this.acceptedFactIds.clear();
       return [];
     });
   }

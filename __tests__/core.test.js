@@ -6,6 +6,7 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-queue', () => ({
     enqueue: jest.fn(),
     getQueue: jest.fn(),
     spliceQueue: jest.fn(),
+    removeByIds: jest.fn(),
     clearQueue: jest.fn(),
   },
 }));
@@ -64,7 +65,7 @@ const {
 describe('OursPrivacyQueueManager', () => {
   const token = 'test-token';
   const type = OursPrivacyType.EVENTS;
-  const data = { event: 'testEvent' };
+  const data = { event: 'testEvent', distinct_id: 'event-1' };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -110,11 +111,16 @@ describe('OursPrivacyQueueManager', () => {
 
   it('flushes the queue', async () => {
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
-    OursPrivacyQueueManager.getQueue.mockImplementation(() => {
-      return [data];
-    });
+    OursPrivacyQueueManager.getQueue
+      .mockReturnValueOnce([data])
+      .mockReturnValue([]);
     await OursPrivacyCore().flush(token);
     expect(OursPrivacyNetwork.sendRequest).toHaveBeenCalled();
+    expect(OursPrivacyQueueManager.removeByIds).toHaveBeenCalledWith(
+      token,
+      type,
+      ['event-1'],
+    );
   });
 
   it('do not flush the queue if opted out', async () => {
@@ -143,7 +149,9 @@ describe('OursPrivacyQueueManager', () => {
       true,
     );
     OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValueOnce(false);
-    OursPrivacyQueueManager.getQueue.mockImplementation(() => [data]);
+    OursPrivacyQueueManager.getQueue
+      .mockReturnValueOnce([data])
+      .mockReturnValue([]);
 
     await OursPrivacyCore().flush(token);
 

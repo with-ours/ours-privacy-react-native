@@ -152,7 +152,7 @@ export class OursPrivacyPersistent {
   }
 
   async loadOptOut(token) {
-    const optOutString = await this.storageAdapter.getItem(
+    const optOutString = await this.storageAdapter.getItemStrict(
       getOutedOutKey(token),
     );
     this._optedOut[token] = optOutString === 'true';
@@ -170,7 +170,7 @@ export class OursPrivacyPersistent {
     if (this._optedOut[token] === null) {
       return;
     }
-    await this.storageAdapter.setItem(
+    await this.storageAdapter.setItemStrict(
       getOutedOutKey(token),
       this._optedOut[token].toString(),
     );

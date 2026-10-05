@@ -111,7 +111,7 @@ export class OursPrivacy {
    */
   optInTracking() {
     this._requireInit();
-    this.oursprivacyImpl.optInTracking(this.token);
+    return this.oursprivacyImpl.optInTracking(this.token);
   }
 
   /**
@@ -120,7 +120,7 @@ export class OursPrivacy {
    */
   optOutTracking() {
     this._requireInit();
-    this.oursprivacyImpl.optOutTracking(this.token);
+    return this.oursprivacyImpl.optOutTracking(this.token);
   }
 
   /**

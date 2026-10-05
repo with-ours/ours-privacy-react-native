@@ -90,7 +90,10 @@ export default class OursPrivacyMain {
       await this._mobileSession.load();
       await this._applyInitializationOptions(token, options);
 
-      if (!this.oursprivacyPersistent.getOptedOut(token)) {
+      if (this.oursprivacyPersistent.getOptedOut(token)) {
+        await this._mobileSession.disableTracking();
+        await OursPrivacyQueueManager.clearQueue(token, OursPrivacyType.EVENTS);
+      } else {
         await this._enqueuePendingFacts(token);
         if (this._appForegrounded && this._isMobilePlatform()) {
           await this._mobileSession.foreground(this._trackAutomaticEvents);
@@ -155,7 +158,7 @@ export default class OursPrivacyMain {
     if (this.oursprivacyPersistent.getOptedOut(token)) return;
     const pending = await this._mobileSession.pendingQueueFacts();
     for (const record of pending) {
-      await this._enqueueEvent(
+      const queued = await this._enqueueEvent(
         token,
         record.fact.event,
         record.fact.eventProperties,
@@ -165,7 +168,12 @@ export default class OursPrivacyMain {
         record.visitorId,
         false,
         { appVersion: record.appVersion, appBuild: record.appBuild },
+        true,
       );
+      if (queued === false) {
+        throw new Error('Mobile fact was not queued');
+      }
+      await this._mobileSession.markFactQueued(record.id);
       await this._mobileSession.acknowledgeFact(record.id);
     }
   }
@@ -215,7 +223,12 @@ export default class OursPrivacyMain {
    * trackDeepLink(). All keys here must exist in the server's defaultPayload
    * Zod schema — unknown keys are silently stripped server-side.
    */
-  getDefaultProperties(token, mobileSnapshot, appMetadata) {
+  getDefaultProperties(
+    token,
+    mobileSnapshot,
+    appMetadata,
+    includeAttribution = true,
+  ) {
     const { OS, Version, constants } = Platform;
     const { Model, Manufacturer, Brand } = constants || {};
     const { width, height } = Dimensions.get('screen');
@@ -237,7 +250,11 @@ export default class OursPrivacyMain {
     }
 
     const attribution = this._attributionDefaultProperties[token];
-    if (attribution && Object.keys(attribution).length > 0) {
+    if (
+      includeAttribution &&
+      attribution &&
+      Object.keys(attribution).length > 0
+    ) {
       Object.assign(props, attribution);
     }
 
@@ -265,7 +282,16 @@ export default class OursPrivacyMain {
 
   async reset(token) {
     return this._serialize(async () => {
+      const resumeForeground =
+        this._appForegrounded &&
+        this._initialized &&
+        !this.oursprivacyPersistent.getOptedOut(token) &&
+        this._isMobilePlatform();
       this._stopCheckpoint();
+      if (resumeForeground) {
+        await this._mobileSession.background();
+        await this._enqueuePendingFacts(token);
+      }
       await this._mobileSession.resetSession();
       await this.oursprivacyPersistent.reset(token);
       this.config.setIsManuallySetId(token, false);
@@ -273,13 +299,8 @@ export default class OursPrivacyMain {
       this._defaultUserCustomProperties[token] = {};
       this._defaultUserConsentProperties[token] = {};
       this._attributionDefaultProperties[token] = {};
-      if (
-        this._appForegrounded &&
-        this._initialized &&
-        !this.oursprivacyPersistent.getOptedOut(token) &&
-        this._isMobilePlatform()
-      ) {
-        await this._mobileSession.foreground(this._trackAutomaticEvents);
+      if (resumeForeground) {
+        await this._mobileSession.foreground(this._trackAutomaticEvents, false);
         await this._enqueuePendingFacts(token);
         this._startCheckpoint(token);
       }
@@ -342,6 +363,7 @@ export default class OursPrivacyMain {
     visitorId = this.oursprivacyPersistent.getVisitorId(token),
     includeEventDefaults = true,
     appMetadata,
+    isCanonicalFact = false,
   ) {
     const rawEventProps = {
       ...(includeEventDefaults
@@ -355,15 +377,18 @@ export default class OursPrivacyMain {
       distinct_id: distinctId,
       eventProperties:
         Object.keys(rawEventProps).length > 0 ? rawEventProps : null,
-      userProperties: this._composeUserProperties(token, userProperties),
+      userProperties: isCanonicalFact
+        ? null
+        : this._composeUserProperties(token, userProperties),
       defaultProperties: this.getDefaultProperties(
         token,
         snapshot,
         appMetadata,
+        !isCanonicalFact,
       ),
     };
     await this._coreReady;
-    await this.core.addToOursPrivacyQueue(
+    return this.core.addToOursPrivacyQueue(
       token,
       OursPrivacyType.EVENTS,
       eventData,
@@ -468,8 +493,16 @@ export default class OursPrivacyMain {
   }
 
   async _setOptedOutTrackingFlag(token, optedOut) {
+    const previous = this.oursprivacyPersistent.getOptedOut(token);
     this.oursprivacyPersistent.updateOptedOut(token, optedOut);
-    await this.oursprivacyPersistent.persistOptedOut(token);
+    try {
+      await this.oursprivacyPersistent.persistOptedOut(token);
+    } catch (error) {
+      if (!optedOut) {
+        this.oursprivacyPersistent.updateOptedOut(token, previous);
+      }
+      throw error;
+    }
   }
 
   hasOptedOutTracking(token) {
@@ -496,22 +529,26 @@ export default class OursPrivacyMain {
 
   async _setVisitorId(token, visitorId) {
     const previous = this.oursprivacyPersistent.getVisitorId(token);
+    const resumeForeground =
+      previous !== visitorId &&
+      this._initialized &&
+      this._appForegrounded &&
+      !this.oursprivacyPersistent.getOptedOut(token) &&
+      this._isMobilePlatform();
     if (previous !== visitorId) {
       this._stopCheckpoint();
+      if (resumeForeground) {
+        await this._mobileSession.background();
+        await this._enqueuePendingFacts(token);
+      }
       await this._mobileSession.resetSession();
     }
     this.config.setIsManuallySetId(token, true);
     this.oursprivacyPersistent.updateVisitorId(token, visitorId);
     await this.oursprivacyPersistent.persistVisitorId(token);
-    if (
-      previous !== visitorId &&
-      this._initialized &&
-      this._appForegrounded &&
-      !this.oursprivacyPersistent.getOptedOut(token) &&
-      this._isMobilePlatform()
-    ) {
+    if (resumeForeground) {
       await this._enqueuePendingFacts(token);
-      await this._mobileSession.foreground(this._trackAutomaticEvents);
+      await this._mobileSession.foreground(this._trackAutomaticEvents, false);
       await this._enqueuePendingFacts(token);
       this._startCheckpoint(token);
     }
