@@ -143,6 +143,70 @@ describe('OursPrivacy integration flows', () => {
     );
   });
 
+  it('rejects reserved manual facts through both entry points without consuming first-open', async () => {
+    suspendPeriodicNetworkFlush();
+    const values = new Map();
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => values.set(key, value),
+      removeItem: async (key) => values.delete(key),
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const token = 'reserved-token';
+    const op = new OursPrivacy();
+    await op.init(token, { storage, trackAutomaticEvents: false });
+
+    const callerProperties = { patient_id: 'private-patient' };
+    const callerUser = { email: 'private@example.test' };
+    expect(() =>
+      op.track('$mobile_first_open', callerProperties, callerUser),
+    ).toThrow(/reserved/);
+    await expect(
+      op.oursprivacyImpl.track(
+        token,
+        '$mobile_screen_view',
+        callerProperties,
+        callerUser,
+      ),
+    ).rejects.toThrow(/reserved/);
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    expect(
+      OursPrivacyQueueManager.getQueue(token, OursPrivacyType.EVENTS),
+    ).toEqual([]);
+
+    jest.resetModules();
+    suspendPeriodicNetworkFlush();
+    const {
+      OursPrivacy: ReloadedOursPrivacy,
+    } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager: ReloadedQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const {
+      OursPrivacyType: ReloadedType,
+    } = require('../javascript/oursprivacy-constants');
+    const reloaded = new ReloadedOursPrivacy();
+    await reloaded.init(token, { storage, trackAutomaticEvents: true });
+    reloaded.track('appointment_booked', { appointment_id: 'booking-1' });
+    reloaded.track('$ae_custom', { source: 'legacy' });
+    await reloaded.oursprivacyImpl._pendingOperation;
+    const queued = ReloadedQueueManager.getQueue(token, ReloadedType.EVENTS);
+    expect(queued.map((item) => item.event)).toEqual([
+      '$mobile_first_open',
+      '$mobile_app_open',
+      '$mobile_session_start',
+      'appointment_booked',
+      '$ae_custom',
+    ]);
+    expect(JSON.stringify(queued)).not.toContain('private-patient');
+    expect(JSON.stringify(queued)).not.toContain('private@example.test');
+    expect(queued[0].eventProperties).toBeNull();
+    expect(queued[0].userProperties).toBeNull();
+  });
+
   it('adds the same mobile contract fields to Android manual events', async () => {
     require('react-native').Platform.OS = 'android';
     const { OursPrivacy } = require('@oursprivacy/react-native');
@@ -883,6 +947,222 @@ describe('OursPrivacy integration flows', () => {
         ),
     ).toBe(10_000);
     expect(fetchMock.mock.calls).toHaveLength(0);
+  });
+
+  it('checkpoints the remaining second after a warm foreground and then every ten seconds', async () => {
+    const appState = installAppStateCapture();
+    suspendPeriodicNetworkFlush();
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const token = 'warm-checkpoint-token';
+    const op = new OursPrivacy();
+    await op.init(token, { trackAutomaticEvents: true });
+    op.setFlushOnBackground(false);
+
+    await jest.advanceTimersByTimeAsync(9_000);
+    await appState.handler('background');
+    await jest.advanceTimersByTimeAsync(5_000);
+    await appState.handler('active');
+    await jest.advanceTimersByTimeAsync(999);
+    const queue = () =>
+      OursPrivacyQueueManager.getQueue(token, OursPrivacyType.EVENTS);
+    const engagement = () =>
+      queue().filter((item) => item.event === '$mobile_session_engagement');
+    expect(
+      engagement().map((item) => item.eventProperties.engagement_duration_ms),
+    ).toEqual([9_000]);
+    await jest.advanceTimersByTimeAsync(1);
+    expect(
+      engagement().map((item) => item.eventProperties.engagement_duration_ms),
+    ).toEqual([9_000, 1_000]);
+    await jest.advanceTimersByTimeAsync(10_000);
+    expect(
+      engagement().map((item) => item.eventProperties.engagement_duration_ms),
+    ).toEqual([9_000, 1_000, 10_000]);
+    await appState.handler('background');
+    expect(engagement()).toHaveLength(3);
+    expect(
+      new Set(engagement().map((item) => item.defaultProperties.sid)).size,
+    ).toBe(1);
+  });
+
+  it('uses the persisted foreground total to schedule the first checkpoint after restart', async () => {
+    suspendPeriodicNetworkFlush();
+    const values = new Map();
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => values.set(key, value),
+      removeItem: async (key) => values.delete(key),
+    };
+    const firstAppState = installAppStateCapture();
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const first = new OursPrivacy();
+    const token = 'restart-checkpoint-token';
+    await first.init(token, { storage, trackAutomaticEvents: true });
+    first.setFlushOnBackground(false);
+    await jest.advanceTimersByTimeAsync(9_000);
+    await firstAppState.handler('background');
+
+    jest.resetModules();
+    suspendPeriodicNetworkFlush();
+    const {
+      OursPrivacy: ReloadedOursPrivacy,
+    } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const reloaded = new ReloadedOursPrivacy();
+    await reloaded.init(token, { storage, trackAutomaticEvents: true });
+    const engagement = () =>
+      OursPrivacyQueueManager.getQueue(token, OursPrivacyType.EVENTS).filter(
+        (item) => item.event === '$mobile_session_engagement',
+      );
+    await jest.advanceTimersByTimeAsync(999);
+    expect(
+      engagement().map((item) => item.eventProperties.engagement_duration_ms),
+    ).toEqual([9_000]);
+    await jest.advanceTimersByTimeAsync(1);
+    expect(
+      engagement().map((item) => item.eventProperties.engagement_duration_ms),
+    ).toEqual([9_000, 1_000]);
+    expect(
+      new Set(engagement().map((item) => item.defaultProperties.sid)).size,
+    ).toBe(1);
+  });
+
+  it('pauses iOS engagement through inactive callbacks without opening again', async () => {
+    const appState = installAppStateCapture();
+    suspendPeriodicNetworkFlush();
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const token = 'inactive-token';
+    const op = new OursPrivacy();
+    await op.init(token, { trackAutomaticEvents: true });
+    op.setFlushOnBackground(false);
+    op.trackScreen('Schedule');
+    await op.oursprivacyImpl._pendingOperation;
+    await jest.advanceTimersByTimeAsync(3_000);
+    await appState.handler('inactive');
+    await appState.handler('inactive');
+    op.trackScreen('Confirm');
+    await op.oursprivacyImpl._pendingOperation;
+    await jest.advanceTimersByTimeAsync(20_000);
+    await appState.handler('active');
+    await appState.handler('active');
+    await jest.advanceTimersByTimeAsync(2_000);
+    await appState.handler('background');
+    const queued = OursPrivacyQueueManager.getQueue(
+      token,
+      OursPrivacyType.EVENTS,
+    );
+    expect(
+      queued.filter((item) => item.event === '$mobile_app_open'),
+    ).toHaveLength(1);
+    expect(
+      queued.filter((item) => item.event === '$mobile_session_start'),
+    ).toHaveLength(1);
+    expect(
+      queued
+        .filter((item) => item.event === '$mobile_session_engagement')
+        .map((item) => item.eventProperties),
+    ).toEqual([
+      { engagement_duration_ms: 3_000, screen_name: 'Schedule' },
+      { engagement_duration_ms: 2_000, screen_name: 'Confirm' },
+    ]);
+  });
+
+  it('keeps the inactive pause as last activity when iOS enters background', async () => {
+    const appState = installAppStateCapture();
+    suspendPeriodicNetworkFlush();
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const token = 'inactive-background-token';
+    const op = new OursPrivacy();
+    await op.init(token, { trackAutomaticEvents: true });
+    op.setFlushOnBackground(false);
+    const firstSid = OursPrivacyQueueManager.getQueue(
+      token,
+      OursPrivacyType.EVENTS,
+    )[0].defaultProperties.sid;
+
+    await jest.advanceTimersByTimeAsync(3_000);
+    await appState.handler('inactive');
+    await jest.advanceTimersByTimeAsync(29 * 60 * 1000);
+    op.trackScreen('Confirm');
+    await op.oursprivacyImpl._pendingOperation;
+    await appState.handler('background');
+    await jest.advanceTimersByTimeAsync(60 * 1000);
+    await appState.handler('active');
+
+    const queued = OursPrivacyQueueManager.getQueue(
+      token,
+      OursPrivacyType.EVENTS,
+    );
+    expect(
+      queued
+        .filter((item) => item.event === '$mobile_session_engagement')
+        .map((item) => item.eventProperties.engagement_duration_ms),
+    ).toEqual([3_000]);
+    expect(
+      queued.filter((item) => item.event === '$mobile_app_open'),
+    ).toHaveLength(2);
+    expect(
+      queued.filter((item) => item.event === '$mobile_session_start'),
+    ).toHaveLength(2);
+    expect(
+      queued.findLast((item) => item.event === '$mobile_app_open')
+        .defaultProperties.sid,
+    ).not.toBe(firstSid);
+  });
+
+  it('does not resume an inactive session after opt-out', async () => {
+    const appState = installAppStateCapture();
+    suspendPeriodicNetworkFlush();
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const token = 'inactive-opt-out-token';
+    const op = new OursPrivacy();
+    await op.init(token, { trackAutomaticEvents: true });
+    await jest.advanceTimersByTimeAsync(3_000);
+    await appState.handler('inactive');
+    await op.optOutTracking();
+    await jest.advanceTimersByTimeAsync(20_000);
+    await appState.handler('active');
+    expect(
+      OursPrivacyQueueManager.getQueue(token, OursPrivacyType.EVENTS),
+    ).toEqual([]);
+
+    await op.optInTracking();
+    await jest.advanceTimersByTimeAsync(2_000);
+    await appState.handler('background');
+    const queued = OursPrivacyQueueManager.getQueue(
+      token,
+      OursPrivacyType.EVENTS,
+    );
+    expect(
+      queued.filter((item) => item.event === '$mobile_app_open'),
+    ).toHaveLength(1);
+    expect(
+      queued.filter((item) => item.event === '$mobile_session_start'),
+    ).toHaveLength(1);
+    expect(
+      queued
+        .filter((item) => item.event === '$mobile_session_engagement')
+        .map((item) => item.eventProperties.engagement_duration_ms),
+    ).toEqual([2_000]);
   });
 
   it('keeps automatic facts off while manual events get sessions, then starts fresh after opt-in', async () => {

@@ -25,6 +25,7 @@ export class MobileSession {
     this.getVisitorId = getVisitorId;
     this.state = null;
     this.foregrounded = false;
+    this.paused = false;
     this.automaticEnabled = false;
     this.engagementMarkMs = null;
     this.activeScreen = null;
@@ -41,6 +42,7 @@ export class MobileSession {
           ? { ...this.state, pendingEvents: [...this.state.pendingEvents] }
           : null,
         foregrounded: this.foregrounded,
+        paused: this.paused,
         automaticEnabled: this.automaticEnabled,
         engagementMarkMs: this.engagementMarkMs,
         activeScreen: this.activeScreen,
@@ -195,6 +197,20 @@ export class MobileSession {
     };
   }
 
+  remainingCheckpointMs() {
+    if (!this.foregrounded || !this.automaticEnabled || !this.state) {
+      return null;
+    }
+    const elapsedMs = Math.max(
+      0,
+      Math.trunc(this.monotonicNow() - this.engagementMarkMs),
+    );
+    return Math.max(
+      1,
+      ENGAGED_MS - (this.state.foregroundDurationMs % ENGAGED_MS) - elapsedMs,
+    );
+  }
+
   _startSession(atMs) {
     this.state.sid = this.uuid();
     this.state.startedAtMs = atMs;
@@ -213,6 +229,7 @@ export class MobileSession {
 
   _discardSession(clearPending = true) {
     this.foregrounded = false;
+    this.paused = false;
     this.automaticEnabled = false;
     this.engagementMarkMs = null;
     this.activeScreen = null;
@@ -240,6 +257,7 @@ export class MobileSession {
       await this._load();
       if (this.disabled || this.foregrounded) return [];
       this.foregrounded = true;
+      this.paused = false;
       this.automaticEnabled = automaticEnabled;
       this.engagementMarkMs = monotonicMs;
       this.activeScreen = null;
@@ -324,6 +342,10 @@ export class MobileSession {
     const monotonicMs = at?.monotonicMs ?? this.monotonicNow();
     return this._serialize(async () => {
       await this._load();
+      if (this.paused) {
+        this.paused = false;
+        return [];
+      }
       if (!this.foregrounded) return [];
       const engagement = this._engagementFact(atMs, monotonicMs, 0);
       this.foregrounded = false;
@@ -331,6 +353,38 @@ export class MobileSession {
       if (engagement) this._recordFacts([engagement]);
       await this._persist();
       return engagement ? [engagement] : [];
+    });
+  }
+
+  pause(at) {
+    const atMs = at?.wallMs ?? this.wallNow();
+    const monotonicMs = at?.monotonicMs ?? this.monotonicNow();
+    return this._serialize(async () => {
+      await this._load();
+      if (!this.foregrounded || this.disabled) return [];
+      const engagement = this._engagementFact(atMs, monotonicMs, 0);
+      this.foregrounded = false;
+      this.paused = true;
+      this.engagementMarkMs = null;
+      this._touch(atMs);
+      if (engagement) this._recordFacts([engagement]);
+      await this._persist();
+      return engagement ? [engagement] : [];
+    });
+  }
+
+  resume(at) {
+    const atMs = at?.wallMs ?? this.wallNow();
+    const monotonicMs = at?.monotonicMs ?? this.monotonicNow();
+    return this._serialize(async () => {
+      await this._load();
+      if (!this.paused || this.disabled) return false;
+      this.paused = false;
+      this.foregrounded = true;
+      this.engagementMarkMs = monotonicMs;
+      this._touch(atMs);
+      await this._persist();
+      return true;
     });
   }
 
@@ -356,7 +410,8 @@ export class MobileSession {
       if (this.disabled) return [];
       const screenName = typeof name === 'string' ? name.trim() : '';
       if (!screenName) return [];
-      const expired = !this.foregrounded && this._sessionExpired(atMs);
+      const expired =
+        !this.foregrounded && !this.paused && this._sessionExpired(atMs);
       const facts = [];
       if (expired) {
         if (this.automaticEnabled && this.state.sessionStartSent) {
@@ -372,7 +427,7 @@ export class MobileSession {
       const engagement = this._engagementFact(atMs, monotonicMs, 0);
       if (!this.state.sid) this._startSession(atMs);
       this.activeScreen = screenName;
-      this._touch(atMs);
+      if (!this.paused) this._touch(atMs);
       const view = {
         event: '$mobile_screen_view',
         eventProperties: { screen_name: screenName },
@@ -391,7 +446,7 @@ export class MobileSession {
     return this._serialize(async () => {
       await this._load();
       if (this.disabled) return null;
-      if (!this.foregrounded && this._sessionExpired(atMs)) {
+      if (!this.foregrounded && !this.paused && this._sessionExpired(atMs)) {
         if (this.automaticEnabled && this.state.sessionStartSent) {
           const end = {
             event: '$mobile_session_end',
@@ -403,7 +458,7 @@ export class MobileSession {
         this._startSession(atMs);
       }
       if (!this.state.sid) this._startSession(atMs);
-      this._touch(atMs);
+      if (!this.paused) this._touch(atMs);
       const snapshot = this._snapshot(atMs);
       await this._persist();
       return snapshot;

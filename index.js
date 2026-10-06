@@ -153,6 +153,9 @@ export class OursPrivacy {
     if (!StringHelper.isValid(eventName)) {
       StringHelper.raiseError(PARAMS.EVENT_NAME);
     }
+    if (eventName.startsWith('$mobile_')) {
+      throw new Error('Event names starting with $mobile_ are reserved');
+    }
     if (!ObjectHelper.isValidOrUndefined(eventProperties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }

@@ -182,6 +182,32 @@ test(`track forwards camelCase userProperties`, async () => {
   );
 });
 
+test.each(['$mobile_first_open', '$mobile_screen_view', '$mobile_custom'])(
+  'track rejects reserved event %s before forwarding caller fields',
+  async (eventName) => {
+    const op = await newInitialized();
+    expect(() =>
+      op.track(
+        eventName,
+        { patient_id: 'private' },
+        { email: 'private@example.test' },
+      ),
+    ).toThrow(/reserved/);
+    expect(op.oursprivacyImpl.track).not.toHaveBeenCalled();
+  },
+);
+
+test('track continues to forward legacy automatic events', async () => {
+  const op = await newInitialized();
+  op.track('$ae_custom', { source: 'legacy' });
+  expect(op.oursprivacyImpl.track).toHaveBeenCalledWith(
+    'token',
+    '$ae_custom',
+    { source: 'legacy' },
+    undefined,
+  );
+});
+
 test('trackScreen forwards a stable label', async () => {
   const op = await newInitialized();
   op.trackScreen('Schedule');

@@ -51,6 +51,7 @@ export default class OursPrivacyMain {
     this._pendingOperation = Promise.resolve();
     this._trackAutomaticEvents = false;
     this._appForegrounded = AppState?.currentState === 'active';
+    this._appInactive = false;
     this._checkpointTimer = null;
     this._initialized = false;
     this._defaultEventProperties = {};
@@ -136,7 +137,7 @@ export default class OursPrivacyMain {
     });
   }
 
-  _startCheckpoint(token) {
+  _startCheckpoint(token, retryDelayMs) {
     if (
       this._checkpointTimer ||
       !this._trackAutomaticEvents ||
@@ -146,17 +147,33 @@ export default class OursPrivacyMain {
     ) {
       return;
     }
-    this._checkpointTimer = setInterval(() => {
+    const delayMs = retryDelayMs ?? this._mobileSession.remainingCheckpointMs();
+    if (delayMs == null) return;
+    const timer = setTimeout(() => {
+      let failed = false;
       this._serialize(async () => {
-        if (!this._checkpointTimer || !this._appForegrounded) return;
+        if (this._checkpointTimer !== timer || !this._appForegrounded) return;
         await this._mobileSession.checkpoint();
         await this._enqueuePendingFacts(token);
-      }).catch((error) => OursPrivacyLogger.error(token, String(error)));
-    }, CHECKPOINT_INTERVAL_MS);
+      })
+        .catch((error) => {
+          failed = true;
+          OursPrivacyLogger.error(token, String(error));
+        })
+        .finally(() => {
+          if (this._checkpointTimer !== timer) return;
+          this._checkpointTimer = null;
+          this._startCheckpoint(
+            token,
+            failed ? CHECKPOINT_INTERVAL_MS : undefined,
+          );
+        });
+    }, delayMs);
+    this._checkpointTimer = timer;
   }
 
   _stopCheckpoint() {
-    if (this._checkpointTimer) clearInterval(this._checkpointTimer);
+    if (this._checkpointTimer) clearTimeout(this._checkpointTimer);
     this._checkpointTimer = null;
   }
 
@@ -200,8 +217,21 @@ export default class OursPrivacyMain {
           monotonicMs: this._mobileSession.monotonicNow(),
         };
         return this._serialize(async () => {
-          if (nextState === 'background') {
+          if (nextState === 'inactive' && Platform.OS === 'ios') {
+            if (!this._appForegrounded) return;
             this._appForegrounded = false;
+            this._appInactive = true;
+            this._stopCheckpoint();
+            if (
+              !this.oursprivacyPersistent.getOptedOut(token) &&
+              this._isMobilePlatform()
+            ) {
+              await this._mobileSession.pause(at);
+              await this._enqueuePendingFacts(token);
+            }
+          } else if (nextState === 'background') {
+            this._appForegrounded = false;
+            this._appInactive = false;
             this._stopCheckpoint();
             if (
               !this.oursprivacyPersistent.getOptedOut(token) &&
@@ -212,16 +242,22 @@ export default class OursPrivacyMain {
             }
             if (this._flushOnBackgroundEnabled) this.flush(token);
           } else if (nextState === 'active') {
+            const wasInactive = this._appInactive;
             this._appForegrounded = true;
+            this._appInactive = false;
             if (
               !this.oursprivacyPersistent.getOptedOut(token) &&
               this._isMobilePlatform()
             ) {
-              await this._mobileSession.foreground(
-                this._trackAutomaticEvents,
-                true,
-                at,
-              );
+              const resumed =
+                wasInactive && (await this._mobileSession.resume(at));
+              if (!resumed) {
+                await this._mobileSession.foreground(
+                  this._trackAutomaticEvents,
+                  true,
+                  at,
+                );
+              }
               await this._enqueuePendingFacts(token);
               this._startCheckpoint(token);
             }
@@ -324,6 +360,9 @@ export default class OursPrivacyMain {
   }
 
   async track(token, eventName, properties, userProperties) {
+    if (typeof eventName === 'string' && eventName.startsWith('$mobile_')) {
+      throw new Error('Event names starting with $mobile_ are reserved');
+    }
     return this._serialize(() =>
       this._track(token, eventName, properties, userProperties),
     );
