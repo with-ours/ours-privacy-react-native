@@ -203,6 +203,36 @@ test('accepts an identical recorder retry of an engagement delta', async () => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
 });
 
+test('accepts an identical full-batch retry in a later capture', async () => {
+  const captures = fixture();
+  captures.push(structuredClone(captures[0]));
+  const result = await run(captures);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+test('rejects identical engagement items inside one capture', async () => {
+  const captures = fixture();
+  captures[0].jsonBody.data.push(structuredClone(captures[0].jsonBody.data[8]));
+  const result = await run(captures);
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stdout, /duplicate items within one capture/);
+});
+
+test('rejects duplicate engagement items inside a retried capture', async () => {
+  const captures = fixture();
+  const engagement = captures[0].jsonBody.data[8];
+  captures.push({
+    jsonBody: {
+      token,
+      is_manually_set_id: true,
+      data: [structuredClone(engagement), structuredClone(engagement)],
+    },
+  });
+  const result = await run(captures);
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stdout, /duplicate items within one capture/);
+});
+
 test('rejects a conflicting recorder retry of an engagement ID', async () => {
   const captures = fixture();
   const repeated = structuredClone(captures[0].jsonBody.data[8]);
@@ -233,6 +263,33 @@ test('does not collapse duplicate lifecycle emissions', async () => {
   assert.match(result.stdout, /one first tracked open/);
 });
 
+test('rejects duplicate lifecycle items inside a retried capture', async () => {
+  const captures = fixture();
+  const firstOpen = captures[0].jsonBody.data[1];
+  captures.push({
+    jsonBody: {
+      token,
+      is_manually_set_id: true,
+      data: [structuredClone(firstOpen), structuredClone(firstOpen)],
+    },
+  });
+  const result = await run(captures);
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stdout, /duplicate items within one capture/);
+});
+
+test('rejects a distinct second lifecycle emission in a later capture', async () => {
+  const captures = fixture();
+  const secondOpen = structuredClone(captures[0].jsonBody.data[1]);
+  secondOpen.distinct_id = 'second-first-open';
+  captures.push({
+    jsonBody: { token, is_manually_set_id: true, data: [secondOpen] },
+  });
+  const result = await run(captures);
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stdout, /one first tracked open/);
+});
+
 test('rejects repeated lifecycle IDs outside the first session', async () => {
   const captures = fixture();
   const laterOpen = event('$mobile_app_open', 21);
@@ -240,7 +297,7 @@ test('rejects repeated lifecycle IDs outside the first session', async () => {
   captures[3].jsonBody.data.push(laterOpen, structuredClone(laterOpen));
   const result = await run(captures);
   assert.equal(result.status, 1, result.stdout);
-  assert.match(result.stdout, /non-engagement capture IDs are unique/);
+  assert.match(result.stdout, /duplicate items within one capture/);
 });
 
 test('rejects duplicate first-session event IDs', async () => {

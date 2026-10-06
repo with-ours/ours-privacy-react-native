@@ -78,19 +78,51 @@ const captures = await Promise.all(
 );
 
 // Flatten all events in order with their wrapper metadata
-const allEvents = [];
+const capturedEvents = [];
 for (const capture of captures) {
   const payload = capture.jsonBody;
   if (!payload || !Array.isArray(payload.data)) continue;
   if (payload.token !== expectedToken) continue;
   for (const event of payload.data) {
-    allEvents.push({
+    capturedEvents.push({
       ...event,
       _token: payload.token,
       _is_manually_set_id: payload.is_manually_set_id,
       _captureId: capture.id,
     });
   }
+}
+
+const allEvents = [];
+const seenEvents = new Map();
+const seenWithinCapture = new Map();
+let conflictingEventIds = false;
+let duplicateInCapture = false;
+for (const event of capturedEvents) {
+  const id = event.distinct_id;
+  if (typeof id === 'string' && id.length > 0) {
+    let idsInCapture = seenWithinCapture.get(event._captureId);
+    if (!idsInCapture) {
+      idsInCapture = new Set();
+      seenWithinCapture.set(event._captureId, idsInCapture);
+    }
+    const repeatedInCapture = idsInCapture.has(id);
+    idsInCapture.add(id);
+    if (repeatedInCapture) duplicateInCapture = true;
+    const previous = seenEvents.get(id);
+    if (previous) {
+      const previousPayload = { ...previous };
+      const repeatedPayload = { ...event };
+      delete previousPayload._captureId;
+      delete repeatedPayload._captureId;
+      const identical = isDeepStrictEqual(previousPayload, repeatedPayload);
+      if (!identical) conflictingEventIds = true;
+      if (identical && !repeatedInCapture) continue;
+    } else {
+      seenEvents.set(id, event);
+    }
+  }
+  allEvents.push(event);
 }
 
 // ---------------------------------------------------------------------------
@@ -438,40 +470,10 @@ const firstOpen = findAllEvents('$mobile_first_open');
 const appOpen = findAllEvents('$mobile_app_open');
 const sessionStart = findAllEvents('$mobile_session_start');
 const screenView = findAllEvents('$mobile_screen_view');
-const logicalEngagement = [];
-const seenEvents = new Map();
-let conflictingEventIds = false;
-let repeatedNonEngagementIds = false;
-for (const event of allEvents) {
-  const isEngagement = event.event === '$mobile_session_engagement';
-  const id = event.distinct_id;
-  if (typeof id !== 'string' || id.length === 0) {
-    if (isEngagement) logicalEngagement.push(event);
-    continue;
-  }
-  const previous = seenEvents.get(id);
-  if (!previous) {
-    seenEvents.set(id, event);
-    if (isEngagement) logicalEngagement.push(event);
-    continue;
-  }
-  const previousPayload = { ...previous };
-  const repeatedPayload = { ...event };
-  delete previousPayload._captureId;
-  delete repeatedPayload._captureId;
-  const identical = isDeepStrictEqual(previousPayload, repeatedPayload);
-  if (!identical) conflictingEventIds = true;
-  if (!isEngagement || previous.event !== '$mobile_session_engagement') {
-    repeatedNonEngagementIds = true;
-  }
-  if (isEngagement && !identical) {
-    logicalEngagement.push(event);
-  }
-}
 const booking = findEvent('appointment_booked');
 const mobileTime = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
 const firstSid = firstOpen[0]?.defaultProperties?.sid;
-const initialEngagement = logicalEngagement.filter(
+const initialEngagement = findAllEvents('$mobile_session_engagement').filter(
   (event) => event.defaultProperties?.sid === firstSid,
 );
 const initialSessionStartMs = Date.parse(
@@ -499,7 +501,7 @@ const scheduleEngagement = timedEngagement.reduce(
 
 assert('one first tracked open', firstOpen.length === 1);
 assert('no conflicting captured event IDs', !conflictingEventIds);
-assert('non-engagement capture IDs are unique', !repeatedNonEngagementIds);
+assert('duplicate items within one capture absent', !duplicateInCapture);
 assert(
   'one app open for the first session',
   appOpen.filter((event) => event.defaultProperties?.sid === firstSid)
