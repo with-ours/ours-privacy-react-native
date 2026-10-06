@@ -132,6 +132,15 @@ test(`it calls optOutTracking`, async () => {
   expect(op.oursprivacyImpl.optOutTracking).toHaveBeenCalledWith('token');
 });
 
+test('flush returns the completion promise from the SDK implementation', async () => {
+  const op = await newInitialized();
+  const completion = Promise.resolve(true);
+  op.oursprivacyImpl.flush.mockReturnValue(completion);
+
+  expect(op.flush()).toBe(completion);
+  await expect(completion).resolves.toBe(true);
+});
+
 test(`identify forwards userProperties (no positional id arg)`, async () => {
   const op = await newInitialized();
   await op.identify({ email: 'user@example.com', externalId: '123' });

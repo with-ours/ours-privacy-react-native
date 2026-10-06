@@ -93,7 +93,7 @@ await op.identify({
 Events are batched and sent every 10 seconds by default. To send immediately:
 
 ```js
-op.flush();
+await op.flush();
 ```
 
 ---
@@ -343,12 +343,12 @@ await op.identify({
 
 #### `op.flush()`
 
-Push all queued events to the server immediately. Useful before app close or logout.
+Attempt to send queued events immediately. Await the request before changing tracking consent. A failed request leaves events queued for retry.
 
-**Returns:** `void`
+**Returns:** `Promise<void>`
 
 ```js
-op.flush();
+await op.flush();
 ```
 
 ---
@@ -617,14 +617,13 @@ await op.trackDeepLink(
 
 #### `op.optOutTracking()`
 
-Stop all tracking immediately. Any queued events that have not been flushed will be discarded. Call `flush()` first if you want to preserve queued events.
+Stop all tracking immediately. Any queued events that have not been flushed will be discarded. Await `flush()` first to attempt delivery; a failed request remains queued and will be discarded by opt-out.
 
-**Returns:** `void`
+**Returns:** `Promise<void>`
 
 ```js
-// Flush first to preserve any pending events
-op.flush();
-op.optOutTracking();
+await op.flush();
+await op.optOutTracking();
 ```
 
 ---
@@ -633,10 +632,10 @@ op.optOutTracking();
 
 Resume tracking after a previous call to `optOutTracking()`. This also sends an `$opt_in` event to the server.
 
-**Returns:** `void`
+**Returns:** `Promise<void>`
 
 ```js
-op.optInTracking();
+await op.optInTracking();
 ```
 
 ---
@@ -723,7 +722,7 @@ No. Ours Privacy does not use IDFA, so no ATT permission is required.
 
 **Why aren't my events showing up?**
 
-Events are batched and sent every 10 seconds by default. Call `flush()` to send immediately. Enable debug logging with `setLoggingEnabled(true)` to see what's happening.
+Events are batched and sent every 10 seconds by default. Await `flush()` to attempt to send them immediately. Enable debug logging with `setLoggingEnabled(true)` to see what's happening.
 
 **What platforms are supported?**
 

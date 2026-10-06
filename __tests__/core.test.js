@@ -5,6 +5,8 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-queue', () => ({
     initialize: jest.fn(),
     enqueue: jest.fn(),
     getQueue: jest.fn(),
+    getResponseMode: jest.fn(),
+    setResponseMode: jest.fn(),
     spliceQueue: jest.fn(),
     removeByIds: jest.fn(),
     clearQueue: jest.fn(),
@@ -77,6 +79,8 @@ describe('OursPrivacyQueueManager', () => {
     OursPrivacyNetwork.sendRequest.mockReset();
     OursPrivacyQueueManager.removeByIds.mockReset();
     OursPrivacyQueueManager.getQueue.mockReset();
+    OursPrivacyQueueManager.getResponseMode.mockReset().mockReturnValue(null);
+    OursPrivacyQueueManager.setResponseMode.mockReset();
     Platform.OS = 'ios';
     OursPrivacyConfig.getInstance().getOnIngestRejected.mockReset();
     OursPrivacyConfig.getInstance()
@@ -138,6 +142,7 @@ describe('OursPrivacyQueueManager', () => {
       token,
       type,
       ['event-1'],
+      'indexed',
     );
   });
 
@@ -205,10 +210,23 @@ describe('OursPrivacyQueueManager', () => {
 
   const queueBatch = (items) => {
     let queued = [...items];
+    let responseMode = null;
     OursPrivacyQueueManager.getQueue.mockImplementation(() => [...queued]);
+    OursPrivacyQueueManager.getResponseMode.mockImplementation(
+      () => responseMode,
+    );
+    OursPrivacyQueueManager.setResponseMode.mockImplementation(
+      async (_token, _type, mode) => {
+        if (mode === 'indexed') responseMode = 'indexed';
+      },
+    );
     OursPrivacyQueueManager.removeByIds.mockImplementation(
-      async (_token, _type, ids) => {
+      async (_token, _type, ids, mode) => {
         queued = queued.filter((item) => !ids.includes(item.distinct_id));
+        responseMode =
+          responseMode === 'indexed' || mode === 'indexed'
+            ? 'indexed'
+            : mode || responseMode;
       },
     );
     return () => queued;
@@ -248,6 +266,7 @@ describe('OursPrivacyQueueManager', () => {
       token,
       type,
       ['bad-event-id', 'good-event-id'],
+      'indexed',
     );
 
     await OursPrivacyCore().flush(token);
@@ -484,7 +503,7 @@ describe('OursPrivacyQueueManager', () => {
       ]);
       expect(onIngestRejected).not.toHaveBeenCalled();
       expect(OursPrivacyQueueManager.removeByIds.mock.calls).toEqual([
-        [token, type, ['id-1']],
+        [token, type, ['id-1'], 'indexed'],
       ]);
     },
   );
@@ -534,9 +553,9 @@ describe('OursPrivacyQueueManager', () => {
 
       expect(remaining()).toEqual([]);
       expect(OursPrivacyQueueManager.removeByIds.mock.calls).toEqual([
-        [token, type, ['id-1']],
+        [token, type, ['id-1'], 'legacy'],
         [token, type, ['id-2']],
-        [token, type, ['id-3']],
+        [token, type, ['id-3'], 'legacy'],
       ]);
     },
   );
@@ -562,7 +581,7 @@ describe('OursPrivacyQueueManager', () => {
       { event: 'appointment_booked', distinct_id: 'id-2' },
     ]);
     expect(OursPrivacyQueueManager.removeByIds.mock.calls).toEqual([
-      [token, type, ['id-1']],
+      [token, type, ['id-1'], 'indexed'],
     ]);
   });
 

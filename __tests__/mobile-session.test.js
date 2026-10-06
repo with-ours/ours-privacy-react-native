@@ -101,6 +101,44 @@ describe('MobileSession', () => {
     expect(rotatedFacts[2].defaultProperties.sid).toBe('sid-2');
   });
 
+  it('uses callback times after a processing delay and retains the visible screen on rotation', async () => {
+    const clock = setup();
+    const session = new MobileSession(clock.dependencies);
+    await session.load();
+    await session.foreground(true);
+    await session.screen('Schedule');
+
+    clock.advance(5_000);
+    const backgroundAt = {
+      wallMs: START + 5_000,
+      monotonicMs: 5_000,
+    };
+    clock.advance(15_000);
+    const background = await session.background(backgroundAt);
+    expect(background[0].eventProperties).toEqual({
+      engagement_duration_ms: 5_000,
+      screen_name: 'Schedule',
+    });
+    expect(background[0].defaultProperties.mobile_occurred_at).toBe(
+      '2026-10-05T12:00:05.000Z',
+    );
+
+    const activeAt = {
+      wallMs: backgroundAt.wallMs + 30 * 60 * 1000 - 1,
+      monotonicMs: backgroundAt.monotonicMs + 30 * 60 * 1000 - 1,
+    };
+    clock.advance(30 * 60 * 1000);
+    const warm = await session.foreground(true, true, activeAt);
+    expect(warm.map((fact) => fact.event)).toEqual(['$mobile_app_open']);
+    expect(warm[0].defaultProperties.sid).toBe('sid-1');
+
+    await session.screen('Schedule');
+    await session.rotateSession();
+    clock.advance(10_000);
+    const checkpoint = await session.checkpoint();
+    expect(checkpoint[0].eventProperties.screen_name).toBe('Schedule');
+  });
+
   it('emits nonoverlapping monotonic engagement at checkpoint, screen change, and background', async () => {
     const clock = setup();
     const session = new MobileSession(clock.dependencies);

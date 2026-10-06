@@ -194,8 +194,12 @@ export default class OursPrivacyMain {
     }
     this._appStateSubscription = AppState.addEventListener(
       'change',
-      (nextState) =>
-        this._serialize(async () => {
+      (nextState) => {
+        const at = {
+          wallMs: this._mobileSession.wallNow(),
+          monotonicMs: this._mobileSession.monotonicNow(),
+        };
+        return this._serialize(async () => {
           if (nextState === 'background') {
             this._appForegrounded = false;
             this._stopCheckpoint();
@@ -203,7 +207,7 @@ export default class OursPrivacyMain {
               !this.oursprivacyPersistent.getOptedOut(token) &&
               this._isMobilePlatform()
             ) {
-              await this._mobileSession.background();
+              await this._mobileSession.background(at);
               await this._enqueuePendingFacts(token);
             }
             if (this._flushOnBackgroundEnabled) this.flush(token);
@@ -213,12 +217,17 @@ export default class OursPrivacyMain {
               !this.oursprivacyPersistent.getOptedOut(token) &&
               this._isMobilePlatform()
             ) {
-              await this._mobileSession.foreground(this._trackAutomaticEvents);
+              await this._mobileSession.foreground(
+                this._trackAutomaticEvents,
+                true,
+                at,
+              );
               await this._enqueuePendingFacts(token);
               this._startCheckpoint(token);
             }
           }
-        }),
+        });
+      },
     );
   }
 

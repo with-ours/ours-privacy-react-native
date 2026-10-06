@@ -85,5 +85,5 @@ export class OursPrivacy {
   updateDefaultUserConsentProperties(properties: OursPrivacyProperties): void;
   trackDeepLink(url: string): Promise<void>;
   setVisitorId(visitorId: string): Promise<void>;
-  flush(): void;
+  flush(): Promise<void>;
 }

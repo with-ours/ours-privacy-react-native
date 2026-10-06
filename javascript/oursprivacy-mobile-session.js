@@ -233,9 +233,9 @@ export class MobileSession {
     );
   }
 
-  foreground(automaticEnabled = false, emitOpenFacts = true) {
-    const atMs = this.wallNow();
-    const monotonicMs = this.monotonicNow();
+  foreground(automaticEnabled = false, emitOpenFacts = true, at) {
+    const atMs = at?.wallMs ?? this.wallNow();
+    const monotonicMs = at?.monotonicMs ?? this.monotonicNow();
     return this._serialize(async () => {
       await this._load();
       if (this.disabled || this.foregrounded) return [];
@@ -319,9 +319,9 @@ export class MobileSession {
     });
   }
 
-  background() {
-    const atMs = this.wallNow();
-    const monotonicMs = this.monotonicNow();
+  background(at) {
+    const atMs = at?.wallMs ?? this.wallNow();
+    const monotonicMs = at?.monotonicMs ?? this.monotonicNow();
     return this._serialize(async () => {
       await this._load();
       if (!this.foregrounded) return [];
@@ -434,6 +434,7 @@ export class MobileSession {
       await this._load();
       const wasForegrounded = this.foregrounded;
       const automaticEnabled = this.automaticEnabled;
+      const activeScreen = this.activeScreen;
       const engagement = this._engagementFact(atMs, monotonicMs, 0);
       if (engagement) this._recordFacts([engagement]);
       this._discardSession(false);
@@ -442,6 +443,7 @@ export class MobileSession {
         this.foregrounded = true;
         this.automaticEnabled = automaticEnabled;
         this.engagementMarkMs = monotonicMs;
+        this.activeScreen = activeScreen;
       }
       await this._persist();
       return engagement ? [engagement] : [];

@@ -119,7 +119,7 @@ export class OursPrivacy {
 
   /**
    * Stop all tracking immediately. Queued events that have not been flushed
-   * are discarded. Call flush() first to preserve them.
+   * are discarded. Await flush() before opting out to send queued events first.
    */
   optOutTracking() {
     this._requireInit();
@@ -270,7 +270,7 @@ export class OursPrivacy {
    */
   flush() {
     this._requireInit();
-    this.oursprivacyImpl.flush(this.token);
+    return this.oursprivacyImpl.flush(this.token);
   }
 
   _requireInit() {

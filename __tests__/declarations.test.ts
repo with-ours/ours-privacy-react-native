@@ -16,6 +16,8 @@ client.updateDefaultUserConsentProperties({ marketing: false });
 client.updateDefaultUserConsentProperties({ analytics: 'granted' });
 client.identify({ consent: { analytics: 'granted' } });
 client.trackScreen('Schedule');
+const flushCompletion: Promise<void> = client.flush();
+void flushCompletion;
 client.init('token', {
   trackAutomaticEvents: true,
   appVersion: '2.0.0',

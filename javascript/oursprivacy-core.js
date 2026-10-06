@@ -45,7 +45,6 @@ const rejectedFromMobileResponse = (response, batchSize) => {
 export const OursPrivacyCore = (storage) => {
   const oursprivacyPersistent = OursPrivacyPersistent.getInstance(storage);
   const config = OursPrivacyConfig.getInstance();
-  const responseModes = new Map();
   let isProcessingQueue = false;
   let processQueueInterval = null;
 
@@ -149,25 +148,32 @@ export const OursPrivacyCore = (storage) => {
               isManuallySetId: config.getIsManuallySetId(token),
             });
             let rejected = [];
+            let responseMode;
             if (hasIndexedResult(response)) {
-              responseModes.set(key, 'indexed');
+              await OursPrivacyQueueManager.setResponseMode(
+                token,
+                type,
+                'indexed',
+              );
               rejected = rejectedFromMobileResponse(response, batch.length);
+              responseMode = 'indexed';
             } else if (
               !response ||
               typeof response !== 'object' ||
               Array.isArray(response) ||
               response.success !== true ||
               typeof response.visitor_id !== 'string' ||
-              responseModes.get(key) === 'indexed'
+              OursPrivacyQueueManager.getResponseMode(token, type) === 'indexed'
             ) {
               throw new Error('Invalid ingest response');
             } else {
-              responseModes.set(key, 'legacy');
+              responseMode = 'legacy';
             }
             await OursPrivacyQueueManager.removeByIds(
               token,
               type,
               batch.map((item) => item.distinct_id),
+              responseMode,
             );
             const onIngestRejected = config.getOnIngestRejected(token);
             if (typeof onIngestRejected === 'function') {
@@ -186,7 +192,10 @@ export const OursPrivacyCore = (storage) => {
               }
             }
           } catch (error) {
-            if (error.code === 400 && responseModes.get(key) === 'legacy') {
+            if (
+              error.code === 400 &&
+              OursPrivacyQueueManager.getResponseMode(token, type) === 'legacy'
+            ) {
               OursPrivacyLogger.error(
                 token,
                 `Bad request received due to corrupted data within the batch. The corrupted data is now being removed from the queue...`,

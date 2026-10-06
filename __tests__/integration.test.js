@@ -399,6 +399,79 @@ describe('OursPrivacy integration flows', () => {
     expect(onIngestRejected).not.toHaveBeenCalled();
   });
 
+  it('keeps indexed acknowledgement mode across a client restart', async () => {
+    require('react-native').Platform.OS = 'web';
+    const values = new Map();
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => {
+        values.set(key, value);
+      },
+      removeItem: async (key) => {
+        values.delete(key);
+      },
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const first = new OursPrivacy();
+    await first.init('indexed-restart-token', { storage });
+    await first.oursprivacyImpl.track('indexed-restart-token', 'first');
+    fetchMock.mockResponseOnce(
+      JSON.stringify({ success: true, accepted: 1, rejected: [] }),
+      { status: 200 },
+    );
+    await first.oursprivacyImpl.core.flush('indexed-restart-token');
+    expect(
+      JSON.parse(values.get('OURSPRIVACY_indexed-restart-token_/ingest_QUEUE'))
+        .responseMode,
+    ).toBe('indexed');
+
+    jest.resetModules();
+    require('react-native').Platform.OS = 'web';
+    const {
+      OursPrivacy: ReloadedOursPrivacy,
+    } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const reloaded = new ReloadedOursPrivacy();
+    await reloaded.init('indexed-restart-token', { storage });
+    expect(
+      OursPrivacyQueueManager.getResponseMode(
+        'indexed-restart-token',
+        OursPrivacyType.EVENTS,
+      ),
+    ).toBe('indexed');
+    await reloaded.oursprivacyImpl.track(
+      'indexed-restart-token',
+      'appointment_booked',
+    );
+    const [pending] = OursPrivacyQueueManager.getQueue(
+      'indexed-restart-token',
+      OursPrivacyType.EVENTS,
+    );
+    const { OursPrivacyNetwork } = require('../javascript/oursprivacy-network');
+    const send = jest
+      .spyOn(OursPrivacyNetwork, 'sendRequest')
+      .mockResolvedValueOnce({ success: true, visitor_id: 'v1' });
+    const observedMode = jest.spyOn(OursPrivacyQueueManager, 'getResponseMode');
+    const removed = jest.spyOn(OursPrivacyQueueManager, 'removeByIds');
+
+    await reloaded.oursprivacyImpl.core.flush('indexed-restart-token');
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(observedMode.mock.results.map((result) => result.value)).toContain(
+      'indexed',
+    );
+    expect(removed).not.toHaveBeenCalled();
+
+    expect(
+      OursPrivacyQueueManager.getQueue(
+        'indexed-restart-token',
+        OursPrivacyType.EVENTS,
+      ),
+    ).toEqual([pending]);
+  });
+
   it('retains a web queued event on HTTP 400 before its token contract is known', async () => {
     require('react-native').Platform.OS = 'web';
     const { OursPrivacy } = require('@oursprivacy/react-native');
@@ -692,6 +765,85 @@ describe('OursPrivacy integration flows', () => {
       distinctId: original.distinct_id,
       code: 'invalid_session',
     });
+  });
+
+  it('uses AppState arrival time when an earlier flush delays lifecycle processing', async () => {
+    const appState = installAppStateCapture();
+    suspendPeriodicNetworkFlush();
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await op.init('delayed-appstate-token', { trackAutomaticEvents: true });
+    op.setFlushOnBackground(false);
+    op.trackScreen('Schedule');
+    await op.oursprivacyImpl._pendingOperation;
+
+    let releaseRequest;
+    fetchMock.mockImplementation(
+      (_url, options) =>
+        new Promise((resolve) => {
+          releaseRequest = () =>
+            resolve({
+              ok: true,
+              json: async () => ({
+                success: true,
+                accepted: JSON.parse(options.body).data.length,
+                rejected: [],
+              }),
+            });
+        }),
+    );
+    const flushing = op.flush();
+    await waitForFetchCalls(1);
+
+    await jest.advanceTimersByTimeAsync(5_000);
+    const background = appState.handler('background');
+    await jest.advanceTimersByTimeAsync(15_000);
+    releaseRequest();
+    await flushing;
+    await background;
+
+    const queued = OursPrivacyQueueManager.getQueue(
+      'delayed-appstate-token',
+      OursPrivacyType.EVENTS,
+    );
+    const [engagement] = queued.filter(
+      (item) => item.event === '$mobile_session_engagement',
+    );
+    expect(engagement.eventProperties).toEqual({
+      engagement_duration_ms: 5_000,
+      screen_name: 'Schedule',
+    });
+    expect(engagement.defaultProperties.mobile_occurred_at).toBe(
+      new Date(
+        Date.parse(engagement.defaultProperties.mobile_session_started_at) +
+          5_000,
+      ).toISOString(),
+    );
+  });
+
+  it('sends a queued booking when flush is awaited before opt-out', async () => {
+    suspendPeriodicNetworkFlush();
+    mockIndexedMobileSuccess();
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const op = new OursPrivacy();
+    await op.init('flush-before-optout-token');
+    op.track('appointment_booked', { appointment_id: 'synthetic-booking' });
+
+    await op.flush();
+    await op.optOutTracking();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body).data;
+    expect(sent).toEqual([
+      expect.objectContaining({
+        event: 'appointment_booked',
+        eventProperties: { appointment_id: 'synthetic-booking' },
+      }),
+    ]);
   });
 
   it('handles AppState engagement and warm opens when background flushing is disabled', async () => {
@@ -1489,6 +1641,8 @@ describe('OursPrivacy integration flows', () => {
     const op = new OursPrivacy();
     await op.init('active-rotation-token', { trackAutomaticEvents: true });
     op.setFlushOnBackground(false);
+    op.trackScreen('Schedule');
+    await op.oursprivacyImpl._pendingOperation;
     const initial = OursPrivacyQueueManager.getQueue(
       'active-rotation-token',
       OursPrivacyType.EVENTS,
@@ -1522,6 +1676,7 @@ describe('OursPrivacy integration flows', () => {
       expect.objectContaining({
         eventProperties: expect.objectContaining({
           engagement_duration_ms: 10_000,
+          screen_name: 'Schedule',
         }),
       }),
     );
