@@ -93,7 +93,14 @@ const server = http.createServer(async (request, response) => {
   );
 
   response.writeHead(200, { 'Content-Type': 'application/json' });
-  response.end(JSON.stringify({ ok: true, stored: fileName, events }));
+  response.end(
+    JSON.stringify({
+      success: true,
+      visitor_id: parsedBody?.data?.[0]?.visitor_id ?? '',
+      accepted: events.length,
+      rejected: [],
+    }),
+  );
 });
 
 server.listen(port, host, () => {

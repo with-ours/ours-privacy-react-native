@@ -40,7 +40,7 @@ async function readDemoToken() {
     return null;
   }
 }
-const expectedToken = await readDemoToken();
+const expectedToken = getArgValue('--token', await readDemoToken());
 const sdkVersion = JSON.parse(
   await fs.readFile(new URL('../package.json', import.meta.url), 'utf8'),
 ).version;
@@ -74,6 +74,7 @@ const allEvents = [];
 for (const capture of captures) {
   const payload = capture.jsonBody;
   if (!payload || !Array.isArray(payload.data)) continue;
+  if (expectedToken && payload.token !== expectedToken) continue;
   for (const event of payload.data) {
     allEvents.push({
       ...event,
@@ -424,6 +425,93 @@ if (coldDeepLink && buttonEvent && identifyEvent) {
     );
   }
 }
+
+// === MOBILE CONTRACT ===
+
+const firstOpen = findAllEvents('$mobile_first_open');
+const appOpen = findAllEvents('$mobile_app_open');
+const sessionStart = findAllEvents('$mobile_session_start');
+const screenView = findAllEvents('$mobile_screen_view');
+const engagement = findAllEvents('$mobile_session_engagement');
+const booking = findEvent('appointment_booked');
+const mobileTime = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
+const firstSid = firstOpen[0]?.defaultProperties?.sid;
+const initialEngagement = engagement.filter(
+  (event) => event.defaultProperties?.sid === firstSid,
+);
+
+assert('one first tracked open', firstOpen.length === 1);
+assert(
+  'one app open for the first session',
+  appOpen.filter((event) => event.defaultProperties?.sid === firstSid)
+    .length === 1,
+);
+assert(
+  'one start for the first session',
+  sessionStart.filter((event) => event.defaultProperties?.sid === firstSid)
+    .length === 1,
+);
+assert(
+  'Schedule screen tracked',
+  screenView.length === 1 &&
+    screenView[0].eventProperties?.screen_name === 'Schedule',
+);
+assert(
+  'synthetic appointment booked',
+  booking?.eventProperties?.appointment_id === 'e2e-appointment',
+);
+assert(
+  'first session is engaged with time assigned to Schedule',
+  initialEngagement.reduce(
+    (total, event) => total + event.eventProperties.engagement_duration_ms,
+    0,
+  ) >= 10_000 &&
+    initialEngagement.some(
+      (event) =>
+        event.eventProperties?.screen_name === 'Schedule' &&
+        event.eventProperties?.engagement_duration_ms > 0,
+    ),
+);
+
+const initialMobile = [
+  firstOpen[0],
+  appOpen[0],
+  sessionStart[0],
+  screenView[0],
+  booking,
+].filter(Boolean);
+assert(
+  'initial mobile events share visitor and session',
+  initialMobile.length === 5 &&
+    initialMobile.every(
+      (event) =>
+        event.visitor_id === firstOpen[0].visitor_id &&
+        event.defaultProperties?.sid === firstOpen[0].defaultProperties?.sid,
+    ),
+);
+assert(
+  'mobile metadata uses host app version and UTC timestamps',
+  initialMobile.length === 5 &&
+    initialMobile.every((event) => {
+      const defaults = event.defaultProperties || {};
+      return (
+        defaults.mobile_platform === 'ios' &&
+        defaults.mobile_contract_version === 1 &&
+        defaults.app_version === '1.2.3' &&
+        defaults.app_build === '42' &&
+        mobileTime.test(defaults.mobile_occurred_at || '') &&
+        mobileTime.test(defaults.mobile_session_started_at || '') &&
+        !Object.hasOwn(event, 'time')
+      );
+    }),
+);
+assert(
+  'canonical facts contain no user properties',
+  firstOpen.length > 0 &&
+    allEvents
+      .filter((event) => event.event.startsWith('$mobile_'))
+      .every((event) => event.userProperties === null),
+);
 
 // ---------------------------------------------------------------------------
 // Report

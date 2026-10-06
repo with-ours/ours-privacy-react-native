@@ -69,10 +69,11 @@ const SIMULATED_COLD_START_URL =
   'myapp://open?utm_source=google&utm_medium=cpc&utm_campaign=spring_2026&gclid=test_gclid_123&aleid=test_aleid_456';
 
 const initOptions = {
-  trackAutomaticEvents: false,
+  trackAutomaticEvents: E2E_AUTOFIRE === 'true',
   defaultEventProperties: {demo_app: true},
   defaultUserCustomProperties: {test_user: true},
   initialURL: SIMULATED_COLD_START_URL,
+  ...(E2E_AUTOFIRE === 'true' ? {appVersion: '1.2.3', appBuild: '42'} : {}),
   ...(OURSPRIVACY_SERVER_URL ? {serverURL: OURSPRIVACY_SERVER_URL} : {}),
 };
 
@@ -92,6 +93,14 @@ oursprivacy.init(OURSPRIVACY_TOKEN, initOptions).then(async () => {
   await delay(500);
   oursprivacy.track('button_pressed', {button: 'e2e_auto'});
   console.log('[E2E] tracked button_pressed');
+
+  oursprivacy.trackScreen('Schedule');
+  oursprivacy.track('appointment_booked', {
+    appointment_id: 'e2e-appointment',
+  });
+  await delay(12_000);
+  oursprivacy.flush();
+  await delay(500);
 
   // Phase 2: Identify
   oursprivacy.identify({

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import net from 'node:net';
@@ -125,7 +126,7 @@ async function waitForHealth(url, child, timeoutMs) {
   throw new Error(`Service did not become ready at ${url}`);
 }
 
-async function capturedEventNames(captureDir) {
+async function capturedEventNames(captureDir, token) {
   const files = (await fs.readdir(captureDir)).filter((name) =>
     name.endsWith('.json'),
   );
@@ -134,6 +135,7 @@ async function capturedEventNames(captureDir) {
     const capture = JSON.parse(
       await fs.readFile(path.join(captureDir, name), 'utf8'),
     );
+    if (capture.jsonBody?.token !== token) continue;
     for (const entry of capture.jsonBody?.data ?? []) {
       if (typeof entry?.event === 'string') names.add(entry.event);
     }
@@ -141,11 +143,11 @@ async function capturedEventNames(captureDir) {
   return names;
 }
 
-async function waitForCaptures(captureDir, timeoutSeconds) {
+async function waitForCaptures(captureDir, token, timeoutSeconds) {
   const deadline = Date.now() + timeoutSeconds * 1_000;
   let missing = [...requiredEvents];
   while (Date.now() < deadline) {
-    const seen = await capturedEventNames(captureDir);
+    const seen = await capturedEventNames(captureDir, token);
     missing = [...requiredEvents].filter((name) => !seen.has(name));
     if (missing.length === 0) {
       await delay(2_000);
@@ -233,7 +235,8 @@ async function main() {
     for (const file of await fs.readdir(captureDir)) {
       if (file.endsWith('.json')) await fs.unlink(path.join(captureDir, file));
     }
-    await fs.writeFile(envPath, demoEnv(platform), { mode: 0o600 });
+    const runToken = `e2e-local-token-${randomUUID()}`;
+    await fs.writeFile(envPath, demoEnv(platform, runToken), { mode: 0o600 });
     recorder = start(
       'node',
       [path.join(root, 'scripts', 'capture-ingest.mjs'), '--dir', captureDir],
@@ -266,10 +269,16 @@ async function main() {
       },
     );
     activeRun = undefined;
-    await waitForCaptures(captureDir, timeoutSeconds);
+    await waitForCaptures(captureDir, runToken, timeoutSeconds);
     await run(
       'node',
-      [path.join(root, 'scripts', 'e2e-assertions.mjs'), '--dir', captureDir],
+      [
+        path.join(root, 'scripts', 'e2e-assertions.mjs'),
+        '--dir',
+        captureDir,
+        '--token',
+        runToken,
+      ],
       root,
       (child) => {
         activeRun = child;
