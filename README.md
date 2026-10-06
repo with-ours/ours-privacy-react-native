@@ -102,7 +102,7 @@ await op.flush();
 
 On iOS and Android, every tracked event carries the SDK-owned `defaultProperties` `sid`, `mobile_session_started_at`, `mobile_occurred_at`, `mobile_platform`, and `mobile_contract_version: 1`. The host may supply `appVersion` and `appBuild` at initialization; these appear as `app_version` and `app_build`. `version` continues to identify the React Native SDK (`react-native@<SDK version>`). The SDK does not infer the host app version or build from its own package. `mobile_occurred_at` is captured when the event is queued, as an ISO-8601 UTC timestamp with millisecond precision. The SDK does not set top-level `time`.
 
-`trackAutomaticEvents` defaults to `false`. Set it to `true` to emit the automatic lifecycle events below. Manual `track()` and `trackScreen()` work with it off and still carry session metadata. Full tracking opt-out suppresses both automatic and manual events and clears unsent queued events. An opted-out launch does not consume the first-open marker.
+`trackAutomaticEvents` defaults to `false`. Set it to `true` to emit the automatic lifecycle events below. Manual `track()` and `trackScreen()` work with it off and still carry session metadata. Full tracking opt-out suppresses both automatic and manual events, discards the current mobile session and unsent queued events, and clears registered default event, user custom, user consent, and attribution properties. It retains the current visitor ID; opt-in starts fresh mobile session state under that ID unless your app changes it. An opted-out launch does not consume the first-open marker.
 
 The ingest server chooses its response format from the authenticated source token, regardless of the app's OS. Indexed responses acknowledge each sent batch with an `accepted` count and `rejected` entries containing an index and error code. Initialize with `onIngestRejected` to learn when an event is rejected. The callback receives only its stable `distinctId` and the server's `code`; it never receives event properties or user properties. Use the ID to correlate with records you already hold, and keep PHI out of callback logs. The SDK invokes the callback after the queue update is saved. A malformed response, failed queue save, or transport failure leaves the batch queued for retry. A legacy response must include `success: true` and a string `visitor_id`; it then acknowledges the full batch. After an indexed response, a later no-index response leaves the batch queued. HTTP 400 retains the batch until the token has returned a legacy response. After a legacy response, HTTP 400 can remove the first queued event as before; after an indexed response, it retains the batch.
 
@@ -617,7 +617,9 @@ await op.trackDeepLink(
 
 #### `op.optOutTracking()`
 
-Stop all tracking immediately. Any queued events that have not been flushed will be discarded. Await `flush()` first to attempt delivery; a failed request remains queued and will be discarded by opt-out.
+Stop all tracking immediately. Unsent queued events and the current mobile session are discarded, and registered default event, user custom, user consent, and attribution properties are cleared. The current visitor ID is retained, so events after opt-in use that ID with a fresh mobile session. Await `flush()` first to attempt delivery; a failed request remains queued and will be discarded by opt-out.
+
+For an account switch, call `reset()` to generate a new visitor ID or `setVisitorId()` to adopt the intended ID, according to your app's policy, before tracking resumes. Keep PHI out of visitor IDs and manually supplied properties.
 
 **Returns:** `Promise<void>`
 
