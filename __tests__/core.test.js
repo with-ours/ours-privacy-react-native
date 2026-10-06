@@ -74,10 +74,14 @@ describe('OursPrivacyQueueManager', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    OursPrivacyNetwork.sendRequest.mockReset();
+    OursPrivacyQueueManager.removeByIds.mockReset();
+    OursPrivacyQueueManager.getQueue.mockReset();
     Platform.OS = 'ios';
-    OursPrivacyConfig.getInstance().getOnIngestRejected.mockReturnValue(
-      undefined,
-    );
+    OursPrivacyConfig.getInstance().getOnIngestRejected.mockReset();
+    OursPrivacyConfig.getInstance()
+      .getFlushBatchSize.mockReset()
+      .mockReturnValue(50);
     jest.isolateModules(() => {
       OursPrivacyPersistent.getInstance().getOptedOut.mockReturnValue(false);
       OursPrivacyQueueManager.getQueue.mockReturnValue([]);
@@ -321,8 +325,7 @@ describe('OursPrivacyQueueManager', () => {
       },
     ],
     ['mismatched count', { success: true, accepted: 0, rejected: [] }],
-    ['no-index mobile response', { success: true, visitor_id: 'v1' }],
-  ])('retains the mobile batch for a %s response', async (_name, response) => {
+  ])('retains the batch for a %s indexed response', async (_name, response) => {
     const remaining = queueBatch([
       { event: 'appointment_booked', distinct_id: 'id-1' },
     ]);
@@ -339,6 +342,86 @@ describe('OursPrivacyQueueManager', () => {
     expect(onIngestRejected).not.toHaveBeenCalled();
   });
 
+  it.each(['ios', 'android'])(
+    'acknowledges a legacy token response on %s',
+    async (platform) => {
+      Platform.OS = platform;
+      const remaining = queueBatch([
+        { event: 'appointment_booked', distinct_id: 'id-1' },
+      ]);
+      const onIngestRejected = jest.fn();
+      OursPrivacyConfig.getInstance().getOnIngestRejected.mockReturnValue(
+        onIngestRejected,
+      );
+      OursPrivacyNetwork.sendRequest.mockResolvedValueOnce({
+        success: true,
+        visitor_id: 'v1',
+      });
+
+      await OursPrivacyCore().flush(token);
+
+      expect(remaining()).toEqual([]);
+      expect(onIngestRejected).not.toHaveBeenCalled();
+    },
+  );
+
+  it('reports an indexed rejection on web after queue removal', async () => {
+    Platform.OS = 'web';
+    const remaining = queueBatch([
+      { event: 'appointment_booked', distinct_id: 'id-1' },
+    ]);
+    const onIngestRejected = jest.fn(() => expect(remaining()).toEqual([]));
+    OursPrivacyConfig.getInstance().getOnIngestRejected.mockReturnValue(
+      onIngestRejected,
+    );
+    OursPrivacyNetwork.sendRequest.mockResolvedValueOnce({
+      success: true,
+      visitor_id: 'v1',
+      accepted: 0,
+      rejected: [{ index: 0, code: 'invalid_session' }],
+    });
+
+    await OursPrivacyCore().flush(token);
+
+    expect(remaining()).toEqual([]);
+    expect(onIngestRejected).toHaveBeenCalledWith({
+      distinctId: 'id-1',
+      code: 'invalid_session',
+    });
+  });
+
+  it('retains a partial indexed result on web', async () => {
+    Platform.OS = 'web';
+    const remaining = queueBatch([
+      { event: 'appointment_booked', distinct_id: 'id-1' },
+    ]);
+    const onIngestRejected = jest.fn();
+    OursPrivacyConfig.getInstance().getOnIngestRejected.mockReturnValue(
+      onIngestRejected,
+    );
+    OursPrivacyNetwork.sendRequest.mockResolvedValueOnce({
+      success: true,
+      accepted: 1,
+    });
+
+    await OursPrivacyCore().flush(token);
+
+    expect(remaining()).toHaveLength(1);
+    expect(onIngestRejected).not.toHaveBeenCalled();
+  });
+
+  it('retains a no-index response with success false', async () => {
+    Platform.OS = 'web';
+    const remaining = queueBatch([data]);
+    OursPrivacyNetwork.sendRequest.mockResolvedValueOnce({
+      success: false,
+    });
+
+    await OursPrivacyCore().flush(token);
+
+    expect(remaining()).toEqual([data]);
+  });
+
   it('keeps a mobile batch on transport failure', async () => {
     const remaining = queueBatch([data]);
     OursPrivacyNetwork.sendRequest.mockRejectedValueOnce(new Error('offline'));
@@ -349,35 +432,149 @@ describe('OursPrivacyQueueManager', () => {
     expect(OursPrivacyQueueManager.removeByIds).not.toHaveBeenCalled();
   });
 
-  it('does not drop a mobile event after HTTP 400 even if its name looks ordinary', async () => {
-    const remaining = queueBatch([
-      { event: 'appointment_booked', distinct_id: 'id-1' },
-    ]);
-    OursPrivacyNetwork.sendRequest.mockRejectedValueOnce({ code: 400 });
+  it.each(['ios', 'web'])(
+    'retains an event after HTTP 400 before source mode is known on %s',
+    async (platform) => {
+      Platform.OS = platform;
+      const remaining = queueBatch([
+        { event: 'appointment_booked', distinct_id: 'id-1' },
+      ]);
+      OursPrivacyNetwork.sendRequest.mockRejectedValueOnce({ code: 400 });
 
-    await OursPrivacyCore().flush(token);
+      await OursPrivacyCore().flush(token);
 
-    expect(remaining()).toHaveLength(1);
-    expect(OursPrivacyQueueManager.removeByIds).not.toHaveBeenCalled();
-  });
+      expect(remaining()).toHaveLength(1);
+      expect(OursPrivacyQueueManager.removeByIds).not.toHaveBeenCalled();
+    },
+  );
 
-  it('preserves no-index acknowledgement and HTTP 400 behavior on web', async () => {
+  it.each(['ios', 'web'])(
+    'uses legacy HTTP 400 removal on %s only after a legacy response',
+    async (platform) => {
+      Platform.OS = platform;
+      const remaining = queueBatch([
+        { event: 'first', distinct_id: 'id-1' },
+        { event: '$mobile_app_open', distinct_id: 'id-2' },
+        { event: 'third', distinct_id: 'id-3' },
+      ]);
+      OursPrivacyConfig.getInstance().getFlushBatchSize.mockReturnValue(1);
+      OursPrivacyNetwork.sendRequest
+        .mockResolvedValueOnce({ success: true, visitor_id: 'v1' })
+        .mockRejectedValueOnce({ code: 400 })
+        .mockResolvedValueOnce({ success: true, visitor_id: 'v1' });
+
+      await OursPrivacyCore().flush(token);
+
+      expect(remaining()).toEqual([]);
+      expect(OursPrivacyQueueManager.removeByIds.mock.calls).toEqual([
+        [token, type, ['id-1']],
+        [token, type, ['id-2']],
+        [token, type, ['id-3']],
+      ]);
+    },
+  );
+
+  it('retains HTTP 400 after a web token has produced an indexed result', async () => {
     Platform.OS = 'web';
     const remaining = queueBatch([
-      { event: '$mobile_app_open', distinct_id: 'id-1' },
-      { event: 'later', distinct_id: 'id-2' },
+      { event: 'first', distinct_id: 'id-1' },
+      { event: 'appointment_booked', distinct_id: 'id-2' },
     ]);
-    OursPrivacyConfig.getInstance().getFlushBatchSize.mockReturnValueOnce(1);
+    OursPrivacyConfig.getInstance().getFlushBatchSize.mockReturnValue(1);
     OursPrivacyNetwork.sendRequest
-      .mockRejectedValueOnce({ code: 400 })
-      .mockResolvedValueOnce({ success: true, visitor_id: 'v1' });
+      .mockResolvedValueOnce({
+        success: true,
+        accepted: 1,
+        rejected: [],
+      })
+      .mockRejectedValueOnce({ code: 400 });
 
     await OursPrivacyCore().flush(token);
 
-    expect(remaining()).toEqual([]);
+    expect(remaining()).toEqual([
+      { event: 'appointment_booked', distinct_id: 'id-2' },
+    ]);
     expect(OursPrivacyQueueManager.removeByIds.mock.calls).toEqual([
       [token, type, ['id-1']],
-      [token, type, ['id-2']],
+    ]);
+  });
+
+  it('does not restore legacy HTTP 400 removal after an indexed response', async () => {
+    const remaining = queueBatch([
+      { event: 'first', distinct_id: 'id-1' },
+      { event: 'second', distinct_id: 'id-2' },
+      { event: 'third', distinct_id: 'id-3' },
+      { event: 'appointment_booked', distinct_id: 'id-4' },
+    ]);
+    OursPrivacyConfig.getInstance().getFlushBatchSize.mockReturnValue(1);
+    OursPrivacyNetwork.sendRequest
+      .mockResolvedValueOnce({ success: true, visitor_id: 'v1' })
+      .mockResolvedValueOnce({ success: true, accepted: 1, rejected: [] })
+      .mockResolvedValueOnce({ success: true, visitor_id: 'v1' })
+      .mockRejectedValueOnce({ code: 400 });
+
+    await OursPrivacyCore().flush(token);
+
+    expect(remaining()).toEqual([
+      { event: 'appointment_booked', distinct_id: 'id-4' },
+    ]);
+  });
+
+  it('retains HTTP 400 after a partial indexed response follows legacy mode', async () => {
+    Platform.OS = 'web';
+    const remaining = queueBatch([
+      { event: 'first', distinct_id: 'id-1' },
+      { event: 'appointment_booked', distinct_id: 'id-2' },
+    ]);
+    OursPrivacyConfig.getInstance().getFlushBatchSize.mockReturnValue(1);
+    OursPrivacyNetwork.sendRequest
+      .mockResolvedValueOnce({ success: true, visitor_id: 'v1' })
+      .mockResolvedValueOnce({ success: true, accepted: 1 })
+      .mockRejectedValueOnce({ code: 400 });
+    const core = OursPrivacyCore();
+
+    await core.flush(token);
+    expect(remaining()).toEqual([
+      { event: 'appointment_booked', distinct_id: 'id-2' },
+    ]);
+
+    await core.flush(token);
+    expect(remaining()).toEqual([
+      { event: 'appointment_booked', distinct_id: 'id-2' },
+    ]);
+    expect(OursPrivacyQueueManager.removeByIds).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not apply one token’s legacy HTTP 400 behavior to another token', async () => {
+    Platform.OS = 'web';
+    const queues = new Map([
+      ['legacy-token', [{ event: 'first', distinct_id: 'id-1' }]],
+      ['unknown-token', [{ event: 'appointment_booked', distinct_id: 'id-2' }]],
+    ]);
+    OursPrivacyQueueManager.getQueue.mockImplementation((queueToken) => [
+      ...queues.get(queueToken),
+    ]);
+    OursPrivacyQueueManager.removeByIds.mockImplementation(
+      async (queueToken, _type, ids) => {
+        queues.set(
+          queueToken,
+          queues
+            .get(queueToken)
+            .filter((item) => !ids.includes(item.distinct_id)),
+        );
+      },
+    );
+    OursPrivacyNetwork.sendRequest
+      .mockResolvedValueOnce({ success: true, visitor_id: 'v1' })
+      .mockRejectedValueOnce({ code: 400 });
+    const core = OursPrivacyCore();
+
+    await core.flush('legacy-token');
+    await core.flush('unknown-token');
+
+    expect(queues.get('legacy-token')).toEqual([]);
+    expect(queues.get('unknown-token')).toEqual([
+      { event: 'appointment_booked', distinct_id: 'id-2' },
     ]);
   });
 

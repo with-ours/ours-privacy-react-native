@@ -4,11 +4,14 @@ import { OursPrivacyType } from './oursprivacy-constants';
 import { OursPrivacyConfig } from './oursprivacy-config';
 import { OursPrivacyPersistent } from './oursprivacy-persistent';
 import { OursPrivacyLogger } from './oursprivacy-logger';
-import { Platform } from 'react-native';
 
 const pendingFlushes = new Map();
 
-const isMobileSource = () => Platform.OS === 'ios' || Platform.OS === 'android';
+const hasIndexedResult = (response) =>
+  response !== null &&
+  typeof response === 'object' &&
+  (Object.prototype.hasOwnProperty.call(response, 'accepted') ||
+    Object.prototype.hasOwnProperty.call(response, 'rejected'));
 
 const rejectedFromMobileResponse = (response, batchSize) => {
   if (
@@ -42,6 +45,7 @@ const rejectedFromMobileResponse = (response, batchSize) => {
 export const OursPrivacyCore = (storage) => {
   const oursprivacyPersistent = OursPrivacyPersistent.getInstance(storage);
   const config = OursPrivacyConfig.getInstance();
+  const responseModes = new Map();
   let isProcessingQueue = false;
   let processQueueInterval = null;
 
@@ -144,9 +148,20 @@ export const OursPrivacyCore = (storage) => {
               serverURL: config.getServerURL(token),
               isManuallySetId: config.getIsManuallySetId(token),
             });
-            const rejected = isMobileSource()
-              ? rejectedFromMobileResponse(response, batch.length)
-              : [];
+            let rejected = [];
+            if (hasIndexedResult(response)) {
+              responseModes.set(key, 'indexed');
+              rejected = rejectedFromMobileResponse(response, batch.length);
+            } else if (
+              !response ||
+              typeof response !== 'object' ||
+              Array.isArray(response) ||
+              response.success !== true
+            ) {
+              throw new Error('Invalid ingest response');
+            } else if (responseModes.get(key) !== 'indexed') {
+              responseModes.set(key, 'legacy');
+            }
             await OursPrivacyQueueManager.removeByIds(
               token,
               type,
@@ -169,7 +184,7 @@ export const OursPrivacyCore = (storage) => {
               }
             }
           } catch (error) {
-            if (error.code === 400 && !isMobileSource()) {
+            if (error.code === 400 && responseModes.get(key) === 'legacy') {
               OursPrivacyLogger.error(
                 token,
                 `Bad request received due to corrupted data within the batch. The corrupted data is now being removed from the queue...`,

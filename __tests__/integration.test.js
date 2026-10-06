@@ -290,6 +290,104 @@ describe('OursPrivacy integration flows', () => {
     ).toEqual([]);
   });
 
+  it.each(['ios', 'android'])(
+    'acknowledges a WebSource token response on %s',
+    async (platform) => {
+      require('react-native').Platform.OS = platform;
+      const { OursPrivacy } = require('@oursprivacy/react-native');
+      const {
+        OursPrivacyQueueManager,
+      } = require('../javascript/oursprivacy-queue');
+      const {
+        OursPrivacyType,
+      } = require('../javascript/oursprivacy-constants');
+      const op = new OursPrivacy();
+      await op.init('legacy-token');
+      await op.oursprivacyImpl.track('legacy-token', 'appointment_booked');
+      fetchMock.mockResponseOnce(
+        JSON.stringify({ success: true, visitor_id: 'web-visitor' }),
+        { status: 200 },
+      );
+
+      await op.oursprivacyImpl.core.flush('legacy-token');
+
+      expect(
+        OursPrivacyQueueManager.getQueue(
+          'legacy-token',
+          OursPrivacyType.EVENTS,
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  it('reports an indexed rejection from a mobile token while running on web', async () => {
+    require('react-native').Platform.OS = 'web';
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const onIngestRejected = jest.fn();
+    const op = new OursPrivacy();
+    await op.init('indexed-web-token', { onIngestRejected });
+    await op.oursprivacyImpl.track('indexed-web-token', 'appointment_booked');
+    const queued = OursPrivacyQueueManager.getQueue(
+      'indexed-web-token',
+      OursPrivacyType.EVENTS,
+    );
+    fetchMock.mockResponseOnce(
+      JSON.stringify({
+        success: true,
+        visitor_id: 'mobile-visitor',
+        accepted: 0,
+        rejected: [{ index: 0, code: 'mobile_session_required' }],
+      }),
+      { status: 200 },
+    );
+
+    await op.oursprivacyImpl.core.flush('indexed-web-token');
+
+    expect(
+      OursPrivacyQueueManager.getQueue(
+        'indexed-web-token',
+        OursPrivacyType.EVENTS,
+      ),
+    ).toEqual([]);
+    expect(onIngestRejected).toHaveBeenCalledTimes(1);
+    expect(onIngestRejected).toHaveBeenCalledWith({
+      distinctId: queued[0].distinct_id,
+      code: 'mobile_session_required',
+    });
+  });
+
+  it('retains a web queued event on HTTP 400 before its token contract is known', async () => {
+    require('react-native').Platform.OS = 'web';
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const op = new OursPrivacy();
+    await op.init('unknown-web-token');
+    await op.oursprivacyImpl.track('unknown-web-token', 'appointment_booked');
+    const queued = OursPrivacyQueueManager.getQueue(
+      'unknown-web-token',
+      OursPrivacyType.EVENTS,
+    );
+    fetchMock.mockResponseOnce(JSON.stringify({ success: false }), {
+      status: 400,
+    });
+
+    await op.oursprivacyImpl.core.flush('unknown-web-token');
+
+    expect(
+      OursPrivacyQueueManager.getQueue(
+        'unknown-web-token',
+        OursPrivacyType.EVENTS,
+      ),
+    ).toEqual(queued);
+  });
+
   it('serializes overlapping flushes and acknowledges only the sent IDs', async () => {
     const { OursPrivacy } = require('@oursprivacy/react-native');
     const {
