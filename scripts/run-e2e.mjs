@@ -278,6 +278,8 @@ async function main() {
         captureDir,
         '--token',
         runToken,
+        '--platform',
+        platform,
       ],
       root,
       (child) => {

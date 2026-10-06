@@ -41,6 +41,13 @@ async function readDemoToken() {
   }
 }
 const expectedToken = getArgValue('--token', await readDemoToken());
+const expectedPlatform = getArgValue('--platform', 'ios');
+if (typeof expectedToken !== 'string' || expectedToken.trim() === '') {
+  console.error(
+    'E2E token required: pass --token or set OURSPRIVACY_TOKEN in Demo/.env',
+  );
+  process.exit(1);
+}
 const sdkVersion = JSON.parse(
   await fs.readFile(new URL('../package.json', import.meta.url), 'utf8'),
 ).version;
@@ -74,7 +81,7 @@ const allEvents = [];
 for (const capture of captures) {
   const payload = capture.jsonBody;
   if (!payload || !Array.isArray(payload.data)) continue;
-  if (expectedToken && payload.token !== expectedToken) continue;
+  if (payload.token !== expectedToken) continue;
   for (const event of payload.data) {
     allEvents.push({
       ...event,
@@ -181,9 +188,7 @@ if (buttonEvent) {
   );
   assert(
     'button_pressed has token',
-    expectedToken
-      ? buttonEvent._token === expectedToken
-      : typeof buttonEvent._token === 'string' && buttonEvent._token.length > 0,
+    buttonEvent._token === expectedToken,
     `got: ${buttonEvent._token}`,
   );
 
@@ -439,6 +444,28 @@ const firstSid = firstOpen[0]?.defaultProperties?.sid;
 const initialEngagement = engagement.filter(
   (event) => event.defaultProperties?.sid === firstSid,
 );
+const initialSessionStartMs = Date.parse(
+  firstOpen[0]?.defaultProperties?.mobile_session_started_at,
+);
+const timedEngagement = initialEngagement
+  .map((event) => {
+    const end = Date.parse(event.defaultProperties?.mobile_occurred_at);
+    const duration = event.eventProperties?.engagement_duration_ms;
+    return { event, end, duration, start: end - duration };
+  })
+  .sort((a, b) => a.end - b.end);
+const engagementTotal = timedEngagement.reduce(
+  (total, item) => total + item.duration,
+  0,
+);
+const scheduleEngagement = timedEngagement.reduce(
+  (total, item) =>
+    total +
+    (item.event.eventProperties?.screen_name === 'Schedule'
+      ? item.duration
+      : 0),
+  0,
+);
 
 assert('one first tracked open', firstOpen.length === 1);
 assert(
@@ -461,16 +488,40 @@ assert(
   booking?.eventProperties?.appointment_id === 'e2e-appointment',
 );
 assert(
-  'first session is engaged with time assigned to Schedule',
-  initialEngagement.reduce(
-    (total, event) => total + event.eventProperties.engagement_duration_ms,
-    0,
-  ) >= 10_000 &&
-    initialEngagement.some(
-      (event) =>
-        event.eventProperties?.screen_name === 'Schedule' &&
-        event.eventProperties?.engagement_duration_ms > 0,
-    ),
+  'initial engagement deltas are valid and nonoverlapping',
+  timedEngagement.length > 0 &&
+    Number.isFinite(initialSessionStartMs) &&
+    new Set(timedEngagement.map(({ event }) => event.distinct_id)).size ===
+      timedEngagement.length &&
+    timedEngagement.every(
+      ({ event, end, start, duration }, index) =>
+        typeof event.distinct_id === 'string' &&
+        event.distinct_id.length > 0 &&
+        Number.isSafeInteger(duration) &&
+        duration > 0 &&
+        Number.isFinite(end) &&
+        start >= initialSessionStartMs &&
+        (index === 0 || start >= timedEngagement[index - 1].end),
+    ) &&
+    engagementTotal <= timedEngagement.at(-1).end - initialSessionStartMs,
+);
+assert(
+  'first session is engaged with meaningful Schedule engagement',
+  engagementTotal >= 10_000 &&
+    scheduleEngagement >= 5_000 &&
+    scheduleEngagement >= engagementTotal / 2,
+);
+assert(
+  'initial booking uses stitched visitor after cold deep link',
+  coldDeepLink?.visitor_id === 'e2e-cold-web-visitor-id' &&
+    coldDeepLink?._is_manually_set_id === true &&
+    booking?.visitor_id === coldDeepLink.visitor_id &&
+    buttonEvent?.visitor_id === coldDeepLink.visitor_id &&
+    Number.isFinite(
+      Date.parse(coldDeepLink.defaultProperties?.mobile_occurred_at),
+    ) &&
+    Date.parse(coldDeepLink.defaultProperties?.mobile_occurred_at) <=
+      Date.parse(booking?.defaultProperties?.mobile_occurred_at),
 );
 
 const initialMobile = [
@@ -480,13 +531,32 @@ const initialMobile = [
   screenView[0],
   booking,
 ].filter(Boolean);
+const initialEventIds = [
+  coldDeepLink,
+  buttonEvent,
+  ...initialMobile,
+  ...initialEngagement,
+].map((event) => event?.distinct_id);
 assert(
-  'initial mobile events share visitor and session',
+  'initial event IDs are unique',
   initialMobile.length === 5 &&
+    initialEngagement.length > 0 &&
+    initialEventIds.every((id) => typeof id === 'string' && id.length > 0) &&
+    new Set(initialEventIds).size === initialEventIds.length,
+);
+assert(
+  'initial mobile events share nonempty visitor and session',
+  initialMobile.length === 5 &&
+    typeof firstOpen[0].visitor_id === 'string' &&
+    firstOpen[0].visitor_id.length > 0 &&
+    typeof firstSid === 'string' &&
+    firstSid.length > 0 &&
+    firstOpen[0].visitor_id === coldDeepLink?.visitor_id &&
+    firstOpen[0].visitor_id === buttonEvent?.visitor_id &&
     initialMobile.every(
       (event) =>
         event.visitor_id === firstOpen[0].visitor_id &&
-        event.defaultProperties?.sid === firstOpen[0].defaultProperties?.sid,
+        event.defaultProperties?.sid === firstSid,
     ),
 );
 assert(
@@ -495,7 +565,7 @@ assert(
     initialMobile.every((event) => {
       const defaults = event.defaultProperties || {};
       return (
-        defaults.mobile_platform === 'ios' &&
+        defaults.mobile_platform === expectedPlatform &&
         defaults.mobile_contract_version === 1 &&
         defaults.app_version === '1.2.3' &&
         defaults.app_build === '42' &&

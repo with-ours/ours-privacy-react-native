@@ -66,7 +66,7 @@ const oursprivacy = new OursPrivacy();
 
 // Test initialURL init option: parse a simulated deep link at init time
 const SIMULATED_COLD_START_URL =
-  'myapp://open?utm_source=google&utm_medium=cpc&utm_campaign=spring_2026&gclid=test_gclid_123&aleid=test_aleid_456';
+  'myapp://open?utm_source=google&utm_medium=cpc&utm_campaign=spring_2026&gclid=test_gclid_123&aleid=test_aleid_456&ours_visitor_id=e2e-cold-web-visitor-id';
 
 const initOptions = {
   trackAutomaticEvents: E2E_AUTOFIRE === 'true',
