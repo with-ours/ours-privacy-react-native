@@ -42,6 +42,7 @@ export class OursPrivacy {
    * @param {OursPrivacyInitOptions} [options] Optional configuration:
    *   - trackAutomaticEvents: boolean — enable mobile lifecycle events (default false)
    *   - appVersion, appBuild: string — host app release metadata
+   *   - onIngestRejected: callback receiving { distinctId, code } after a mobile ingest rejection
    *   - optOutTrackingByDefault: boolean — start in an opted-out state (default false)
    *   - serverURL: string — override the ingest endpoint
    *   - visitorId: string — pre-set the visitor ID (sets is_manually_set_id: true)

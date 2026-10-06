@@ -4,8 +4,40 @@ import { OursPrivacyType } from './oursprivacy-constants';
 import { OursPrivacyConfig } from './oursprivacy-config';
 import { OursPrivacyPersistent } from './oursprivacy-persistent';
 import { OursPrivacyLogger } from './oursprivacy-logger';
+import { Platform } from 'react-native';
 
 const pendingFlushes = new Map();
+
+const isMobileSource = () => Platform.OS === 'ios' || Platform.OS === 'android';
+
+const rejectedFromMobileResponse = (response, batchSize) => {
+  if (
+    !response ||
+    response.success !== true ||
+    !Number.isSafeInteger(response.accepted) ||
+    response.accepted < 0 ||
+    !Array.isArray(response.rejected) ||
+    response.accepted + response.rejected.length !== batchSize
+  ) {
+    throw new Error('Invalid mobile ingest response');
+  }
+  const indexes = new Set();
+  for (const item of response.rejected) {
+    if (
+      !item ||
+      !Number.isSafeInteger(item.index) ||
+      item.index < 0 ||
+      item.index >= batchSize ||
+      typeof item.code !== 'string' ||
+      item.code.trim().length === 0 ||
+      indexes.has(item.index)
+    ) {
+      throw new Error('Invalid mobile ingest response');
+    }
+    indexes.add(item.index);
+  }
+  return response.rejected;
+};
 
 export const OursPrivacyCore = (storage) => {
   const oursprivacyPersistent = OursPrivacyPersistent.getInstance(storage);
@@ -105,20 +137,39 @@ export const OursPrivacyCore = (storage) => {
           const batchSize = config.getFlushBatchSize(token);
           const batch = queue.slice(0, batchSize);
           try {
-            await OursPrivacyNetwork.sendRequest({
+            const response = await OursPrivacyNetwork.sendRequest({
               token,
               data: batch,
               endpoint: type,
               serverURL: config.getServerURL(token),
               isManuallySetId: config.getIsManuallySetId(token),
             });
+            const rejected = isMobileSource()
+              ? rejectedFromMobileResponse(response, batch.length)
+              : [];
             await OursPrivacyQueueManager.removeByIds(
               token,
               type,
               batch.map((item) => item.distinct_id),
             );
+            const onIngestRejected = config.getOnIngestRejected(token);
+            if (typeof onIngestRejected === 'function') {
+              for (const { index, code } of rejected) {
+                try {
+                  onIngestRejected({
+                    distinctId: batch[index].distinct_id,
+                    code,
+                  });
+                } catch {
+                  OursPrivacyLogger.error(
+                    token,
+                    'onIngestRejected callback failed',
+                  );
+                }
+              }
+            }
           } catch (error) {
-            if (error.code === 400) {
+            if (error.code === 400 && !isMobileSource()) {
               OursPrivacyLogger.error(
                 token,
                 `Bad request received due to corrupted data within the batch. The corrupted data is now being removed from the queue...`,

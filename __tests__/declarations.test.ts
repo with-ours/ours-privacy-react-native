@@ -20,8 +20,20 @@ client.init('token', {
   trackAutomaticEvents: true,
   appVersion: '2.0.0',
   appBuild: '42',
+  onIngestRejected: ({ distinctId, code }) => {
+    const eventId: string = distinctId;
+    const rejectionCode: string = code;
+    void eventId;
+    void rejectionCode;
+  },
 });
 
+// @ts-expect-error rejection callback must be a function
+client.init('token', { onIngestRejected: 'ignore' });
+client.init('token', {
+  // @ts-expect-error callback does not include event properties
+  onIngestRejected: ({ eventProperties }) => eventProperties,
+});
 // @ts-expect-error appVersion must be supplied as a string
 client.init('token', { appVersion: 2 });
 // @ts-expect-error appBuild must be supplied as a string

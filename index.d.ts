@@ -29,6 +29,7 @@ export type OursPrivacyInitOptions = {
   trackAutomaticEvents?: boolean;
   appVersion?: string;
   appBuild?: string;
+  onIngestRejected?: (rejection: { distinctId: string; code: string }) => void;
   optOutTrackingByDefault?: boolean;
   serverURL?: string;
   visitorId?: string;

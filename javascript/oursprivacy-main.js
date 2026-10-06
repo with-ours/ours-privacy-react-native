@@ -75,6 +75,7 @@ export default class OursPrivacyMain {
       const serverURL =
         (options && options.serverURL) || 'https://cdn.oursprivacy.com';
       this.setServerURL(token, serverURL);
+      this.config.setOnIngestRejected(token, options.onIngestRejected);
 
       // Set opt-out flag BEFORE applying options so that initialURL processing
       // (which may fire $deep_link_opened) respects the opted-out state.

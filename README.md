@@ -104,6 +104,16 @@ On iOS and Android, every tracked event carries the SDK-owned `defaultProperties
 
 `trackAutomaticEvents` defaults to `false`. Set it to `true` to emit the automatic lifecycle events below. Manual `track()` and `trackScreen()` work with it off and still carry session metadata. Full tracking opt-out suppresses both automatic and manual events and clears unsent queued events. An opted-out launch does not consume the first-open marker.
 
+Mobile `/ingest` responses acknowledge each sent batch with an `accepted` count and `rejected` entries containing an index and error code. Initialize with `onIngestRejected` to learn when an event is rejected. The callback receives only its stable `distinctId` and the server's `code`; it never receives event properties or user properties. Use the ID to correlate with records you already hold, and keep PHI out of callback logs. The SDK invokes the callback after the queue update is saved. A malformed response, failed queue save, or transport failure leaves the batch queued for retry. A mobile HTTP 400 also leaves the batch queued; check the ingest server response or contact support if it recurs. Web responses without indexes retain their existing queue behavior.
+
+```js
+await op.init('YOUR_API_TOKEN', {
+  onIngestRejected: ({ distinctId, code }) => {
+    console.warn('Mobile event rejected', distinctId, code);
+  },
+});
+```
+
 | Canonical event              | Trigger                                                                              | Event properties                                             |
 | ---------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
 | `$mobile_first_open`         | First eligible tracked foreground open for this installation and source token        | None                                                         |
@@ -184,19 +194,20 @@ Initialize the SDK. Must be called before any tracking method.
 
 **`OursPrivacyInitOptions` shape (all camelCase):**
 
-| Field                          | Type                      | Description                                                                                                                                  |
-| ------------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `trackAutomaticEvents`         | `boolean`                 | Emit canonical mobile lifecycle events when `true` (default: `false`)                                                                        |
-| `appVersion`                   | `string`                  | Host app version, sent as `defaultProperties.app_version`                                                                                    |
-| `appBuild`                     | `string`                  | Host app build, sent as `defaultProperties.app_build`                                                                                        |
-| `optOutTrackingByDefault`      | `boolean`                 | If `true`, tracking starts opted out (default: `false`)                                                                                      |
-| `visitorId`                    | `string`                  | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events                                                                        |
-| `defaultEventProperties`       | `object`                  | Properties merged into `eventProperties` on every `track()` call                                                                             |
-| `defaultUserCustomProperties`  | `object`                  | Properties merged into `userProperties.custom_properties` on every event                                                                     |
-| `defaultUserConsentProperties` | `object`                  | JSON-compatible values merged into `userProperties.consent` on every event                                                                   |
-| `serverURL`                    | `string`                  | Override the base URL used for requests, for example a local QA capture server                                                               |
-| `initialURL`                   | `string`                  | Deep link URL to parse on init — extracts UTM params, click IDs, and `ours_visitor_id` (see [Deep Link Attribution](#deep-link-attribution)) |
-| `storage`                      | `OursPrivacyAsyncStorage` | Custom AsyncStorage adapter                                                                                                                  |
+| Field                          | Type                             | Description                                                                                                                                  |
+| ------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `trackAutomaticEvents`         | `boolean`                        | Emit canonical mobile lifecycle events when `true` (default: `false`)                                                                        |
+| `appVersion`                   | `string`                         | Host app version, sent as `defaultProperties.app_version`                                                                                    |
+| `appBuild`                     | `string`                         | Host app build, sent as `defaultProperties.app_build`                                                                                        |
+| `onIngestRejected`             | `({ distinctId, code }) => void` | Called after a mobile event is durably removed following an indexed ingest rejection                                                         |
+| `optOutTrackingByDefault`      | `boolean`                        | If `true`, tracking starts opted out (default: `false`)                                                                                      |
+| `visitorId`                    | `string`                         | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events                                                                        |
+| `defaultEventProperties`       | `object`                         | Properties merged into `eventProperties` on every `track()` call                                                                             |
+| `defaultUserCustomProperties`  | `object`                         | Properties merged into `userProperties.custom_properties` on every event                                                                     |
+| `defaultUserConsentProperties` | `object`                         | JSON-compatible values merged into `userProperties.consent` on every event                                                                   |
+| `serverURL`                    | `string`                         | Override the base URL used for requests, for example a local QA capture server                                                               |
+| `initialURL`                   | `string`                         | Deep link URL to parse on init — extracts UTM params, click IDs, and `ours_visitor_id` (see [Deep Link Attribution](#deep-link-attribution)) |
+| `storage`                      | `OursPrivacyAsyncStorage`        | Custom AsyncStorage adapter                                                                                                                  |
 
 **Returns:** `Promise<void>`
 

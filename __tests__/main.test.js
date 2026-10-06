@@ -79,6 +79,7 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-config', () => ({
       getLoggingEnabled: jest.fn().mockReturnValue(true),
       setServerURL: jest.fn(),
       setIsManuallySetId: jest.fn(),
+      setOnIngestRejected: jest.fn(),
     }),
   },
 }));

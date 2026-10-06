@@ -51,6 +51,17 @@ const persistedQueueItems = (value) => {
   return Array.isArray(parsed) ? parsed : parsed.items;
 };
 
+const mockIndexedMobileSuccess = () => {
+  fetchMock.mockImplementation(async (_url, options) => ({
+    ok: true,
+    json: async () => ({
+      success: true,
+      accepted: JSON.parse(options.body).data.length,
+      rejected: [],
+    }),
+  }));
+};
+
 describe('OursPrivacy integration flows', () => {
   beforeEach(() => {
     jest.resetModules();
@@ -269,6 +280,14 @@ describe('OursPrivacy integration flows', () => {
       'mobile_contract_version',
     );
     expect(queued[0].defaultProperties).not.toHaveProperty('mobile_platform');
+    fetchMock.mockResponseOnce(
+      JSON.stringify({ success: true, visitor_id: 'web-visitor' }),
+      { status: 200 },
+    );
+    await op.oursprivacyImpl.core.flush('web-token');
+    expect(
+      OursPrivacyQueueManager.getQueue('web-token', OursPrivacyType.EVENTS),
+    ).toEqual([]);
   });
 
   it('serializes overlapping flushes and acknowledges only the sent IDs', async () => {
@@ -292,7 +311,10 @@ describe('OursPrivacy integration flows', () => {
       const body = JSON.parse(options.body);
       sent.push(body.data[0].event);
       if (body.data[0].event === 'first') await firstGate;
-      return { ok: true, json: async () => ({ success: true }) };
+      return {
+        ok: true,
+        json: async () => ({ success: true, accepted: 1, rejected: [] }),
+      };
     });
 
     const firstFlush = op.oursprivacyImpl.core.flush('flush-token');
@@ -330,7 +352,14 @@ describe('OursPrivacy integration flows', () => {
       const event = JSON.parse(options.body).data[0].event;
       sent.push(event);
       if (event === 'original') await originalGate;
-      return { ok: true, json: async () => ({ success: true }) };
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          accepted: 1,
+          rejected: [],
+        }),
+      };
     });
     const flushing = op.oursprivacyImpl.core.flush('replacement-token');
     await flushAsyncWork(20);
@@ -351,7 +380,7 @@ describe('OursPrivacy integration flows', () => {
     ).toEqual([]);
   });
 
-  it('removes only the rejected event after HTTP 400 and sends the next event', async () => {
+  it('keeps the first mobile event after HTTP 400 for retry', async () => {
     const { OursPrivacy } = require('@oursprivacy/react-native');
     const {
       OursPrivacyQueueManager,
@@ -375,13 +404,157 @@ describe('OursPrivacy integration flows', () => {
     });
     await op.oursprivacyImpl.core.flush('bad-batch-token');
 
-    expect(sent).toEqual(['invalid', 'valid']);
+    expect(sent).toEqual(['invalid']);
     expect(
       OursPrivacyQueueManager.getQueue(
         'bad-batch-token',
         OursPrivacyType.EVENTS,
       ),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ event: 'invalid' }),
+        expect.objectContaining({ event: 'valid' }),
+      ]),
+    );
+  });
+
+  it('waits for a real queue storage write before reporting a mobile rejection', async () => {
+    const values = new Map();
+    let failQueueSave = false;
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => {
+        if (key.includes('_QUEUE') && failQueueSave) {
+          failQueueSave = false;
+          throw new Error('queue write failed');
+        }
+        values.set(key, value);
+      },
+      removeItem: async (key) => values.delete(key),
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const {
+      OursPrivacyType,
+      getQueueKey,
+    } = require('../javascript/oursprivacy-constants');
+    const onIngestRejected = jest.fn();
+    const op = new OursPrivacy();
+    await op.init('durable-rejection-token', { storage, onIngestRejected });
+    await op.oursprivacyImpl.track(
+      'durable-rejection-token',
+      'appointment_booked',
+    );
+    const queued = OursPrivacyQueueManager.getQueue(
+      'durable-rejection-token',
+      OursPrivacyType.EVENTS,
+    );
+    const eventId = queued[0].distinct_id;
+    fetchMock.mockResponse(
+      JSON.stringify({
+        success: true,
+        visitor_id: 'v1',
+        accepted: 0,
+        rejected: [{ index: 0, code: 'invalid_session' }],
+      }),
+      { status: 200 },
+    );
+    failQueueSave = true;
+
+    await op.oursprivacyImpl.core.flush('durable-rejection-token');
+    expect(onIngestRejected).not.toHaveBeenCalled();
+    expect(
+      OursPrivacyQueueManager.getQueue(
+        'durable-rejection-token',
+        OursPrivacyType.EVENTS,
+      ),
+    ).toEqual(queued);
+    expect(
+      persistedQueueItems(
+        values.get(
+          getQueueKey('durable-rejection-token', OursPrivacyType.EVENTS),
+        ),
+      ),
+    ).toEqual(queued);
+
+    await op.oursprivacyImpl.core.flush('durable-rejection-token');
+    expect(onIngestRejected).toHaveBeenCalledTimes(1);
+    expect(onIngestRejected).toHaveBeenCalledWith({
+      distinctId: eventId,
+      code: 'invalid_session',
+    });
+    expect(
+      OursPrivacyQueueManager.getQueue(
+        'durable-rejection-token',
+        OursPrivacyType.EVENTS,
+      ),
     ).toEqual([]);
+    await op.oursprivacyImpl.core.flush('durable-rejection-token');
+    expect(onIngestRejected).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a rejected sent event without removing its queued replacement', async () => {
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const onIngestRejected = jest.fn();
+    const op = new OursPrivacy();
+    await op.init('rejected-replacement-token', { onIngestRejected });
+    op.setFlushBatchSize(1);
+    await op.oursprivacyImpl.track('rejected-replacement-token', 'original');
+    const original = OursPrivacyQueueManager.getQueue(
+      'rejected-replacement-token',
+      OursPrivacyType.EVENTS,
+    )[0];
+
+    let releaseOriginal;
+    const originalGate = new Promise((resolve) => {
+      releaseOriginal = resolve;
+    });
+    fetchMock.mockImplementation(async (_url, options) => {
+      const event = JSON.parse(options.body).data[0].event;
+      if (event === 'original') {
+        await originalGate;
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            accepted: 0,
+            rejected: [{ index: 0, code: 'invalid_session' }],
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ success: false, accepted: 1, rejected: [] }),
+      };
+    });
+    const flushing = op.oursprivacyImpl.core.flush(
+      'rejected-replacement-token',
+    );
+    await flushAsyncWork(20);
+    await OursPrivacyQueueManager.clearQueue(
+      'rejected-replacement-token',
+      OursPrivacyType.EVENTS,
+    );
+    await op.oursprivacyImpl.track('rejected-replacement-token', 'replacement');
+    releaseOriginal();
+    await flushing;
+    const remaining = OursPrivacyQueueManager.getQueue(
+      'rejected-replacement-token',
+      OursPrivacyType.EVENTS,
+    );
+
+    expect(remaining.map((item) => item.event)).toEqual(['replacement']);
+    expect(onIngestRejected).toHaveBeenCalledTimes(1);
+    expect(onIngestRejected).toHaveBeenCalledWith({
+      distinctId: original.distinct_id,
+      code: 'invalid_session',
+    });
   });
 
   it('handles AppState engagement and warm opens when background flushing is disabled', async () => {
@@ -812,7 +985,7 @@ describe('OursPrivacy integration flows', () => {
     await expect(
       op.init('sent-first-token', { storage, trackAutomaticEvents: true }),
     ).rejects.toThrow('ack write failed');
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
     await op.oursprivacyImpl.core.flush('sent-first-token');
     await waitForFetchCalls(1);
     expect(
@@ -859,7 +1032,7 @@ describe('OursPrivacy integration flows', () => {
         trackAutomaticEvents: true,
       }),
     ).rejects.toThrow('ack write failed');
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
     await first.oursprivacyImpl.core.flush('restart-accepted-token');
 
     jest.resetModules();
@@ -924,7 +1097,7 @@ describe('OursPrivacy integration flows', () => {
       OursPrivacyType.EVENTS,
     )[0];
     expect(firstOpen.event).toBe('$mobile_first_open');
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
     await first.oursprivacyImpl.core.flush(token);
     expect(
       OursPrivacyQueueManager.getQueue(token, OursPrivacyType.EVENTS),
@@ -1431,7 +1604,7 @@ describe('OursPrivacy integration flows', () => {
   });
 
   it('deep link attribution: initialURL → warm deep link → set visitor → opt cycle → reset', async () => {
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
 
     const { OursPrivacy } = require('@oursprivacy/react-native');
     const op = new OursPrivacy();
@@ -1457,7 +1630,7 @@ describe('OursPrivacy integration flows', () => {
 
     // Step 2: Track after init — attribution should persist in defaultProperties
     fetchMock.resetMocks();
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
     op.track('after_init', { step: 2 });
     await flushAsyncWork();
     op.flush();
@@ -1471,7 +1644,7 @@ describe('OursPrivacy integration flows', () => {
 
     // Step 3: Warm deep link — replaces attribution, stitches visitor ID
     fetchMock.resetMocks();
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
     await op.trackDeepLink(
       'myapp://products/123?utm_source=applovin&aleid=warm_aleid&ours_visitor_id=web-uuid-123',
     );
@@ -1499,7 +1672,7 @@ describe('OursPrivacy integration flows', () => {
 
     // Step 4: setVisitorId manually
     fetchMock.resetMocks();
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
     await op.setVisitorId('manual-visitor-id');
     op.track('after_set_visitor', { step: 4 });
     await flushAsyncWork();
@@ -1512,7 +1685,7 @@ describe('OursPrivacy integration flows', () => {
 
     // Step 5: Opt out → deep link (should be complete no-op) → opt in
     fetchMock.resetMocks();
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
     await op.optOutTracking();
     await flushAsyncWork(10);
     await op.trackDeepLink(
@@ -1538,7 +1711,7 @@ describe('OursPrivacy integration flows', () => {
 
     // Step 6: Reset — should clear everything
     fetchMock.resetMocks();
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
     op.reset();
     await flushAsyncWork(10);
     op.track('after_reset', { step: 6 });
@@ -1557,7 +1730,7 @@ describe('OursPrivacy integration flows', () => {
   });
 
   it('3-arg track: top-level user props, custom_properties + consent merge, null when empty', async () => {
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
 
     const { OursPrivacy } = require('@oursprivacy/react-native');
     const op = new OursPrivacy();
@@ -1627,7 +1800,7 @@ describe('OursPrivacy integration flows', () => {
 
     // S5: separate instance with no defaults and no per-call user props → null
     fetchMock.resetMocks();
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
     const op2 = new OursPrivacy();
     await op2.init('test-token-2', {
       serverURL: 'https://api.oursprivacy.com',
@@ -1643,7 +1816,7 @@ describe('OursPrivacy integration flows', () => {
   });
 
   it('flushes queued events when the app moves to background', async () => {
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
 
     const appState = installAppStateCapture();
 
@@ -1674,7 +1847,7 @@ describe('OursPrivacy integration flows', () => {
   });
 
   it('does not flush on transitions that are not background/inactive', async () => {
-    fetchMock.mockResponse(JSON.stringify({ success: true }), { status: 200 });
+    mockIndexedMobileSuccess();
 
     const appState = installAppStateCapture();
 

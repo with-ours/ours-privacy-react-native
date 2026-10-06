@@ -51,6 +51,25 @@ describe('OursPrivacyNetwork', () => {
     );
   });
 
+  it('returns the indexed HTTP 200 response for queue acknowledgement', async () => {
+    const indexed = {
+      success: true,
+      visitor_id: 'abc',
+      accepted: 0,
+      rejected: [{ index: 0, code: 'invalid_session' }],
+    };
+    fetchMock.mockResponseOnce(JSON.stringify(indexed), { status: 200 });
+
+    const response = await OursPrivacyNetwork.sendRequest({
+      token: mockToken,
+      endpoint: mockEndpoint,
+      data: mockData,
+      serverURL: mockServerURL,
+    });
+
+    expect(response).toEqual(indexed);
+  });
+
   it('sends JSON body with token, is_manually_set_id, and data', async () => {
     fetchMock.mockResponseOnce(JSON.stringify({ success: true }), {
       status: 200,
