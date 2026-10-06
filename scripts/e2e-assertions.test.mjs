@@ -190,6 +190,59 @@ test('rejects duplicate engagement IDs', async () => {
   );
 });
 
+test('accepts an identical recorder retry of an engagement delta', async () => {
+  const captures = fixture();
+  captures.push({
+    jsonBody: {
+      token,
+      is_manually_set_id: true,
+      data: [structuredClone(captures[0].jsonBody.data[8])],
+    },
+  });
+  const result = await run(captures);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+test('rejects a conflicting recorder retry of an engagement ID', async () => {
+  const captures = fixture();
+  const repeated = structuredClone(captures[0].jsonBody.data[8]);
+  repeated.eventProperties.engagement_duration_ms = 9999;
+  captures.push({
+    jsonBody: { token, is_manually_set_id: true, data: [repeated] },
+  });
+  const result = await run(captures);
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stdout, /conflicting captured event IDs/);
+});
+
+test('rejects an engagement ID reused by a different event', async () => {
+  const captures = fixture();
+  const other = event('custom_event', 21);
+  other.distinct_id = captures[0].jsonBody.data[8].distinct_id;
+  captures[3].jsonBody.data.push(other);
+  const result = await run(captures);
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stdout, /conflicting captured event IDs/);
+});
+
+test('does not collapse duplicate lifecycle emissions', async () => {
+  const captures = fixture();
+  captures[0].jsonBody.data.push(structuredClone(captures[0].jsonBody.data[1]));
+  const result = await run(captures);
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stdout, /one first tracked open/);
+});
+
+test('rejects repeated lifecycle IDs outside the first session', async () => {
+  const captures = fixture();
+  const laterOpen = event('$mobile_app_open', 21);
+  laterOpen.defaultProperties.sid = 'later-session';
+  captures[3].jsonBody.data.push(laterOpen, structuredClone(laterOpen));
+  const result = await run(captures);
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stdout, /non-engagement capture IDs are unique/);
+});
+
 test('rejects duplicate first-session event IDs', async () => {
   const captures = fixture();
   const data = captures[0].jsonBody.data;

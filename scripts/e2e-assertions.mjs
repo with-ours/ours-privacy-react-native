@@ -19,6 +19,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { isDeepStrictEqual } from 'node:util';
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -437,11 +438,40 @@ const firstOpen = findAllEvents('$mobile_first_open');
 const appOpen = findAllEvents('$mobile_app_open');
 const sessionStart = findAllEvents('$mobile_session_start');
 const screenView = findAllEvents('$mobile_screen_view');
-const engagement = findAllEvents('$mobile_session_engagement');
+const logicalEngagement = [];
+const seenEvents = new Map();
+let conflictingEventIds = false;
+let repeatedNonEngagementIds = false;
+for (const event of allEvents) {
+  const isEngagement = event.event === '$mobile_session_engagement';
+  const id = event.distinct_id;
+  if (typeof id !== 'string' || id.length === 0) {
+    if (isEngagement) logicalEngagement.push(event);
+    continue;
+  }
+  const previous = seenEvents.get(id);
+  if (!previous) {
+    seenEvents.set(id, event);
+    if (isEngagement) logicalEngagement.push(event);
+    continue;
+  }
+  const previousPayload = { ...previous };
+  const repeatedPayload = { ...event };
+  delete previousPayload._captureId;
+  delete repeatedPayload._captureId;
+  const identical = isDeepStrictEqual(previousPayload, repeatedPayload);
+  if (!identical) conflictingEventIds = true;
+  if (!isEngagement || previous.event !== '$mobile_session_engagement') {
+    repeatedNonEngagementIds = true;
+  }
+  if (isEngagement && !identical) {
+    logicalEngagement.push(event);
+  }
+}
 const booking = findEvent('appointment_booked');
 const mobileTime = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
 const firstSid = firstOpen[0]?.defaultProperties?.sid;
-const initialEngagement = engagement.filter(
+const initialEngagement = logicalEngagement.filter(
   (event) => event.defaultProperties?.sid === firstSid,
 );
 const initialSessionStartMs = Date.parse(
@@ -468,6 +498,8 @@ const scheduleEngagement = timedEngagement.reduce(
 );
 
 assert('one first tracked open', firstOpen.length === 1);
+assert('no conflicting captured event IDs', !conflictingEventIds);
+assert('non-engagement capture IDs are unique', !repeatedNonEngagementIds);
 assert(
   'one app open for the first session',
   appOpen.filter((event) => event.defaultProperties?.sid === firstSid)
