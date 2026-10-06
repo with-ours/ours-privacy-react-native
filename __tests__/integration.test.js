@@ -134,7 +134,7 @@ describe('OursPrivacy integration flows', () => {
         mobile_contract_version: 1,
         app_version: '2.0.0',
         app_build: '42',
-        version: 'react-native@4.0.0',
+        version: 'react-native@4.1.0',
       }),
     );
     expect(booked).not.toHaveProperty('time');
@@ -230,7 +230,7 @@ describe('OursPrivacy integration flows', () => {
         mobile_platform: 'android',
         mobile_contract_version: 1,
         os_name: 'Android',
-        version: 'react-native@4.0.0',
+        version: 'react-native@4.1.0',
       }),
     );
     expect(booked.defaultProperties).not.toHaveProperty('app_version');

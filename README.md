@@ -687,7 +687,7 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
         "os_version": "17.0",
         "device_vendor": "Apple",
         "device_model": "iPhone 16 Pro",
-        "version": "react-native@4.0.0",
+        "version": "react-native@4.1.0",
         "sid": "ccda1be4-cfc1-422e-bec7-9772c5c55ea9",
         "mobile_session_started_at": "2026-10-05T12:00:00.000Z",
         "mobile_occurred_at": "2026-10-05T12:00:02.000Z",

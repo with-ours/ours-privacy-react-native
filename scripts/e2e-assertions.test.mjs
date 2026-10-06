@@ -31,7 +31,7 @@ function event(name, seconds, properties = null, extra = {}) {
       app_build: '42',
       os_name: 'Android',
       device_type: 'mobile',
-      version: 'react-native@4.0.0',
+      version: 'react-native@4.1.0',
       ...extra,
     },
   };
