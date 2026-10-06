@@ -156,10 +156,12 @@ export const OursPrivacyCore = (storage) => {
               !response ||
               typeof response !== 'object' ||
               Array.isArray(response) ||
-              response.success !== true
+              response.success !== true ||
+              typeof response.visitor_id !== 'string' ||
+              responseModes.get(key) === 'indexed'
             ) {
               throw new Error('Invalid ingest response');
-            } else if (responseModes.get(key) !== 'indexed') {
+            } else {
               responseModes.set(key, 'legacy');
             }
             await OursPrivacyQueueManager.removeByIds(

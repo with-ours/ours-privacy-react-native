@@ -360,6 +360,45 @@ describe('OursPrivacy integration flows', () => {
     });
   });
 
+  it('keeps a queued event after an indexed token returns a no-index HTTP 200', async () => {
+    require('react-native').Platform.OS = 'web';
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const {
+      OursPrivacyQueueManager,
+    } = require('../javascript/oursprivacy-queue');
+    const { OursPrivacyType } = require('../javascript/oursprivacy-constants');
+    const onIngestRejected = jest.fn();
+    const op = new OursPrivacy();
+    await op.init('indexed-then-legacy-token', { onIngestRejected });
+    op.setFlushBatchSize(1);
+    await op.oursprivacyImpl.track('indexed-then-legacy-token', 'first');
+    await op.oursprivacyImpl.track(
+      'indexed-then-legacy-token',
+      'appointment_booked',
+    );
+    const queued = OursPrivacyQueueManager.getQueue(
+      'indexed-then-legacy-token',
+      OursPrivacyType.EVENTS,
+    );
+    fetchMock.mockResponses(
+      [
+        JSON.stringify({ success: true, accepted: 1, rejected: [] }),
+        { status: 200 },
+      ],
+      [JSON.stringify({ success: true, visitor_id: 'v1' }), { status: 200 }],
+    );
+
+    await op.oursprivacyImpl.core.flush('indexed-then-legacy-token');
+
+    expect(
+      OursPrivacyQueueManager.getQueue(
+        'indexed-then-legacy-token',
+        OursPrivacyType.EVENTS,
+      ),
+    ).toEqual([queued[1]]);
+    expect(onIngestRejected).not.toHaveBeenCalled();
+  });
+
   it('retains a web queued event on HTTP 400 before its token contract is known', async () => {
     require('react-native').Platform.OS = 'web';
     const { OursPrivacy } = require('@oursprivacy/react-native');

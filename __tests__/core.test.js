@@ -422,6 +422,73 @@ describe('OursPrivacyQueueManager', () => {
     expect(remaining()).toEqual([data]);
   });
 
+  it.each(['ios', 'android', 'web'])(
+    'retains an incomplete legacy response on %s',
+    async (platform) => {
+      Platform.OS = platform;
+      const remaining = queueBatch([
+        { event: 'appointment_booked', distinct_id: 'id-1' },
+      ]);
+      OursPrivacyNetwork.sendRequest.mockResolvedValueOnce({ success: true });
+
+      await OursPrivacyCore().flush(token);
+
+      expect(remaining()).toEqual([
+        { event: 'appointment_booked', distinct_id: 'id-1' },
+      ]);
+      expect(OursPrivacyQueueManager.removeByIds).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([null, 42])(
+    'retains a legacy response with non-string visitor_id %s',
+    async (visitor_id) => {
+      Platform.OS = 'web';
+      const remaining = queueBatch([data]);
+      OursPrivacyNetwork.sendRequest.mockResolvedValueOnce({
+        success: true,
+        visitor_id,
+      });
+
+      await OursPrivacyCore().flush(token);
+
+      expect(remaining()).toEqual([data]);
+    },
+  );
+
+  it.each(['ios', 'web'])(
+    'retains a no-index HTTP 200 after indexed mode on %s',
+    async (platform) => {
+      Platform.OS = platform;
+      const remaining = queueBatch([
+        { event: 'first', distinct_id: 'id-1' },
+        { event: 'appointment_booked', distinct_id: 'id-2' },
+      ]);
+      OursPrivacyConfig.getInstance().getFlushBatchSize.mockReturnValue(1);
+      const onIngestRejected = jest.fn();
+      OursPrivacyConfig.getInstance().getOnIngestRejected.mockReturnValue(
+        onIngestRejected,
+      );
+      OursPrivacyNetwork.sendRequest
+        .mockResolvedValueOnce({
+          success: true,
+          accepted: 1,
+          rejected: [],
+        })
+        .mockResolvedValueOnce({ success: true, visitor_id: 'v1' });
+
+      await OursPrivacyCore().flush(token);
+
+      expect(remaining()).toEqual([
+        { event: 'appointment_booked', distinct_id: 'id-2' },
+      ]);
+      expect(onIngestRejected).not.toHaveBeenCalled();
+      expect(OursPrivacyQueueManager.removeByIds.mock.calls).toEqual([
+        [token, type, ['id-1']],
+      ]);
+    },
+  );
+
   it('keeps a mobile batch on transport failure', async () => {
     const remaining = queueBatch([data]);
     OursPrivacyNetwork.sendRequest.mockRejectedValueOnce(new Error('offline'));
@@ -510,12 +577,19 @@ describe('OursPrivacyQueueManager', () => {
     OursPrivacyNetwork.sendRequest
       .mockResolvedValueOnce({ success: true, visitor_id: 'v1' })
       .mockResolvedValueOnce({ success: true, accepted: 1, rejected: [] })
-      .mockResolvedValueOnce({ success: true, visitor_id: 'v1' })
-      .mockRejectedValueOnce({ code: 400 });
+      .mockResolvedValueOnce({ success: true, visitor_id: 'v1' });
+    const core = OursPrivacyCore();
 
-    await OursPrivacyCore().flush(token);
+    await core.flush(token);
+    expect(remaining()).toEqual([
+      { event: 'third', distinct_id: 'id-3' },
+      { event: 'appointment_booked', distinct_id: 'id-4' },
+    ]);
+    OursPrivacyNetwork.sendRequest.mockRejectedValueOnce({ code: 400 });
+    await core.flush(token);
 
     expect(remaining()).toEqual([
+      { event: 'third', distinct_id: 'id-3' },
       { event: 'appointment_booked', distinct_id: 'id-4' },
     ]);
   });
