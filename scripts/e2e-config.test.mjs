@@ -21,6 +21,13 @@ test('ios e2e uses the simulator loopback address', () => {
   );
 });
 
+test('e2e can isolate SDK state with a fresh source token', () => {
+  assert.match(
+    demoEnv('ios', 'e2e-local-token-fresh'),
+    /OURSPRIVACY_TOKEN=e2e-local-token-fresh/,
+  );
+});
+
 test('e2e rejects unsupported platforms and invalid timeouts', () => {
   assert.throws(() => parseE2EArgs(['web']), /android or ios/);
   assert.throws(() => parseE2EArgs(['android', '--timeout', '0']), /timeout/);

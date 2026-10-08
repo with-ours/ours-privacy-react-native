@@ -5,6 +5,7 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-core', () => ({
   OursPrivacyCore: jest.fn().mockImplementation(() => ({
     initialize: jest.fn(),
     startProcessingQueue: jest.fn(),
+    cancelPendingUploads: jest.fn(),
     addToOursPrivacyQueue: jest.fn(),
     flush: jest.fn(),
   })),
@@ -15,6 +16,7 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-queue', () => ({
     initialize: jest.fn(),
     enqueue: jest.fn(),
     getQueue: jest.fn().mockReturnValue([]),
+    hasAcceptedFirstOpen: jest.fn().mockReturnValue(false),
     spliceQueue: jest.fn(),
     clearQueue: jest.fn().mockResolvedValue(undefined),
   },
@@ -78,6 +80,7 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-config', () => ({
       getLoggingEnabled: jest.fn().mockReturnValue(true),
       setServerURL: jest.fn(),
       setIsManuallySetId: jest.fn(),
+      setOnIngestRejected: jest.fn(),
     }),
   },
 }));
@@ -233,7 +236,8 @@ describe('OursPrivacyMain', () => {
   });
 
   it('should trigger the flush on the flush call', async () => {
-    oursprivacyMain.flush(token);
+    await oursprivacyMain.initialize(token);
+    await oursprivacyMain.flush(token);
     expect(oursprivacyMain.core.flush).toHaveBeenCalledWith(token);
   });
 
@@ -674,7 +678,7 @@ describe('OursPrivacyMain', () => {
       );
     });
 
-    it('should fire a $deep_link_opened event with only URL in eventProperties', async () => {
+    it('fires $deep_link_opened without a URL property', async () => {
       await oursprivacyMain.trackDeepLink(
         token,
         'myapp://open?utm_source=email&gclid=xyz',
@@ -684,19 +688,59 @@ describe('OursPrivacyMain', () => {
       );
       expect(call).toBeTruthy();
       const eventData = call[2];
-      expect(eventData.eventProperties).toEqual(
-        expect.objectContaining({
-          url: 'myapp://open?utm_source=email&gclid=xyz',
-        }),
-      );
-      expect(eventData.eventProperties.utm_source).toBeUndefined();
-      expect(eventData.eventProperties.gclid).toBeUndefined();
+      expect(eventData.eventProperties).toBeNull();
       expect(eventData.defaultProperties).toEqual(
         expect.objectContaining({
           utm_source: 'email',
           gclid: 'xyz',
         }),
       );
+    });
+
+    it('keeps sensitive link fields out of captured events and diagnostics', async () => {
+      const url =
+        'https://example.test/open?ours_visitor_id=web-123&utm_source=campaign&gclid=click-123&patient_email=private%40example.test';
+      oursprivacyMain.updateDefaultEventProperties(token, {
+        url: 'customer-default-url',
+      });
+
+      await oursprivacyMain.trackDeepLink(token, url);
+      await oursprivacyMain.track(token, 'appointment_booked', {
+        appointment_id: 'appointment-1',
+      });
+
+      const captured =
+        oursprivacyMain.core.addToOursPrivacyQueue.mock.calls.map(
+          (call) => call[2],
+        );
+      const deepLink = captured.find(
+        (item) => item.event === '$deep_link_opened',
+      );
+      const booked = captured.find(
+        (item) => item.event === 'appointment_booked',
+      );
+      expect(
+        oursprivacyMain.oursprivacyPersistent.updateVisitorId,
+      ).toHaveBeenCalledWith(token, 'web-123');
+      expect(deepLink.eventProperties).toBeNull();
+      expect(deepLink.defaultProperties).toEqual(
+        expect.objectContaining({
+          utm_source: 'campaign',
+          gclid: 'click-123',
+        }),
+      );
+      expect(booked.defaultProperties).toEqual(
+        expect.objectContaining({
+          utm_source: 'campaign',
+          gclid: 'click-123',
+        }),
+      );
+      const wire = JSON.stringify(deepLink);
+      const logs = JSON.stringify(console.log.mock.calls);
+      expect(wire).not.toContain(url);
+      expect(wire).not.toContain('patient_email');
+      expect(logs).not.toContain(url);
+      expect(logs).not.toContain('patient_email');
     });
 
     it('should replace (not merge) attribution on subsequent deep links', async () => {
@@ -776,9 +820,7 @@ describe('OursPrivacyMain', () => {
         OursPrivacyType.EVENTS,
         expect.objectContaining({
           event: '$deep_link_opened',
-          eventProperties: expect.objectContaining({
-            url: 'myapp://open',
-          }),
+          eventProperties: null,
         }),
       );
     });

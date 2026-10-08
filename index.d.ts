@@ -27,6 +27,9 @@ export type OursPrivacyAsyncStorage = {
 
 export type OursPrivacyInitOptions = {
   trackAutomaticEvents?: boolean;
+  appVersion?: string;
+  appBuild?: string;
+  onIngestRejected?: (rejection: { distinctId: string; code: string }) => void;
   optOutTrackingByDefault?: boolean;
   serverURL?: string;
   visitorId?: string;
@@ -64,14 +67,15 @@ export class OursPrivacy {
   setFlushOnBackground(flushOnBackground: boolean): void;
   setFlushBatchSize(flushBatchSize: number): void;
   hasOptedOutTracking(): Promise<boolean>;
-  optInTracking(): void;
-  optOutTracking(): void;
+  optInTracking(): Promise<void>;
+  optOutTracking(): Promise<void>;
   identify(userProperties?: OursPrivacyUserProperties): Promise<void>;
   track<T extends object>(
     eventName: string,
     eventProperties?: T & SerializableProperty<T>,
     userProperties?: OursPrivacyUserProperties,
   ): void;
+  trackScreen(screenName: string): void;
   reset(): void;
   getVisitorId(): string | null;
   updateDefaultEventProperties<T extends object>(
@@ -81,5 +85,5 @@ export class OursPrivacy {
   updateDefaultUserConsentProperties(properties: OursPrivacyProperties): void;
   trackDeepLink(url: string): Promise<void>;
   setVisitorId(visitorId: string): Promise<void>;
-  flush(): void;
+  flush(): Promise<void>;
 }

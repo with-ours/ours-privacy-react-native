@@ -33,6 +33,9 @@ export class OursPrivacyPersistent {
     this._timeEvents = {};
     this._identity = {};
     this._optedOut = {};
+    this._optOutLoaded = {};
+    this._storedOptOutDecision = {};
+    this._optOutRevision = {};
     this._appHasOpenedBefore = {};
   }
 
@@ -152,17 +155,41 @@ export class OursPrivacyPersistent {
   }
 
   async loadOptOut(token) {
-    const optOutString = await this.storageAdapter.getItem(
+    const revision = this._optOutRevision[token] || 0;
+    if (revision > 0) return;
+    this._optOutLoaded[token] = false;
+    this._optedOut[token] = true;
+    const optOutString = await this.storageAdapter.getItemStrict(
       getOutedOutKey(token),
     );
+    if (revision !== (this._optOutRevision[token] || 0)) return;
+    if (
+      optOutString !== null &&
+      optOutString !== undefined &&
+      optOutString !== 'true' &&
+      optOutString !== 'false'
+    ) {
+      throw new Error('Invalid stored tracking decision');
+    }
     this._optedOut[token] = optOutString === 'true';
+    this._storedOptOutDecision[token] =
+      optOutString === 'true' || optOutString === 'false';
+    this._optOutLoaded[token] = true;
   }
 
   getOptedOut(token) {
-    return this._optedOut[token] === true;
+    return this._optOutLoaded[token] !== true || this._optedOut[token] === true;
+  }
+
+  hasStoredOptOutDecision(token) {
+    return (
+      this._storedOptOutDecision[token] === true ||
+      (this._optOutRevision[token] || 0) > 0
+    );
   }
 
   updateOptedOut(token, optOut) {
+    this._optOutRevision[token] = (this._optOutRevision[token] || 0) + 1;
     this._optedOut = { ...this._optedOut, [token]: optOut };
   }
 
@@ -170,21 +197,23 @@ export class OursPrivacyPersistent {
     if (this._optedOut[token] === null) {
       return;
     }
-    await this.storageAdapter.setItem(
+    await this.storageAdapter.setItemStrict(
       getOutedOutKey(token),
       this._optedOut[token].toString(),
     );
+    this._storedOptOutDecision[token] = true;
+    this._optOutLoaded[token] = true;
   }
 
   async loadQueue(token, type) {
-    const queueString = await this.storageAdapter.getItem(
+    const queueString = await this.storageAdapter.getItemStrict(
       getQueueKey(token, type),
     );
     return queueString ? JSON.parse(queueString) : [];
   }
 
   async saveQueue(token, type, queue) {
-    await this.storageAdapter.setItem(
+    await this.storageAdapter.setItemStrict(
       getQueueKey(token, type),
       JSON.stringify(queue),
     );

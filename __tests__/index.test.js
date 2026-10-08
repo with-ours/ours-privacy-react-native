@@ -16,6 +16,7 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-main', () => ({
     optOutTracking: jest.fn(),
     identify: jest.fn().mockResolvedValue(undefined),
     track: jest.fn(),
+    trackScreen: jest.fn(),
     reset: jest.fn(),
     flush: jest.fn(),
     getVisitorId: jest.fn().mockReturnValue('mock-visitor-id'),
@@ -75,6 +76,7 @@ test(`init throws when token is missing or blank`, async () => {
 test(`methods throw if called before init()`, () => {
   const op = new OursPrivacy();
   expect(() => op.track('e')).toThrow(/init/);
+  expect(() => op.trackScreen('Schedule')).toThrow(/init/);
   expect(() => op.reset()).toThrow(/init/);
   expect(() => op.flush()).toThrow(/init/);
   expect(() => op.getVisitorId()).toThrow(/init/);
@@ -130,6 +132,15 @@ test(`it calls optOutTracking`, async () => {
   expect(op.oursprivacyImpl.optOutTracking).toHaveBeenCalledWith('token');
 });
 
+test('flush returns the completion promise from the SDK implementation', async () => {
+  const op = await newInitialized();
+  const completion = Promise.resolve(true);
+  op.oursprivacyImpl.flush.mockReturnValue(completion);
+
+  expect(op.flush()).toBe(completion);
+  await expect(completion).resolves.toBe(true);
+});
+
 test(`identify forwards userProperties (no positional id arg)`, async () => {
   const op = await newInitialized();
   await op.identify({ email: 'user@example.com', externalId: '123' });
@@ -169,6 +180,65 @@ test(`track forwards camelCase userProperties`, async () => {
     { 'Cool Property': 'Property Value' },
     { email: 'user@example.com', customProperties: { plan: 'pro' } },
   );
+});
+
+test.each(['$mobile_first_open', '$mobile_screen_view', '$mobile_custom'])(
+  'track rejects reserved event %s before forwarding caller fields',
+  async (eventName) => {
+    const op = await newInitialized();
+    expect(() =>
+      op.track(
+        eventName,
+        { patient_id: 'private' },
+        { email: 'private@example.test' },
+      ),
+    ).toThrow(/reserved/);
+    expect(op.oursprivacyImpl.track).not.toHaveBeenCalled();
+  },
+);
+
+test('track continues to forward legacy automatic events', async () => {
+  const op = await newInitialized();
+  op.track('$ae_custom', { source: 'legacy' });
+  expect(op.oursprivacyImpl.track).toHaveBeenCalledWith(
+    'token',
+    '$ae_custom',
+    { source: 'legacy' },
+    undefined,
+  );
+});
+
+test('trackScreen forwards a stable label', async () => {
+  const op = await newInitialized();
+  op.trackScreen('Schedule');
+  expect(op.oursprivacyImpl.trackScreen).toHaveBeenCalledWith(
+    'token',
+    'Schedule',
+  );
+});
+
+test.each([
+  '',
+  '   ',
+  ' Schedule',
+  'Schedule ',
+  'Patient/123',
+  'Patient?name=1',
+  '123',
+  'A'.repeat(81),
+  123,
+  null,
+])('trackScreen rejects an unstable label: %p', async (label) => {
+  const op = await newInitialized();
+  expect(() => op.trackScreen(label)).toThrow(/stable screen label/);
+  expect(op.oursprivacyImpl.trackScreen).not.toHaveBeenCalled();
+});
+
+test('trackScreen accepts a label of exactly 80 characters', async () => {
+  const op = await newInitialized();
+  const label = `A${'b'.repeat(79)}`;
+  op.trackScreen(label);
+  expect(op.oursprivacyImpl.trackScreen).toHaveBeenCalledWith('token', label);
 });
 
 test(`it calls reset`, async () => {

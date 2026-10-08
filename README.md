@@ -17,10 +17,12 @@ This SDK is pure JavaScript. It does not ship native iOS or Android modules. It 
 
 - [Quick Start](#quick-start)
 - [Upgrading to 4.0](#upgrading-to-40)
+- [Mobile Instrumentation](#mobile-instrumentation)
 - [Complete Example](#complete-example)
 - [API Reference](#api-reference)
   - [Initialization](#initialization)
   - [Core Tracking](#core-tracking)
+  - [Screen Tracking](#screen-tracking)
   - [Default Properties](#default-properties)
   - [Configuration](#configuration)
   - [Identity](#identity)
@@ -39,6 +41,8 @@ Version 4.0 requires Node 22+, React 18+, and React Native 0.76+. Upgrade the ap
 `@react-native-async-storage/async-storage` is now an optional peer. Install it directly in your app to keep visitor identity and queued events across restarts. Use Async Storage 2.2 with React Native 0.76 or Async Storage 3.1 with the React Native 0.87 demo. Without it, the SDK falls back to in-memory storage.
 
 TypeScript event, custom, and consent property values must be JSON-compatible. Replace functions, class instances, and other unserializable values before calling `track()` or setting default properties. Optional `undefined` values remain valid and are omitted during JSON serialization. Consent can include boolean flags or string values.
+
+Earlier React Native SDK versions emitted no lifecycle or screen events through `trackAutomaticEvents`. To adopt the `$mobile_*` contract, opt in with `trackAutomaticEvents: true` for lifecycle events and call `trackScreen()` from your navigator for screen views. Existing custom `track()` calls continue to work with automatic tracking off. The canonical `$mobile_*` events are the inputs specified for the planned Mobile Analytics reporting slice; legacy event names are not interchangeable with them. `$deep_link_opened` keeps its name, but no longer includes `eventProperties.url`; remove any downstream mapping that expects that property and use the allowlisted attribution fields in `defaultProperties` instead.
 
 ---
 
@@ -89,8 +93,40 @@ await op.identify({
 Events are batched and sent every 10 seconds by default. To send immediately:
 
 ```js
-op.flush();
+await op.flush();
 ```
+
+---
+
+## Mobile Instrumentation
+
+On iOS and Android, every tracked event carries the SDK-owned `defaultProperties` `sid`, `mobile_session_started_at`, `mobile_occurred_at`, `mobile_platform`, and `mobile_contract_version: 1`. The host may supply `appVersion` and `appBuild` at initialization; these appear as `app_version` and `app_build`. `version` continues to identify the React Native SDK (`react-native@<SDK version>`). The SDK does not infer the host app version or build from its own package. `mobile_occurred_at` is captured when the event is queued, as an ISO-8601 UTC timestamp with millisecond precision. The SDK does not set top-level `time`.
+
+`trackAutomaticEvents` defaults to `false`. Set it to `true` to emit the automatic lifecycle events below. Manual `track()` and `trackScreen()` work with it off and still carry session metadata. The `$mobile_*` prefix is reserved for SDK-generated facts; `track()` rejects those names. Existing `$ae_*` legacy names remain accepted. Full tracking opt-out suppresses both automatic and manual events, discards the current mobile session and unsent queued events, and clears registered default event, user custom, user consent, and attribution properties. It retains the current visitor ID; opt-in starts fresh mobile session state under that ID unless your app changes it. An opted-out launch does not consume the first-open marker.
+
+The ingest server chooses its response format from the authenticated source token, regardless of the app's OS. Indexed responses acknowledge each sent batch with an `accepted` count and `rejected` entries containing an index and error code. Initialize with `onIngestRejected` to learn when an event is rejected. The callback receives only its stable `distinctId` and the server's `code`; it never receives event properties or user properties. Use the ID to correlate with records you already hold, and keep PHI out of callback logs. The SDK invokes the callback after the queue update is saved. A malformed response, failed queue save, or transport failure leaves the batch queued for retry. A legacy response must include `success: true` and a string `visitor_id`; it then acknowledges the full batch. After an indexed response, a later no-index response leaves the batch queued. HTTP 400 retains the batch until the token has returned a legacy response. After a legacy response, HTTP 400 can remove the first queued event as before; after an indexed response, it retains the batch.
+
+```js
+await op.init('YOUR_API_TOKEN', {
+  onIngestRejected: ({ distinctId, code }) => {
+    console.warn('Mobile event rejected', distinctId, code);
+  },
+});
+```
+
+| Canonical event              | Trigger                                                                              | Event properties                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| `$mobile_first_open`         | First eligible tracked foreground open for this installation and source token        | None                                                         |
+| `$mobile_app_open`           | Each tracked foreground entry, including cold start                                  | None                                                         |
+| `$mobile_session_start`      | First tracked foreground entry or the next entry after 30 minutes of inactivity      | None                                                         |
+| `$mobile_session_engagement` | Positive foreground-time delta at a checkpoint, tracked screen change, or background | `engagement_duration_ms` (integer); `screen_name` when known |
+| `$mobile_session_end`        | Best effort when an expired session is observed                                      | None                                                         |
+| `$mobile_app_update`         | First tracked open after a previously observed host version/build changes            | `previous_app_version`, `previous_app_build` when known      |
+| `$mobile_screen_view`        | An explicit `trackScreen()` call with a new active screen                            | `screen_name`                                                |
+
+`$mobile_screen_view` requires a route signal from your app; this JavaScript SDK does not observe React Navigation routes. Screen engagement belongs to the previously active screen when a new screen is tracked. Engagement duration is measured in integer milliseconds; a session becomes engaged after 10 accumulated foreground seconds. A session keeps its `sid` on a foreground return before 30 minutes of inactivity and rotates at 30 minutes. A visitor ID change, reset, or full opt-out discards the current session. The first tracked open remains first-open eligible until an eligible event is queued.
+
+Canonical SDK telemetry contains lifecycle state, device/SDK metadata, and developer-supplied stable screen labels. Canonical `$mobile_*` facts carry no user properties or deep-link attribution. The SDK does not inspect screen content or collect advertising device IDs, patient fields, crash details, or network payloads automatically. Deep-link parsing extracts only allowlisted UTM parameters, click IDs, and `ours_visitor_id`; it does not add the full URL to a queued event or diagnostic. Keep PHI out of URLs, UTM values, screen labels, custom event names, and other caller-supplied properties. Click IDs may appear on `$deep_link_opened` and later manual events, but not on canonical `$mobile_*` facts.
 
 ---
 
@@ -107,7 +143,8 @@ async function getClient() {
   if (!op) {
     op = new OursPrivacy();
     await op.init('YOUR_API_TOKEN', {
-      defaultEventProperties: { app_version: '2.0.0' },
+      appVersion: '2.0.0',
+      appBuild: '42',
     });
   }
   return op;
@@ -157,17 +194,22 @@ Initialize the SDK. Must be called before any tracking method.
 
 **`OursPrivacyInitOptions` shape (all camelCase):**
 
-| Field                          | Type                      | Description                                                                                                                                  |
-| ------------------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `trackAutomaticEvents`         | `boolean`                 | Reserved for future automatic event tracking                                                                                                 |
-| `optOutTrackingByDefault`      | `boolean`                 | If `true`, tracking starts opted out (default: `false`)                                                                                      |
-| `visitorId`                    | `string`                  | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events                                                                        |
-| `defaultEventProperties`       | `object`                  | Properties merged into `eventProperties` on every `track()` call                                                                             |
-| `defaultUserCustomProperties`  | `object`                  | Properties merged into `userProperties.custom_properties` on every event                                                                     |
-| `defaultUserConsentProperties` | `object`                  | JSON-compatible values merged into `userProperties.consent` on every event                                                                   |
-| `serverURL`                    | `string`                  | Override the base URL used for requests, for example a local QA capture server                                                               |
-| `initialURL`                   | `string`                  | Deep link URL to parse on init — extracts UTM params, click IDs, and `ours_visitor_id` (see [Deep Link Attribution](#deep-link-attribution)) |
-| `storage`                      | `OursPrivacyAsyncStorage` | Custom AsyncStorage adapter                                                                                                                  |
+| Field                          | Type                             | Description                                                                                                                                  |
+| ------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `trackAutomaticEvents`         | `boolean`                        | Emit canonical mobile lifecycle events when `true` (default: `false`)                                                                        |
+| `appVersion`                   | `string`                         | Host app version, sent as `defaultProperties.app_version`                                                                                    |
+| `appBuild`                     | `string`                         | Host app build, sent as `defaultProperties.app_build`                                                                                        |
+| `onIngestRejected`             | `({ distinctId, code }) => void` | Called after a mobile event is durably removed following an indexed ingest rejection                                                         |
+| `optOutTrackingByDefault`      | `boolean`                        | If `true`, start opted out only without a saved choice (default: `false`)                                                                    |
+| `visitorId`                    | `string`                         | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events                                                                        |
+| `defaultEventProperties`       | `object`                         | Properties merged into `eventProperties` on every `track()` call                                                                             |
+| `defaultUserCustomProperties`  | `object`                         | Properties merged into `userProperties.custom_properties` on every event                                                                     |
+| `defaultUserConsentProperties` | `object`                         | JSON-compatible values merged into `userProperties.consent` on every event                                                                   |
+| `serverURL`                    | `string`                         | Override the base URL used for requests, for example a local QA capture server                                                               |
+| `initialURL`                   | `string`                         | Deep link URL to parse on init — extracts UTM params, click IDs, and `ours_visitor_id` (see [Deep Link Attribution](#deep-link-attribution)) |
+| `storage`                      | `OursPrivacyAsyncStorage`        | Custom AsyncStorage adapter                                                                                                                  |
+
+A saved opt-in or opt-out decision takes precedence over `optOutTrackingByDefault` after restart.
 
 **Returns:** `Promise<void>`
 
@@ -178,7 +220,10 @@ await op.init('YOUR_API_TOKEN');
 // With options
 await op.init('YOUR_API_TOKEN', {
   visitorId: 'pre-known-id',
-  defaultEventProperties: { platform: 'mobile', app_version: '2.0.0' },
+  appVersion: '2.0.0',
+  appBuild: '42',
+  trackAutomaticEvents: true,
+  defaultEventProperties: { platform: 'mobile' },
   defaultUserCustomProperties: { tier: 'pro' },
   defaultUserConsentProperties: { marketing: true },
 });
@@ -202,6 +247,52 @@ Track an event with optional properties.
 ```js
 op.track('Page View', { page: '/home', referrer: 'google' });
 ```
+
+---
+
+### Screen Tracking
+
+#### `op.trackScreen(screenName)`
+
+Track a visible screen on iOS or Android. `screenName` must be a stable, developer-chosen label of 1–80 characters: start with an ASCII letter, then use only ASCII letters, numbers, spaces, underscores, or hyphens. Leading and trailing whitespace is rejected. Never pass a route path, URL, query string, route parameter, screen title containing patient data, or other dynamic identifier. A duplicate call for the current visible screen does not add another view. Call again when that screen is entered after a background/foreground transition.
+
+**Returns:** `void`
+
+```js
+op.trackScreen('Schedule');
+```
+
+For React Navigation, map fixed route names to approved labels. Initialize `op` before mounting the navigator. The `onReady` call captures the initial screen; `onStateChange` captures later transitions.
+
+```jsx
+import {
+  createNavigationContainerRef,
+  NavigationContainer,
+} from '@react-navigation/native';
+
+const navigationRef = createNavigationContainerRef();
+const screenLabels = new Map([
+  ['HomeRoute', 'Home'],
+  ['ScheduleRoute', 'Schedule'],
+  ['ConfirmationRoute', 'Confirmation'],
+]);
+
+function trackCurrentScreen() {
+  const routeName = navigationRef.getCurrentRoute()?.name;
+  const screenName = routeName && screenLabels.get(routeName);
+  if (screenName) op.trackScreen(screenName);
+}
+
+<NavigationContainer
+  ref={navigationRef}
+  onReady={trackCurrentScreen}
+  onStateChange={trackCurrentScreen}
+>
+  <RootNavigator />
+</NavigationContainer>;
+```
+
+Map route names only. Do not read `route.params` or derive labels from URLs. Automatic lifecycle tracking does not replace this explicit route integration, and `trackScreen()` remains available when `trackAutomaticEvents` is off.
 
 ---
 
@@ -254,12 +345,12 @@ await op.identify({
 
 #### `op.flush()`
 
-Push all queued events to the server immediately. Useful before app close or logout.
+Attempt to send queued events immediately. Await the request before changing tracking consent. A failed request leaves events queued for retry.
 
-**Returns:** `void`
+**Returns:** `Promise<void>`
 
 ```js
-op.flush();
+await op.flush();
 ```
 
 ---
@@ -454,7 +545,7 @@ await op.setVisitorId('550e8400-e29b-41d4-a716-446655440000');
 
 Parse a deep link URL for marketing attribution data and fire a `$deep_link_opened` event. Extracts UTM parameters, ad network click IDs, and `ours_visitor_id` for cross-platform identity stitching.
 
-Parsed attribution params are merged into `defaultProperties`, so they appear on all subsequent `track()` calls. Calling `trackDeepLink` again **replaces** the prior attribution rather than merging, so stale UTM keys don't leak into events triggered by a later link.
+`$deep_link_opened` has no `eventProperties.url`; its `eventProperties` is `null`. The full URL is not included in SDK diagnostic logs. Parsed attribution params are merged into `defaultProperties`, so they appear on all subsequent `track()` calls. Calling `trackDeepLink` again **replaces** the prior attribution rather than merging, so stale UTM keys don't leak into events triggered by a later link. Keep PHI out of attribution values and use a stable, PHI-free label with `trackScreen()`.
 
 Await the returned promise before calling `track()` to ensure attribution and visitor identity are fully applied.
 
@@ -528,14 +619,15 @@ await op.trackDeepLink(
 
 #### `op.optOutTracking()`
 
-Stop all tracking immediately. Any queued events that have not been flushed will be discarded. Call `flush()` first if you want to preserve queued events.
+Stop all tracking immediately. Unsent queued events and the current mobile session are discarded, and registered default event, user custom, user consent, and attribution properties are cleared. The current visitor ID is retained, so events after opt-in use that ID with a fresh mobile session. Await `flush()` first to attempt delivery; a failed request remains queued and will be discarded by opt-out.
 
-**Returns:** `void`
+For an account switch, call `reset()` to generate a new visitor ID or `setVisitorId()` to adopt the intended ID, according to your app's policy, before tracking resumes. Keep PHI out of visitor IDs and manually supplied properties.
+
+**Returns:** `Promise<void>`
 
 ```js
-// Flush first to preserve any pending events
-op.flush();
-op.optOutTracking();
+await op.flush();
+await op.optOutTracking();
 ```
 
 ---
@@ -544,10 +636,10 @@ op.optOutTracking();
 
 Resume tracking after a previous call to `optOutTracking()`. This also sends an `$opt_in` event to the server.
 
-**Returns:** `void`
+**Returns:** `Promise<void>`
 
 ```js
-op.optInTracking();
+await op.optInTracking();
 ```
 
 ---
@@ -597,7 +689,12 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
         "os_version": "17.0",
         "device_vendor": "Apple",
         "device_model": "iPhone 16 Pro",
-        "version": "react-native@4.0.0"
+        "version": "react-native@4.1.0",
+        "sid": "ccda1be4-cfc1-422e-bec7-9772c5c55ea9",
+        "mobile_session_started_at": "2026-10-05T12:00:00.000Z",
+        "mobile_occurred_at": "2026-10-05T12:00:02.000Z",
+        "mobile_platform": "ios",
+        "mobile_contract_version": 1
       }
     }
   ]
@@ -617,7 +714,7 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
 | `eventProperties`                  | Properties from `track()` merged with default event properties                                             |
 | `userProperties.custom_properties` | From `identify()` and `updateDefaultUserCustomProperties()`                                                |
 | `userProperties.consent`           | From `identify()` and `updateDefaultUserConsentProperties()`                                               |
-| `defaultProperties`                | Automatically collected device/SDK metadata                                                                |
+| `defaultProperties`                | Device/SDK metadata and SDK-owned mobile session fields on iOS and Android                                 |
 
 ---
 
@@ -629,7 +726,7 @@ No. Ours Privacy does not use IDFA, so no ATT permission is required.
 
 **Why aren't my events showing up?**
 
-Events are batched and sent every 10 seconds by default. Call `flush()` to send immediately. Enable debug logging with `setLoggingEnabled(true)` to see what's happening.
+Events are batched and sent every 10 seconds by default. Await `flush()` to attempt to send them immediately. Enable debug logging with `setLoggingEnabled(true)` to see what's happening.
 
 **What platforms are supported?**
 

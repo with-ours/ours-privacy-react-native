@@ -43,7 +43,7 @@ describe('OursPrivacyQueueManager', () => {
     expect(oursprivacyPersistent.saveQueue).toHaveBeenCalledWith(
       token,
       type,
-      expect.any(Array),
+      expect.objectContaining({ items: expect.any(Array) }),
     );
   });
 
@@ -64,5 +64,34 @@ describe('OursPrivacyQueueManager', () => {
 
     const queue = OursPrivacyQueueManager.getQueue(token, type);
     expect(queue).toEqual([]);
+  });
+
+  it('keeps indexed response mode with acknowledged removal and reload', async () => {
+    await OursPrivacyQueueManager.initialize(token, type);
+    await OursPrivacyQueueManager.enqueue(token, type, {
+      event: 'appointment_booked',
+      distinct_id: 'booked-id',
+    });
+
+    await OursPrivacyQueueManager.removeByIds(
+      token,
+      type,
+      ['booked-id'],
+      'indexed',
+    );
+    expect(OursPrivacyQueueManager.getQueue(token, type)).toEqual([]);
+    expect(OursPrivacyQueueManager.getResponseMode(token, type)).toBe(
+      'indexed',
+    );
+    expect(oursprivacyPersistent.saveQueue).toHaveBeenLastCalledWith(
+      token,
+      type,
+      expect.objectContaining({ items: [], responseMode: 'indexed' }),
+    );
+
+    await OursPrivacyQueueManager.clearQueue(token, type);
+    expect(OursPrivacyQueueManager.getResponseMode(token, type)).toBe(
+      'indexed',
+    );
   });
 });

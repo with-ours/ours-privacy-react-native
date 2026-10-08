@@ -10,6 +10,7 @@ const ERROR_MESSAGE = {
 const PARAMS = {
   TOKEN: 'token',
   EVENT_NAME: 'eventName',
+  SCREEN_NAME: 'screenName',
   PROPERTIES: 'properties',
   USER_PROPERTIES: 'userProperties',
   OPTIONS: 'options',
@@ -39,7 +40,9 @@ export class OursPrivacy {
    *
    * @param {string} token Your OursPrivacy project token.
    * @param {OursPrivacyInitOptions} [options] Optional configuration:
-   *   - trackAutomaticEvents: boolean — reserved for future automatic event tracking
+   *   - trackAutomaticEvents: boolean — enable mobile lifecycle events (default false)
+   *   - appVersion, appBuild: string — host app release metadata
+   *   - onIngestRejected: callback receiving { distinctId, code } after a mobile ingest rejection
    *   - optOutTrackingByDefault: boolean — start in an opted-out state (default false)
    *   - serverURL: string — override the ingest endpoint
    *   - visitorId: string — pre-set the visitor ID (sets is_manually_set_id: true)
@@ -111,16 +114,16 @@ export class OursPrivacy {
    */
   optInTracking() {
     this._requireInit();
-    this.oursprivacyImpl.optInTracking(this.token);
+    return this.oursprivacyImpl.optInTracking(this.token);
   }
 
   /**
    * Stop all tracking immediately. Queued events that have not been flushed
-   * are discarded. Call flush() first to preserve them.
+   * are discarded. Await flush() before opting out to send queued events first.
    */
   optOutTracking() {
     this._requireInit();
-    this.oursprivacyImpl.optOutTracking(this.token);
+    return this.oursprivacyImpl.optOutTracking(this.token);
   }
 
   /**
@@ -150,6 +153,9 @@ export class OursPrivacy {
     if (!StringHelper.isValid(eventName)) {
       StringHelper.raiseError(PARAMS.EVENT_NAME);
     }
+    if (eventName.startsWith('$mobile_')) {
+      throw new Error('Event names starting with $mobile_ are reserved');
+    }
     if (!ObjectHelper.isValidOrUndefined(eventProperties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
@@ -162,6 +168,18 @@ export class OursPrivacy {
       eventProperties,
       userProperties,
     );
+  }
+
+  trackScreen(screenName) {
+    this._requireInit();
+    if (
+      typeof screenName !== 'string' ||
+      screenName.trim() !== screenName ||
+      !/^[A-Za-z][A-Za-z0-9 _-]{0,79}$/.test(screenName)
+    ) {
+      throw new Error(`${PARAMS.SCREEN_NAME} must be a stable screen label`);
+    }
+    this.oursprivacyImpl.trackScreen(this.token, screenName);
   }
 
   /**
@@ -255,7 +273,7 @@ export class OursPrivacy {
    */
   flush() {
     this._requireInit();
-    this.oursprivacyImpl.flush(this.token);
+    return this.oursprivacyImpl.flush(this.token);
   }
 
   _requireInit() {

@@ -35,6 +35,14 @@ export class AsyncStorageAdapter {
     }
   }
 
+  getItemStrict(key) {
+    return this.storage.getItem(key);
+  }
+
+  setItemStrict(key, value) {
+    return this.storage.setItem(key, value);
+  }
+
   async removeItem(key) {
     try {
       await this.storage.removeItem(key);
