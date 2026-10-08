@@ -44,13 +44,14 @@ export default class OursPrivacyMain {
     this.core = OursPrivacyCore(storage);
     this._coreReady = Promise.resolve(this.core.initialize(token));
     this._coreReady.catch(() => {});
-    this.core.startProcessingQueue(token);
     this.oursprivacyPersistent = OursPrivacyPersistent.getInstance();
     this._mobileStorage = new AsyncStorageAdapter(storage);
     this._mobileSession = this._createMobileSession(token);
     this._pendingOperation = Promise.resolve();
     this._trackAutomaticEvents = false;
-    this._appForegrounded = AppState?.currentState === 'active';
+    this._latestAppState = AppState?.currentState;
+    this._hasAppStateEvent = false;
+    this._appForegrounded = this._latestAppState === 'active';
     this._appInactive = false;
     this._checkpointTimer = null;
     this._initialized = false;
@@ -60,6 +61,7 @@ export default class OursPrivacyMain {
     this._attributionDefaultProperties = {};
     this._flushOnBackgroundEnabled = true;
     this._appStateSubscription = null;
+    this._subscribeToAppState(token);
   }
 
   /**
@@ -80,7 +82,10 @@ export default class OursPrivacyMain {
 
       // Set opt-out flag BEFORE applying options so that initialURL processing
       // (which may fire $deep_link_opened) respects the opted-out state.
-      if (options.optOutTrackingByDefault) {
+      if (
+        options.optOutTrackingByDefault &&
+        !this.oursprivacyPersistent.hasStoredOptOutDecision?.(token)
+      ) {
         await this._setOptedOutTrackingFlag(token, true);
       }
 
@@ -92,24 +97,38 @@ export default class OursPrivacyMain {
       await this._mobileSession.load();
       await this._applyInitializationOptions(token, options);
 
-      if (this.oursprivacyPersistent.getOptedOut(token)) {
-        await this._mobileSession.disableTracking(
-          OursPrivacyQueueManager.hasAcceptedFirstOpen(
+      const currentState = this._hasAppStateEvent
+        ? this._latestAppState
+        : AppState?.currentState;
+      this._appForegrounded = currentState === 'active';
+      this._appInactive = currentState === 'inactive';
+      this._initialized = true;
+      try {
+        if (this.oursprivacyPersistent.getOptedOut(token)) {
+          await this._mobileSession.disableTracking(
+            OursPrivacyQueueManager.hasAcceptedFirstOpen(
+              token,
+              OursPrivacyType.EVENTS,
+            ),
+          );
+          await OursPrivacyQueueManager.clearQueue(
             token,
             OursPrivacyType.EVENTS,
-          ),
-        );
-        await OursPrivacyQueueManager.clearQueue(token, OursPrivacyType.EVENTS);
-      } else {
-        await this._enqueuePendingFacts(token);
-        if (this._appForegrounded && this._isMobilePlatform()) {
-          await this._mobileSession.foreground(this._trackAutomaticEvents);
+          );
+        } else {
           await this._enqueuePendingFacts(token);
-          this._startCheckpoint(token);
+          if (this._appForegrounded && this._isMobilePlatform()) {
+            await this._mobileSession.foreground(this._trackAutomaticEvents);
+            await this._enqueuePendingFacts(token);
+            this._startCheckpoint(token);
+          }
         }
+        this.core.startProcessingQueue(token);
+      } catch (error) {
+        this._initialized = false;
+        this._stopCheckpoint();
+        throw error;
       }
-      this._initialized = true;
-      this._subscribeToAppState(token);
     });
   }
 
@@ -212,11 +231,15 @@ export default class OursPrivacyMain {
     this._appStateSubscription = AppState.addEventListener(
       'change',
       (nextState) => {
+        this._latestAppState = nextState;
+        this._hasAppStateEvent = true;
+        if (!this._initialized) return Promise.resolve();
         const at = {
           wallMs: this._mobileSession.wallNow(),
           monotonicMs: this._mobileSession.monotonicNow(),
         };
         return this._serialize(async () => {
+          if (!this._initialized) return;
           if (nextState === 'inactive' && Platform.OS === 'ios') {
             if (!this._appForegrounded) return;
             this._appForegrounded = false;
@@ -463,12 +486,6 @@ export default class OursPrivacyMain {
     );
   }
 
-  // Accepts camelCase userProperties at the caller surface and produces wire-format
-  // (snake_case) for the queue payload.
-  //
-  // Top-level keys (email, externalId → external_id, etc.) spread onto userProperties;
-  // nested customProperties and consent merge on top of the store defaults. Consent is
-  // intentionally omitted when nothing carries it.
   _composeUserProperties(token, perCallUserProps) {
     const wirePerCall = toWireUserProperties(perCallUserProps);
 
@@ -491,12 +508,14 @@ export default class OursPrivacyMain {
       };
     }
 
-    if (hasDefaultConsent || wirePerCall?.consent) {
-      merged.consent = {
-        ...defaultConsent,
-        ...(wirePerCall?.consent || {}),
-      };
+    const consent = { ...defaultConsent, ...(wirePerCall?.consent || {}) };
+    if (Object.keys(consent).length > 0) {
+      merged.consent = consent;
+    } else {
+      delete merged.consent;
     }
+
+    if (Object.keys(merged).length === 0) return null;
 
     return merged;
   }
@@ -522,10 +541,13 @@ export default class OursPrivacyMain {
   }
 
   flush(token) {
-    return this._serialize(() => this.core.flush(token));
+    return this._serialize(() =>
+      this._initialized ? this.core.flush(token) : undefined,
+    );
   }
 
   async optOutTracking(token) {
+    this.core.cancelPendingUploads(token);
     const persistOptOut = this._setOptedOutTrackingFlag(token, true);
     return this._serialize(async () => {
       await persistOptOut;
@@ -560,6 +582,7 @@ export default class OursPrivacyMain {
         await this._enqueuePendingFacts(token);
         this._startCheckpoint(token);
       }
+      this.core.startProcessingQueue(token);
       OursPrivacyLogger.log(token, 'User has opted in to tracking');
       await this._track(token, '$opt_in');
     });

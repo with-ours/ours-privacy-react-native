@@ -147,6 +147,7 @@ export const OursPrivacyCore = (storage) => {
               serverURL: config.getServerURL(token),
               isManuallySetId: config.getIsManuallySetId(token),
             });
+            if (oursprivacyPersistent.getOptedOut(token)) return;
             let rejected = [];
             let responseMode;
             if (hasIndexedResult(response)) {
@@ -169,6 +170,7 @@ export const OursPrivacyCore = (storage) => {
             } else {
               responseMode = 'legacy';
             }
+            if (oursprivacyPersistent.getOptedOut(token)) return;
             await OursPrivacyQueueManager.removeByIds(
               token,
               type,
@@ -223,6 +225,7 @@ export const OursPrivacyCore = (storage) => {
 
   return {
     initialize,
+    cancelPendingUploads: OursPrivacyNetwork.cancelRequests,
     startProcessingQueue,
     addToOursPrivacyQueue,
     flush,

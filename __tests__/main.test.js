@@ -5,6 +5,7 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-core', () => ({
   OursPrivacyCore: jest.fn().mockImplementation(() => ({
     initialize: jest.fn(),
     startProcessingQueue: jest.fn(),
+    cancelPendingUploads: jest.fn(),
     addToOursPrivacyQueue: jest.fn(),
     flush: jest.fn(),
   })),
@@ -235,6 +236,7 @@ describe('OursPrivacyMain', () => {
   });
 
   it('should trigger the flush on the flush call', async () => {
+    await oursprivacyMain.initialize(token);
     await oursprivacyMain.flush(token);
     expect(oursprivacyMain.core.flush).toHaveBeenCalledWith(token);
   });

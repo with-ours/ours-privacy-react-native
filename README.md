@@ -200,7 +200,7 @@ Initialize the SDK. Must be called before any tracking method.
 | `appVersion`                   | `string`                         | Host app version, sent as `defaultProperties.app_version`                                                                                    |
 | `appBuild`                     | `string`                         | Host app build, sent as `defaultProperties.app_build`                                                                                        |
 | `onIngestRejected`             | `({ distinctId, code }) => void` | Called after a mobile event is durably removed following an indexed ingest rejection                                                         |
-| `optOutTrackingByDefault`      | `boolean`                        | If `true`, tracking starts opted out (default: `false`)                                                                                      |
+| `optOutTrackingByDefault`      | `boolean`                        | If `true`, start opted out only without a saved choice (default: `false`)                                                                    |
 | `visitorId`                    | `string`                         | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events                                                                        |
 | `defaultEventProperties`       | `object`                         | Properties merged into `eventProperties` on every `track()` call                                                                             |
 | `defaultUserCustomProperties`  | `object`                         | Properties merged into `userProperties.custom_properties` on every event                                                                     |
@@ -208,6 +208,8 @@ Initialize the SDK. Must be called before any tracking method.
 | `serverURL`                    | `string`                         | Override the base URL used for requests, for example a local QA capture server                                                               |
 | `initialURL`                   | `string`                         | Deep link URL to parse on init — extracts UTM params, click IDs, and `ours_visitor_id` (see [Deep Link Attribution](#deep-link-attribution)) |
 | `storage`                      | `OursPrivacyAsyncStorage`        | Custom AsyncStorage adapter                                                                                                                  |
+
+A saved opt-in or opt-out decision takes precedence over `optOutTrackingByDefault` after restart.
 
 **Returns:** `Promise<void>`
 
