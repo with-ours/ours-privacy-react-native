@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const script = fileURLToPath(new URL('./capture-ingest.mjs', import.meta.url));
 
-test('local recorder acknowledges a mobile batch with indexed results', async (t) => {
+test('local recorder acknowledges a mobile batch with the legacy response', async (t) => {
   const probe = net.createServer();
   probe.listen(0, '127.0.0.1');
   await once(probe, 'listening');
@@ -52,8 +52,6 @@ test('local recorder acknowledges a mobile batch with indexed results', async (t
   assert.deepEqual(await response.json(), {
     success: true,
     visitor_id: 'synthetic-visitor',
-    accepted: 1,
-    rejected: [],
   });
   assert.equal((await fs.readdir(dir)).length, 1);
 });

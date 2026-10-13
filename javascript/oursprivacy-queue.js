@@ -1,4 +1,5 @@
 import { OursPrivacyPersistent } from './oursprivacy-persistent';
+import { normalizeMobilePayload } from './oursprivacy-mobile-payload';
 
 export const OursPrivacyQueueManager = (() => {
   let _queues = {};
@@ -14,7 +15,7 @@ export const OursPrivacyQueueManager = (() => {
         ? stored.items
         : [];
     return {
-      items,
+      items: items.map((item) => normalizeMobilePayload(item)),
       firstOpenAccepted:
         stored?.firstOpenAccepted === true || items.some(isFirstOpen),
       responseMode:
@@ -66,7 +67,9 @@ export const OursPrivacyQueueManager = (() => {
       if (duplicate && (queue.firstOpenAccepted || !isFirstOpen(data))) return;
       await save(token, type, {
         ...queue,
-        items: duplicate ? queue.items : [...queue.items, data],
+        items: duplicate
+          ? queue.items
+          : [...queue.items, normalizeMobilePayload(data)],
         firstOpenAccepted: queue.firstOpenAccepted || isFirstOpen(data),
       });
     });
@@ -83,15 +86,6 @@ export const OursPrivacyQueueManager = (() => {
 
   const getResponseMode = (token, type) =>
     _queues[token]?.[type]?.responseMode ?? null;
-
-  const setResponseMode = (token, type, responseMode) =>
-    serialize(token, type, async () => {
-      const queue = _queues[token]?.[type];
-      if (!queue || responseMode !== 'indexed') return;
-      // Keep indexed mode in memory after a failed save so a later 400 cannot discard an event.
-      queue.responseMode = 'indexed';
-      await save(token, type, { ...queue });
-    });
 
   const spliceQueue = (token, type, start, deleteCount) =>
     serialize(token, type, async () => {
@@ -110,10 +104,7 @@ export const OursPrivacyQueueManager = (() => {
       await save(token, type, {
         ...queue,
         items: queue.items.filter((item) => !sentIds.has(item.distinct_id)),
-        responseMode:
-          queue.responseMode === 'indexed' || responseMode === 'indexed'
-            ? 'indexed'
-            : responseMode || queue.responseMode,
+        responseMode: responseMode || queue.responseMode,
       });
     });
 
@@ -131,7 +122,6 @@ export const OursPrivacyQueueManager = (() => {
     getQueue,
     hasAcceptedFirstOpen,
     getResponseMode,
-    setResponseMode,
     spliceQueue,
     removeByIds,
     clearQueue,

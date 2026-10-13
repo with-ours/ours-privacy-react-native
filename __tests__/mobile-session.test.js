@@ -15,13 +15,11 @@ function setup({ startMs = START, ...options } = {}) {
   };
   let wallMs = startMs;
   let monotonicMs = 0;
-  let id = 0;
   const dependencies = {
     token: 'token-a',
     storage,
     wallNow: () => wallMs,
     monotonicNow: () => monotonicMs,
-    uuid: () => `sid-${++id}`,
     ...options,
   };
 
@@ -53,8 +51,7 @@ describe('MobileSession', () => {
     ]);
     for (const fact of facts) {
       expect(fact.defaultProperties).toEqual({
-        sid: 'sid-1',
-        mobile_session_started_at: '2026-10-05T12:00:00.000Z',
+        sid: String(START),
         mobile_occurred_at: '2026-10-05T12:00:00.000Z',
       });
     }
@@ -73,7 +70,7 @@ describe('MobileSession', () => {
     const facts = await restarted.foreground(true);
 
     expect(facts.map((fact) => fact.event)).toEqual(['$mobile_app_open']);
-    expect(facts[0].defaultProperties.sid).toBe('sid-1');
+    expect(facts[0].defaultProperties.sid).toBe(String(START));
   });
 
   it('retains the session before 30 minutes of inactivity and rotates at equality', async () => {
@@ -86,7 +83,7 @@ describe('MobileSession', () => {
     clock.advance(30 * 60 * 1000 - 1);
     const warmFacts = await session.foreground(true);
     expect(warmFacts.map((fact) => fact.event)).toEqual(['$mobile_app_open']);
-    expect(warmFacts[0].defaultProperties.sid).toBe('sid-1');
+    expect(warmFacts[0].defaultProperties.sid).toBe(String(START));
 
     await session.background();
     clock.advance(30 * 60 * 1000);
@@ -96,9 +93,13 @@ describe('MobileSession', () => {
       '$mobile_app_open',
       '$mobile_session_start',
     ]);
-    expect(rotatedFacts[0].defaultProperties.sid).toBe('sid-1');
-    expect(rotatedFacts[1].defaultProperties.sid).toBe('sid-2');
-    expect(rotatedFacts[2].defaultProperties.sid).toBe('sid-2');
+    expect(rotatedFacts[0].defaultProperties.sid).toBe(String(START));
+    expect(rotatedFacts[1].defaultProperties.sid).toBe(
+      String(START + 3_599_999),
+    );
+    expect(rotatedFacts[2].defaultProperties.sid).toBe(
+      String(START + 3_599_999),
+    );
   });
 
   it('uses callback times after a processing delay and retains the visible screen on rotation', async () => {
@@ -130,7 +131,7 @@ describe('MobileSession', () => {
     clock.advance(30 * 60 * 1000);
     const warm = await session.foreground(true, true, activeAt);
     expect(warm.map((fact) => fact.event)).toEqual(['$mobile_app_open']);
-    expect(warm[0].defaultProperties.sid).toBe('sid-1');
+    expect(warm[0].defaultProperties.sid).toBe(String(START));
 
     await session.screen('Schedule');
     await session.rotateSession();
@@ -154,8 +155,7 @@ describe('MobileSession', () => {
         event: '$mobile_session_engagement',
         eventProperties: { engagement_duration_ms: 10_000 },
         defaultProperties: {
-          sid: 'sid-1',
-          mobile_session_started_at: '2026-10-05T12:00:00.000Z',
+          sid: String(START),
           mobile_occurred_at: '2026-10-05T12:00:10.000Z',
         },
       },
@@ -210,8 +210,7 @@ describe('MobileSession', () => {
           screen_name: 'Home',
         },
         defaultProperties: {
-          sid: 'sid-1',
-          mobile_session_started_at: '2026-10-05T12:00:00.000Z',
+          sid: String(START),
           mobile_occurred_at: '2026-10-05T12:00:10.000Z',
         },
       },
@@ -264,8 +263,7 @@ describe('MobileSession', () => {
     expect(await session.foreground(false)).toEqual([]);
     clock.advance(2_000);
     expect(await session.snapshot()).toEqual({
-      sid: 'sid-1',
-      mobile_session_started_at: '2026-10-05T12:00:00.000Z',
+      sid: String(START),
       mobile_occurred_at: '2026-10-05T12:00:02.000Z',
     });
     const screenFacts = await session.screen('Appointments');
@@ -274,8 +272,7 @@ describe('MobileSession', () => {
         event: '$mobile_screen_view',
         eventProperties: { screen_name: 'Appointments' },
         defaultProperties: {
-          sid: 'sid-1',
-          mobile_session_started_at: '2026-10-05T12:00:00.000Z',
+          sid: String(START),
           mobile_occurred_at: '2026-10-05T12:00:02.000Z',
         },
       },
@@ -303,7 +300,7 @@ describe('MobileSession', () => {
       '$mobile_app_open',
       '$mobile_session_start',
     ]);
-    expect(facts[0].defaultProperties.sid).toBe('sid-2');
+    expect(facts[0].defaultProperties.sid).toBe(String(START));
   });
 
   it('rotates on reset without restoring first-open eligibility', async () => {
@@ -312,15 +309,16 @@ describe('MobileSession', () => {
     await session.load();
     await session.foreground(true);
 
+    clock.advance(1);
     expect(await session.resetSession()).toEqual([]);
     const snapshot = await session.snapshot();
-    expect(snapshot.sid).toBe('sid-2');
+    expect(snapshot.sid).toBe(String(START + 1));
     const facts = await session.foreground(true);
     expect(facts.map((fact) => fact.event)).toEqual([
       '$mobile_app_open',
       '$mobile_session_start',
     ]);
-    expect(facts[0].defaultProperties.sid).toBe('sid-2');
+    expect(facts[0].defaultProperties.sid).toBe(String(START + 1));
   });
 
   it('emits one update on a later tracked open when app version or build changes', async () => {
@@ -354,7 +352,7 @@ describe('MobileSession', () => {
       previous_app_version: '1.0',
       previous_app_build: '10',
     });
-    expect(facts[1].defaultProperties.sid).toBe('sid-1');
+    expect(facts[1].defaultProperties.sid).toBe(String(START));
 
     await upgraded.background();
     clock.advance(1_000);
@@ -373,8 +371,7 @@ describe('MobileSession', () => {
     clock.advance(2_000);
 
     expect(await session.snapshot()).toEqual({
-      sid: 'sid-1',
-      mobile_session_started_at: '2026-10-05T23:59:59.000Z',
+      sid: '1791244799000',
       mobile_occurred_at: '2026-10-06T00:00:01.000Z',
     });
   });
@@ -387,12 +384,12 @@ describe('MobileSession', () => {
     await session.background();
 
     clock.advance(30 * 60 * 1000 - 1);
-    expect((await session.snapshot()).sid).toBe('sid-1');
+    expect((await session.snapshot()).sid).toBe(String(START));
     clock.advance(30 * 60 * 1000);
-    expect((await session.snapshot()).sid).toBe('sid-2');
+    expect((await session.snapshot()).sid).toBe(String(START + 3_599_999));
     expect(
       (await session.screen('Appointments'))[0].defaultProperties.sid,
-    ).toBe('sid-2');
+    ).toBe(String(START + 3_599_999));
   });
 
   it('hands off an announced session end when a manual snapshot observes timeout', async () => {
@@ -408,22 +405,20 @@ describe('MobileSession', () => {
       defaultProperties: await session.snapshot(),
     };
     expect(manualTrack.defaultProperties).toEqual({
-      sid: 'sid-2',
-      mobile_session_started_at: '2026-10-05T12:30:00.000Z',
+      sid: String(START + 1_800_000),
       mobile_occurred_at: '2026-10-05T12:30:00.000Z',
     });
     expect(await session.drainPendingFacts()).toEqual([
       {
         event: '$mobile_session_end',
         defaultProperties: {
-          sid: 'sid-1',
-          mobile_session_started_at: '2026-10-05T12:00:00.000Z',
+          sid: String(START),
           mobile_occurred_at: '2026-10-05T12:30:00.000Z',
         },
       },
     ]);
     expect(await session.drainPendingFacts()).toEqual([]);
-    expect((await session.snapshot()).sid).toBe('sid-2');
+    expect((await session.snapshot()).sid).toBe(String(START + 1_800_000));
   });
 
   it('clears a pending automatic end on full tracking opt-out', async () => {
@@ -447,11 +442,11 @@ describe('MobileSession', () => {
     await session.foreground(true);
     clock.advance(31 * 60 * 1000);
 
-    expect((await session.snapshot()).sid).toBe('sid-1');
+    expect((await session.snapshot()).sid).toBe(String(START));
     const facts = await session.screen('Appointments');
-    expect(facts.every((fact) => fact.defaultProperties.sid === 'sid-1')).toBe(
-      true,
-    );
+    expect(
+      facts.every((fact) => fact.defaultProperties.sid === String(START)),
+    ).toBe(true);
   });
 
   it('starts a manual screen session before automatic tracking becomes enabled', async () => {
@@ -460,7 +455,7 @@ describe('MobileSession', () => {
     await session.load();
     expect(
       (await session.screen('Appointments'))[0].defaultProperties.sid,
-    ).toBe('sid-1');
+    ).toBe(String(START));
 
     const facts = await session.foreground(true);
     expect(facts.map((fact) => fact.event)).toEqual([
@@ -468,7 +463,7 @@ describe('MobileSession', () => {
       '$mobile_app_open',
       '$mobile_session_start',
     ]);
-    expect(facts[2].defaultProperties.sid).toBe('sid-1');
+    expect(facts[2].defaultProperties.sid).toBe(String(START));
   });
 
   it('serializes concurrent foreground calls without duplicate lifecycle facts', async () => {
@@ -508,8 +503,8 @@ describe('MobileSession', () => {
       '2026-10-05T12:00:01.000Z',
     );
     facts[0].defaultProperties.sid = 'tampered';
-    expect(facts[1].defaultProperties.sid).toBe('sid-1');
-    expect((await session.snapshot()).sid).toBe('sid-1');
+    expect(facts[1].defaultProperties.sid).toBe(String(START));
+    expect((await session.snapshot()).sid).toBe(String(START));
   });
 
   it('keeps sessions and first-open markers scoped to the source token', async () => {
@@ -519,8 +514,12 @@ describe('MobileSession', () => {
     await a.load();
     await b.load();
 
-    expect((await a.foreground(true))[0].defaultProperties.sid).toBe('sid-1');
-    expect((await b.foreground(true))[0].defaultProperties.sid).toBe('sid-2');
+    expect((await a.foreground(true))[0].defaultProperties.sid).toBe(
+      String(START),
+    );
+    expect((await b.foreground(true))[0].defaultProperties.sid).toBe(
+      String(START),
+    );
     const reloadedA = new MobileSession(clock.dependencies);
     await reloadedA.load();
     expect(
@@ -569,8 +568,8 @@ describe('MobileSession', () => {
       '$mobile_session_end',
       '$mobile_screen_view',
     ]);
-    expect(facts[0].defaultProperties.sid).toBe('sid-1');
-    expect(facts[1].defaultProperties.sid).toBe('sid-2');
+    expect(facts[0].defaultProperties.sid).toBe(String(START));
+    expect(facts[1].defaultProperties.sid).toBe(String(START + 1_800_000));
   });
 
   it('emits an explicit screen view again after a warm foreground entry', async () => {
@@ -590,7 +589,7 @@ describe('MobileSession', () => {
     expect(screenFacts.map((fact) => fact.event)).toEqual([
       '$mobile_screen_view',
     ]);
-    expect(screenFacts[0].defaultProperties.sid).toBe('sid-1');
+    expect(screenFacts[0].defaultProperties.sid).toBe(String(START));
     expect(await session.screen('Home')).toEqual([]);
   });
 
@@ -631,7 +630,7 @@ describe('MobileSession', () => {
       '$mobile_app_open',
       '$mobile_session_start',
     ]);
-    expect(facts[0].defaultProperties.sid).toBe('sid-2');
+    expect(facts[0].defaultProperties.sid).toBe(String(START));
   });
 
   it('emits an app update for a build-only change with only known prior fields', async () => {
@@ -650,8 +649,7 @@ describe('MobileSession', () => {
       event: '$mobile_app_update',
       eventProperties: { previous_app_build: '10' },
       defaultProperties: {
-        sid: 'sid-1',
-        mobile_session_started_at: '2026-10-05T12:00:00.000Z',
+        sid: String(START),
         mobile_occurred_at: '2026-10-05T12:00:00.000Z',
       },
     });
@@ -665,7 +663,7 @@ describe('MobileSession', () => {
       expect(await session.screen(name)).toEqual([]);
     }
     expect((await session.screen('Home'))[0].defaultProperties.sid).toBe(
-      'sid-1',
+      String(START),
     );
   });
 
@@ -710,7 +708,7 @@ describe('MobileSession', () => {
       '$mobile_app_open',
       '$mobile_session_start',
     ]);
-    expect(facts[0].defaultProperties.sid).toBe('sid-1');
+    expect(facts[0].defaultProperties.sid).toBe(String(START));
   });
 
   it('does not expire early after a backward wall-clock correction', async () => {
@@ -726,7 +724,7 @@ describe('MobileSession', () => {
     await restarted.load();
     const facts = await restarted.foreground(true);
     expect(facts.map((fact) => fact.event)).toEqual(['$mobile_app_open']);
-    expect(facts[0].defaultProperties.sid).toBe('sid-1');
+    expect(facts[0].defaultProperties.sid).toBe(String(START));
   });
 
   it('does not consume first-open when persistence rejects before facts are returned', async () => {

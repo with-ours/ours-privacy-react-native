@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const script = fileURLToPath(new URL('./e2e-assertions.mjs', import.meta.url));
 const token = 'e2e-fixture-token';
 const visitor = 'e2e-cold-web-visitor-id';
-const sid = 'fixture-session';
+const sid = '1791288000000';
 const started = '2026-10-06T12:00:00.000Z';
 const at = (seconds) =>
   new Date(Date.parse(started) + seconds * 1000).toISOString();
@@ -19,16 +19,16 @@ function event(name, seconds, properties = null, extra = {}) {
     event: name,
     distinct_id: `${name}-${seconds}`,
     visitor_id: visitor,
-    eventProperties: properties,
+    eventProperties: {
+      ...properties,
+      mobile_contract_version: 1,
+      mobile_occurred_at: at(seconds),
+      app_version: '1.2.3',
+      app_build: '42',
+    },
     userProperties: null,
     defaultProperties: {
       sid,
-      mobile_session_started_at: started,
-      mobile_occurred_at: at(seconds),
-      mobile_platform: 'android',
-      mobile_contract_version: 1,
-      app_version: '1.2.3',
-      app_build: '42',
       os_name: 'Android',
       device_type: 'mobile',
       version: 'react-native@4.1.0',
@@ -116,9 +116,8 @@ function fixture() {
     {
       jsonBody: { token, is_manually_set_id: false, data: [optIn, afterOptIn] },
     },
-    {
-      jsonBody: { token, is_manually_set_id: true, data: [warm, post, manual] },
-    },
+    { jsonBody: { token, is_manually_set_id: true, data: [warm, post] } },
+    { jsonBody: { token, is_manually_set_id: true, data: [manual] } },
     { jsonBody: { token, is_manually_set_id: false, data: [reset] } },
   ];
 }
@@ -293,7 +292,7 @@ test('rejects a distinct second lifecycle emission in a later capture', async ()
 test('rejects repeated lifecycle IDs outside the first session', async () => {
   const captures = fixture();
   const laterOpen = event('$mobile_app_open', 21);
-  laterOpen.defaultProperties.sid = 'later-session';
+  laterOpen.defaultProperties.sid = '1791288021000';
   captures[3].jsonBody.data.push(laterOpen, structuredClone(laterOpen));
   const result = await run(captures);
   assert.equal(result.status, 1, result.stdout);
@@ -330,7 +329,7 @@ test('rejects engagement mostly attributed outside Schedule', async () => {
     engagement_duration_ms: 9000,
     screen_name: 'Other',
   };
-  data[7].defaultProperties.mobile_occurred_at = at(9);
+  data[7].eventProperties.mobile_occurred_at = at(9);
   data[8].eventProperties.engagement_duration_ms = 3000;
   const result = await run(captures);
   assert.equal(result.status, 1, result.stdout);
@@ -341,4 +340,35 @@ test('rejects captures when no token is selected', async () => {
   const result = await run(fixture(), ['--platform', 'android']);
   assert.equal(result.status, 1, result.stdout + result.stderr);
   assert.match(result.stderr, /token/i);
+});
+
+test('rejects metadata in defaults and UUID session IDs', async () => {
+  for (const field of [
+    'mobile_occurred_at',
+    'mobile_platform',
+    'mobile_session_started_at',
+    'mobile_contract_version',
+    'app_version',
+    'app_build',
+    'sid',
+  ]) {
+    const captures = fixture();
+    captures[0].jsonBody.data[1].defaultProperties[field] =
+      field === 'sid' ? 'old-uuid' : 'invalid';
+    const result = await run(captures);
+    assert.equal(result.status, 1, result.stdout);
+    assert.match(
+      result.stdout,
+      /mobile metadata uses host app version and UTC timestamps/,
+    );
+  }
+});
+
+test('rejects an envelope containing different captured visitors', async () => {
+  const captures = fixture();
+  captures[2].jsonBody.data.push(captures[3].jsonBody.data[0]);
+  captures.splice(3, 1);
+  const result = await run(captures);
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stdout, /each batch uses one visitor identity/);
 });

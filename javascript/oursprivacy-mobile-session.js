@@ -1,4 +1,5 @@
 import { uuidv4 } from './oursprivacy-utils';
+import { isSessionId } from './oursprivacy-mobile-payload';
 
 const storageKey = (token) => `OURSPRIVACY_${token}_MOBILE_SESSION_V1`;
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
@@ -10,19 +11,19 @@ export class MobileSession {
     storage,
     wallNow,
     monotonicNow,
-    uuid,
     appVersion,
     appBuild,
     getVisitorId,
+    getIsManuallySetId,
   }) {
     this.token = token;
     this.storage = storage;
     this.wallNow = wallNow;
     this.monotonicNow = monotonicNow;
-    this.uuid = uuid;
     this.appVersion = appVersion;
     this.appBuild = appBuild;
     this.getVisitorId = getVisitorId;
+    this.getIsManuallySetId = getIsManuallySetId;
     this.state = null;
     this.foregrounded = false;
     this.paused = false;
@@ -74,13 +75,13 @@ export class MobileSession {
         ? parsed
         : {};
     const validSession =
-      typeof record.sid === 'string' &&
-      record.sid.length > 0 &&
+      isSessionId(record.sid) &&
       Number.isSafeInteger(record.startedAtMs) &&
+      isSessionId(String(record.startedAtMs)) &&
       Number.isSafeInteger(record.lastActiveAtMs) &&
       record.lastActiveAtMs >= record.startedAtMs;
     this.state = {
-      sid: validSession ? record.sid : null,
+      sid: validSession ? String(record.startedAtMs) : null,
       startedAtMs: validSession ? record.startedAtMs : null,
       lastActiveAtMs: validSession ? record.lastActiveAtMs : null,
       firstOpenSent: record.firstOpenSent === true,
@@ -115,6 +116,7 @@ export class MobileSession {
         id: uuidv4(),
         queueAccepted: fact.event === '$mobile_first_open' ? false : undefined,
         visitorId: this.getVisitorId?.() ?? null,
+        isManuallySetId: this.getIsManuallySetId?.() ?? false,
         appVersion: this.appVersion,
         appBuild: this.appBuild,
         fact: {
@@ -168,7 +170,6 @@ export class MobileSession {
   _snapshot(atMs) {
     return {
       sid: this.state.sid,
-      mobile_session_started_at: new Date(this.state.startedAtMs).toISOString(),
       mobile_occurred_at: new Date(
         Math.max(atMs, this.state.startedAtMs),
       ).toISOString(),
@@ -212,7 +213,7 @@ export class MobileSession {
   }
 
   _startSession(atMs) {
-    this.state.sid = this.uuid();
+    this.state.sid = String(atMs);
     this.state.startedAtMs = atMs;
     this.state.lastActiveAtMs = atMs;
     this.state.sessionStartSent = false;

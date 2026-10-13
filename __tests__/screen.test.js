@@ -43,7 +43,14 @@ test('a public screen call queues the exact canonical payload and configured hos
     event: '$mobile_screen_view',
     visitor_id: expect.any(String),
     distinct_id: expect.any(String),
-    eventProperties: { screen_name: 'Schedule' },
+    eventProperties: {
+      screen_name: 'Schedule',
+      mobile_contract_version: 1,
+      mobile_occurred_at: '2026-10-05T12:00:00.000Z',
+      app_version: '2.0.0',
+      app_build: '42',
+    },
+    isManuallySetId: false,
     userProperties: null,
     defaultProperties: {
       device_type: 'mobile',
@@ -53,13 +60,7 @@ test('a public screen call queues the exact canonical payload and configured hos
       screen_width: 375,
       screen_height: 812,
       device_vendor: 'Apple',
-      app_version: '2.0.0',
-      app_build: '42',
-      sid: expect.any(String),
-      mobile_session_started_at: '2026-10-05T12:00:00.000Z',
-      mobile_occurred_at: '2026-10-05T12:00:00.000Z',
-      mobile_platform: 'ios',
-      mobile_contract_version: 1,
+      sid: '1791201600000',
     },
   });
 });
@@ -94,12 +95,16 @@ test('a screen change attributes elapsed engagement to the previous screen', asy
   expect(events.at(-2).eventProperties).toEqual({
     engagement_duration_ms: 4_000,
     screen_name: 'Home',
+    mobile_contract_version: 1,
+    mobile_occurred_at: '2026-10-05T12:00:04.000Z',
   });
   expect(events.at(-2).defaultProperties.sid).toBe(
     events.at(-1).defaultProperties.sid,
   );
   expect(events.at(-1).eventProperties).toEqual({
     screen_name: 'Schedule',
+    mobile_contract_version: 1,
+    mobile_occurred_at: '2026-10-05T12:00:04.000Z',
   });
 });
 

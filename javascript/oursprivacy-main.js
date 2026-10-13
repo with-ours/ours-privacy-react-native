@@ -10,6 +10,7 @@ import { uuidv4 } from './oursprivacy-utils';
 import { parseAttributionFromURL } from './oursprivacy-attribution';
 import { MobileSession } from './oursprivacy-mobile-session';
 import { AsyncStorageAdapter } from './oursprivacy-storage';
+import { normalizeMobilePayload } from './oursprivacy-mobile-payload';
 
 const CHECKPOINT_INTERVAL_MS = 10_000;
 
@@ -151,8 +152,9 @@ export default class OursPrivacyMain {
       },
       wallNow: () => Date.now(),
       monotonicNow: () => globalThis.performance?.now?.() ?? Date.now(),
-      uuid: uuidv4,
       getVisitorId: () => this.oursprivacyPersistent.getVisitorId(token),
+      getIsManuallySetId: () =>
+        this.config.getIsManuallySetId?.(token) ?? false,
     });
   }
 
@@ -200,17 +202,25 @@ export default class OursPrivacyMain {
     if (this.oursprivacyPersistent.getOptedOut(token)) return;
     const pending = await this._mobileSession.pendingQueueFacts();
     for (const record of pending) {
+      const fact = normalizeMobilePayload(record.fact);
       const queued = await this._enqueueEvent(
         token,
-        record.fact.event,
-        record.fact.eventProperties,
+        fact.event,
+        fact.eventProperties,
         null,
-        record.fact.defaultProperties,
+        {
+          sid: fact.defaultProperties.sid,
+          mobile_occurred_at: fact.eventProperties.mobile_occurred_at,
+        },
         record.id,
         record.visitorId,
         false,
-        { appVersion: record.appVersion, appBuild: record.appBuild },
+        {
+          appVersion: record.appVersion ?? fact.eventProperties.app_version,
+          appBuild: record.appBuild ?? fact.eventProperties.app_build,
+        },
         true,
+        record.isManuallySetId,
       );
       if (queued === false) {
         throw new Error('Mobile fact was not queued');
@@ -290,19 +300,8 @@ export default class OursPrivacyMain {
     );
   }
 
-  /**
-   * Build the defaultProperties object for an event.
-   *
-   * Contains device metadata plus any marketing attribution captured via
-   * trackDeepLink(). All keys here must exist in the server's defaultPayload
-   * Zod schema — unknown keys are silently stripped server-side.
-   */
-  getDefaultProperties(
-    token,
-    mobileSnapshot,
-    appMetadata,
-    includeAttribution = true,
-  ) {
+  // Ingest strips unknown defaults, so mobile metadata belongs in eventProperties.
+  getDefaultProperties(token, mobileSnapshot, includeAttribution = true) {
     const { OS, Version, constants } = Platform;
     const { Model, Manufacturer, Brand } = constants || {};
     const { width, height } = Dimensions.get('screen');
@@ -333,22 +332,7 @@ export default class OursPrivacyMain {
     }
 
     if (mobileSnapshot && this._isMobilePlatform()) {
-      const appVersion = appMetadata
-        ? appMetadata.appVersion
-        : this._mobileSession.appVersion;
-      const appBuild = appMetadata
-        ? appMetadata.appBuild
-        : this._mobileSession.appBuild;
-      if (appVersion != null) {
-        props.app_version = appVersion;
-      }
-      if (appBuild != null) {
-        props.app_build = appBuild;
-      }
-      Object.assign(props, mobileSnapshot, {
-        mobile_platform: Platform.OS,
-        mobile_contract_version: 1,
-      });
+      props.sid = mobileSnapshot.sid;
     }
 
     return props;
@@ -455,6 +439,7 @@ export default class OursPrivacyMain {
     includeEventDefaults = true,
     appMetadata,
     isCanonicalFact = false,
+    isManuallySetId = this.config.getIsManuallySetId?.(token) ?? false,
   ) {
     const rawEventProps = {
       ...(includeEventDefaults
@@ -462,10 +447,11 @@ export default class OursPrivacyMain {
         : {}),
       ...properties,
     };
-    const eventData = {
+    let eventData = {
       event: eventName,
       visitor_id: visitorId,
       distinct_id: distinctId,
+      isManuallySetId,
       eventProperties:
         Object.keys(rawEventProps).length > 0 ? rawEventProps : null,
       userProperties: isCanonicalFact
@@ -474,10 +460,26 @@ export default class OursPrivacyMain {
       defaultProperties: this.getDefaultProperties(
         token,
         snapshot,
-        appMetadata,
         !isCanonicalFact,
       ),
     };
+    if (snapshot && this._isMobilePlatform()) {
+      eventData = normalizeMobilePayload(eventData, {
+        mobile_occurred_at: snapshot.mobile_occurred_at,
+        app_version: appMetadata
+          ? appMetadata.appVersion
+          : this._mobileSession.appVersion,
+        app_build: appMetadata
+          ? appMetadata.appBuild
+          : this._mobileSession.appBuild,
+      });
+      if (eventData.eventProperties.mobile_contract_version == null) {
+        OursPrivacyLogger.warn(
+          token,
+          'Mobile analytics metadata omitted to keep event properties within ingest limits.',
+        );
+      }
+    }
     await this._coreReady;
     return this.core.addToOursPrivacyQueue(
       token,

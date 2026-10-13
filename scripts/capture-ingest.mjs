@@ -97,8 +97,6 @@ const server = http.createServer(async (request, response) => {
     JSON.stringify({
       success: true,
       visitor_id: parsedBody?.data?.[0]?.visitor_id ?? '',
-      accepted: events.length,
-      rejected: [],
     }),
   );
 });

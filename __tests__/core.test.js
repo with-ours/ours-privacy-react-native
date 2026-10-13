@@ -6,7 +6,6 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-queue', () => ({
     enqueue: jest.fn(),
     getQueue: jest.fn(),
     getResponseMode: jest.fn(),
-    setResponseMode: jest.fn(),
     spliceQueue: jest.fn(),
     removeByIds: jest.fn(),
     clearQueue: jest.fn(),
@@ -80,7 +79,6 @@ describe('OursPrivacyQueueManager', () => {
     OursPrivacyQueueManager.removeByIds.mockReset();
     OursPrivacyQueueManager.getQueue.mockReset();
     OursPrivacyQueueManager.getResponseMode.mockReset().mockReturnValue(null);
-    OursPrivacyQueueManager.setResponseMode.mockReset();
     Platform.OS = 'ios';
     OursPrivacyConfig.getInstance().getOnIngestRejected.mockReset();
     OursPrivacyConfig.getInstance()
@@ -210,23 +208,10 @@ describe('OursPrivacyQueueManager', () => {
 
   const queueBatch = (items) => {
     let queued = [...items];
-    let responseMode = null;
     OursPrivacyQueueManager.getQueue.mockImplementation(() => [...queued]);
-    OursPrivacyQueueManager.getResponseMode.mockImplementation(
-      () => responseMode,
-    );
-    OursPrivacyQueueManager.setResponseMode.mockImplementation(
-      async (_token, _type, mode) => {
-        if (mode === 'indexed') responseMode = 'indexed';
-      },
-    );
     OursPrivacyQueueManager.removeByIds.mockImplementation(
-      async (_token, _type, ids, mode) => {
+      async (_token, _type, ids) => {
         queued = queued.filter((item) => !ids.includes(item.distinct_id));
-        responseMode =
-          responseMode === 'indexed' || mode === 'indexed'
-            ? 'indexed'
-            : mode || responseMode;
       },
     );
     return () => queued;
@@ -476,7 +461,7 @@ describe('OursPrivacyQueueManager', () => {
   );
 
   it.each(['ios', 'web'])(
-    'retains a no-index HTTP 200 after indexed mode on %s',
+    'accepts a legacy ACK after indexed mode on %s',
     async (platform) => {
       Platform.OS = platform;
       const remaining = queueBatch([
@@ -498,12 +483,11 @@ describe('OursPrivacyQueueManager', () => {
 
       await OursPrivacyCore().flush(token);
 
-      expect(remaining()).toEqual([
-        { event: 'appointment_booked', distinct_id: 'id-2' },
-      ]);
+      expect(remaining()).toEqual([]);
       expect(onIngestRejected).not.toHaveBeenCalled();
       expect(OursPrivacyQueueManager.removeByIds.mock.calls).toEqual([
         [token, type, ['id-1'], 'indexed'],
+        [token, type, ['id-2'], 'legacy'],
       ]);
     },
   );
@@ -535,7 +519,7 @@ describe('OursPrivacyQueueManager', () => {
   );
 
   it.each(['ios', 'web'])(
-    'uses legacy HTTP 400 removal on %s only after a legacy response',
+    'retains HTTP 400 on %s after a legacy response',
     async (platform) => {
       Platform.OS = platform;
       const remaining = queueBatch([
@@ -551,11 +535,12 @@ describe('OursPrivacyQueueManager', () => {
 
       await OursPrivacyCore().flush(token);
 
-      expect(remaining()).toEqual([]);
+      expect(remaining()).toEqual([
+        { event: '$mobile_app_open', distinct_id: 'id-2' },
+        { event: 'third', distinct_id: 'id-3' },
+      ]);
       expect(OursPrivacyQueueManager.removeByIds.mock.calls).toEqual([
         [token, type, ['id-1'], 'legacy'],
-        [token, type, ['id-2']],
-        [token, type, ['id-3'], 'legacy'],
       ]);
     },
   );
@@ -585,7 +570,7 @@ describe('OursPrivacyQueueManager', () => {
     ]);
   });
 
-  it('does not restore legacy HTTP 400 removal after an indexed response', async () => {
+  it('accepts legacy ACKs after indexed responses and retains a later HTTP 400', async () => {
     const remaining = queueBatch([
       { event: 'first', distinct_id: 'id-1' },
       { event: 'second', distinct_id: 'id-2' },
@@ -596,19 +581,18 @@ describe('OursPrivacyQueueManager', () => {
     OursPrivacyNetwork.sendRequest
       .mockResolvedValueOnce({ success: true, visitor_id: 'v1' })
       .mockResolvedValueOnce({ success: true, accepted: 1, rejected: [] })
-      .mockResolvedValueOnce({ success: true, visitor_id: 'v1' });
+      .mockResolvedValueOnce({ success: true, visitor_id: 'v1' })
+      .mockRejectedValueOnce({ code: 400 });
     const core = OursPrivacyCore();
 
     await core.flush(token);
     expect(remaining()).toEqual([
-      { event: 'third', distinct_id: 'id-3' },
       { event: 'appointment_booked', distinct_id: 'id-4' },
     ]);
     OursPrivacyNetwork.sendRequest.mockRejectedValueOnce({ code: 400 });
     await core.flush(token);
 
     expect(remaining()).toEqual([
-      { event: 'third', distinct_id: 'id-3' },
       { event: 'appointment_booked', distinct_id: 'id-4' },
     ]);
   });
@@ -638,7 +622,7 @@ describe('OursPrivacyQueueManager', () => {
     expect(OursPrivacyQueueManager.removeByIds).toHaveBeenCalledTimes(1);
   });
 
-  it('does not apply one token’s legacy HTTP 400 behavior to another token', async () => {
+  it('keeps a failing token queued after another token succeeds', async () => {
     Platform.OS = 'web';
     const queues = new Map([
       ['legacy-token', [{ event: 'first', distinct_id: 'id-1' }]],

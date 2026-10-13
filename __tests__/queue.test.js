@@ -95,3 +95,31 @@ describe('OursPrivacyQueueManager', () => {
     );
   });
 });
+
+test('a legacy ACK replaces indexed response history', async () => {
+  const {
+    OursPrivacyQueueManager,
+  } = require('../javascript/oursprivacy-queue');
+  await OursPrivacyQueueManager.initialize('mode-transition', '/ingest');
+  await OursPrivacyQueueManager.enqueue('mode-transition', '/ingest', {
+    distinct_id: 'first',
+  });
+  await OursPrivacyQueueManager.removeByIds(
+    'mode-transition',
+    '/ingest',
+    ['first'],
+    'indexed',
+  );
+  await OursPrivacyQueueManager.enqueue('mode-transition', '/ingest', {
+    distinct_id: 'second',
+  });
+  await OursPrivacyQueueManager.removeByIds(
+    'mode-transition',
+    '/ingest',
+    ['second'],
+    'legacy',
+  );
+  expect(
+    OursPrivacyQueueManager.getResponseMode('mode-transition', '/ingest'),
+  ).toBe('legacy');
+});

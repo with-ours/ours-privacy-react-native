@@ -138,24 +138,34 @@ export const OursPrivacyCore = (storage) => {
             `[Flushing queue] queue: ${JSON.stringify(queue)}`,
           );
           const batchSize = config.getFlushBatchSize(token);
-          const batch = queue.slice(0, batchSize);
+          const fallbackIdentityMode = config.getIsManuallySetId(token);
+          const identityMode = (item) =>
+            typeof item.isManuallySetId === 'boolean'
+              ? item.isManuallySetId
+              : fallbackIdentityMode;
+          const isManuallySetId = identityMode(queue[0]);
+          const batch = [];
+          for (const item of queue.slice(0, batchSize)) {
+            if (
+              item.visitor_id !== queue[0].visitor_id ||
+              identityMode(item) !== isManuallySetId
+            ) {
+              break;
+            }
+            batch.push(item);
+          }
           try {
             const response = await OursPrivacyNetwork.sendRequest({
               token,
-              data: batch,
+              data: batch.map(({ isManuallySetId: _mode, ...item }) => item),
               endpoint: type,
               serverURL: config.getServerURL(token),
-              isManuallySetId: config.getIsManuallySetId(token),
+              isManuallySetId,
             });
             if (oursprivacyPersistent.getOptedOut(token)) return;
             let rejected = [];
             let responseMode;
             if (hasIndexedResult(response)) {
-              await OursPrivacyQueueManager.setResponseMode(
-                token,
-                type,
-                'indexed',
-              );
               rejected = rejectedFromMobileResponse(response, batch.length);
               responseMode = 'indexed';
             } else if (
@@ -164,7 +174,7 @@ export const OursPrivacyCore = (storage) => {
               Array.isArray(response) ||
               response.success !== true ||
               typeof response.visitor_id !== 'string' ||
-              OursPrivacyQueueManager.getResponseMode(token, type) === 'indexed'
+              response.visitor_id.trim().length === 0
             ) {
               throw new Error('Invalid ingest response');
             } else {
@@ -194,19 +204,6 @@ export const OursPrivacyCore = (storage) => {
               }
             }
           } catch (error) {
-            if (
-              error.code === 400 &&
-              OursPrivacyQueueManager.getResponseMode(token, type) === 'legacy'
-            ) {
-              OursPrivacyLogger.error(
-                token,
-                `Bad request received due to corrupted data within the batch. The corrupted data is now being removed from the queue...`,
-              );
-              await OursPrivacyQueueManager.removeByIds(token, type, [
-                batch[0].distinct_id,
-              ]);
-              continue;
-            }
             OursPrivacyLogger.error(
               token,
               `Error sending event batch from queue, error: ${error}`,

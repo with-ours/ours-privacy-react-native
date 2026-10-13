@@ -186,7 +186,7 @@ if (coldDeepLink) {
   );
   assert(
     '$deep_link_opened has no URL event property',
-    coldDeepLink.eventProperties === null,
+    !Object.hasOwn(coldDeepLink.eventProperties || {}, 'url'),
   );
 }
 
@@ -352,7 +352,7 @@ assert(
 if (warmDeepLink) {
   assert(
     'Warm deep link has no URL event property',
-    warmDeepLink.eventProperties === null,
+    !Object.hasOwn(warmDeepLink.eventProperties || {}, 'url'),
   );
   const dp = warmDeepLink.defaultProperties || {};
   assert(
@@ -476,12 +476,10 @@ const firstSid = firstOpen[0]?.defaultProperties?.sid;
 const initialEngagement = findAllEvents('$mobile_session_engagement').filter(
   (event) => event.defaultProperties?.sid === firstSid,
 );
-const initialSessionStartMs = Date.parse(
-  firstOpen[0]?.defaultProperties?.mobile_session_started_at,
-);
+const initialSessionStartMs = Number(firstSid);
 const timedEngagement = initialEngagement
   .map((event) => {
-    const end = Date.parse(event.defaultProperties?.mobile_occurred_at);
+    const end = Date.parse(event.eventProperties?.mobile_occurred_at);
     const duration = event.eventProperties?.engagement_duration_ms;
     return { event, end, duration, start: end - duration };
   })
@@ -502,6 +500,18 @@ const scheduleEngagement = timedEngagement.reduce(
 assert('one first tracked open', firstOpen.length === 1);
 assert('no conflicting captured event IDs', !conflictingEventIds);
 assert('duplicate items within one capture absent', !duplicateInCapture);
+assert(
+  'each batch uses one visitor identity',
+  captures
+    .filter((capture) => capture.jsonBody?.token === expectedToken)
+    .every(({ jsonBody: payload }) => {
+      const events = payload.data || [];
+      return (
+        typeof payload.is_manually_set_id === 'boolean' &&
+        events.every((event) => event.visitor_id === events[0]?.visitor_id)
+      );
+    }),
+);
 assert(
   'one app open for the first session',
   appOpen.filter((event) => event.defaultProperties?.sid === firstSid)
@@ -552,10 +562,10 @@ assert(
     booking?.visitor_id === coldDeepLink.visitor_id &&
     buttonEvent?.visitor_id === coldDeepLink.visitor_id &&
     Number.isFinite(
-      Date.parse(coldDeepLink.defaultProperties?.mobile_occurred_at),
+      Date.parse(coldDeepLink.eventProperties?.mobile_occurred_at),
     ) &&
-    Date.parse(coldDeepLink.defaultProperties?.mobile_occurred_at) <=
-      Date.parse(booking?.defaultProperties?.mobile_occurred_at),
+    Date.parse(coldDeepLink.eventProperties?.mobile_occurred_at) <=
+      Date.parse(booking?.eventProperties?.mobile_occurred_at),
 );
 
 const initialMobile = [
@@ -596,15 +606,26 @@ assert(
 assert(
   'mobile metadata uses host app version and UTC timestamps',
   initialMobile.length === 5 &&
-    initialMobile.every((event) => {
+    allEvents.every((event) => {
       const defaults = event.defaultProperties || {};
+      const properties = event.eventProperties || {};
       return (
-        defaults.mobile_platform === expectedPlatform &&
-        defaults.mobile_contract_version === 1 &&
-        defaults.app_version === '1.2.3' &&
-        defaults.app_build === '42' &&
-        mobileTime.test(defaults.mobile_occurred_at || '') &&
-        mobileTime.test(defaults.mobile_session_started_at || '') &&
+        defaults.os_name === (expectedPlatform === 'ios' ? 'iOS' : 'Android') &&
+        /^[1-9]\d{12}$/.test(defaults.sid || '') &&
+        properties.mobile_contract_version === 1 &&
+        properties.app_version === '1.2.3' &&
+        properties.app_build === '42' &&
+        mobileTime.test(properties.mobile_occurred_at || '') &&
+        [
+          'mobile_platform',
+          'mobile_session_started_at',
+          'mobile_contract_version',
+          'mobile_occurred_at',
+          'app_version',
+          'app_build',
+        ].every((key) => !Object.hasOwn(defaults, key)) &&
+        !Object.hasOwn(properties, 'mobile_platform') &&
+        !Object.hasOwn(properties, 'mobile_session_started_at') &&
         !Object.hasOwn(event, 'time')
       );
     }),

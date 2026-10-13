@@ -42,7 +42,7 @@ Version 4.0 requires Node 22+, React 18+, and React Native 0.76+. Upgrade the ap
 
 TypeScript event, custom, and consent property values must be JSON-compatible. Replace functions, class instances, and other unserializable values before calling `track()` or setting default properties. Optional `undefined` values remain valid and are omitted during JSON serialization. Consent can include boolean flags or string values.
 
-Earlier React Native SDK versions emitted no lifecycle or screen events through `trackAutomaticEvents`. To adopt the `$mobile_*` contract, opt in with `trackAutomaticEvents: true` for lifecycle events and call `trackScreen()` from your navigator for screen views. Existing custom `track()` calls continue to work with automatic tracking off. The canonical `$mobile_*` events are the inputs specified for the planned Mobile Analytics reporting slice; legacy event names are not interchangeable with them. `$deep_link_opened` keeps its name, but no longer includes `eventProperties.url`; remove any downstream mapping that expects that property and use the allowlisted attribution fields in `defaultProperties` instead.
+Earlier React Native SDK versions emitted no lifecycle or screen events through `trackAutomaticEvents`. To adopt the `$mobile_*` contract, opt in with `trackAutomaticEvents: true` for lifecycle events and call `trackScreen()` from your navigator for screen views. Existing custom `track()` calls continue to work with automatic tracking off. Use canonical `$mobile_*` events for mobile engagement reporting. `$deep_link_opened` keeps its name, but no longer includes `eventProperties.url`; remove any downstream mapping that expects that property and use the allowlisted attribution fields in `defaultProperties` instead.
 
 ---
 
@@ -100,11 +100,15 @@ await op.flush();
 
 ## Mobile Instrumentation
 
-On iOS and Android, every tracked event carries the SDK-owned `defaultProperties` `sid`, `mobile_session_started_at`, `mobile_occurred_at`, `mobile_platform`, and `mobile_contract_version: 1`. The host may supply `appVersion` and `appBuild` at initialization; these appear as `app_version` and `app_build`. `version` continues to identify the React Native SDK (`react-native@<SDK version>`). The SDK does not infer the host app version or build from its own package. `mobile_occurred_at` is captured when the event is queued, as an ISO-8601 UTC timestamp with millisecond precision. The SDK does not set top-level `time`.
+On iOS and Android, every event (canonical, manual, and identify) carries `defaultProperties.sid = String(Date.now())` captured at session start: a 13-digit decimal millisecond timestamp. Existing OS, device, and SDK `version` defaults remain. When capacity allows, SDK-owned `eventProperties` contain `mobile_contract_version: 1`, UTC ISO millisecond `mobile_occurred_at`, and `app_version` / `app_build` when supplied through `appVersion` / `appBuild`. Caller properties cannot override these fields. The SDK emits neither `mobile_session_started_at` nor `mobile_platform`, and does not set top-level `time`.
+
+Up to 196 ordinary event-property keys, including registered defaults, leave key capacity for all four metadata fields. Metadata also requires `JSON.stringify(eventProperties).length < 1048576` (UTF-16 code units). If adding metadata would exceed either limit, the SDK omits these fields together and preserves all ordinary properties and session/device defaults. Larger bags may therefore be excluded from Mobile Analytics.
+
+Saved UUID sessions start a fresh session without repeating first-open. Queued legacy mobile events retain their captured occurrence, identity, and host version; missing occurrence times remain absent. Older events without mobile markers remain unchanged.
 
 `trackAutomaticEvents` defaults to `false`. Set it to `true` to emit the automatic lifecycle events below. Manual `track()` and `trackScreen()` work with it off and still carry session metadata. The `$mobile_*` prefix is reserved for SDK-generated facts; `track()` rejects those names. Existing `$ae_*` legacy names remain accepted. Full tracking opt-out suppresses both automatic and manual events, discards the current mobile session and unsent queued events, and clears registered default event, user custom, user consent, and attribution properties. It retains the current visitor ID; opt-in starts fresh mobile session state under that ID unless your app changes it. An opted-out launch does not consume the first-open marker.
 
-The ingest server chooses its response format from the authenticated source token, regardless of the app's OS. Indexed responses acknowledge each sent batch with an `accepted` count and `rejected` entries containing an index and error code. Initialize with `onIngestRejected` to learn when an event is rejected. The callback receives only its stable `distinctId` and the server's `code`; it never receives event properties or user properties. Use the ID to correlate with records you already hold, and keep PHI out of callback logs. The SDK invokes the callback after the queue update is saved. A malformed response, failed queue save, or transport failure leaves the batch queued for retry. A legacy response must include `success: true` and a string `visitor_id`; it then acknowledges the full batch. After an indexed response, a later no-index response leaves the batch queued. HTTP 400 retains the batch until the token has returned a legacy response. After a legacy response, HTTP 400 can remove the first queued event as before; after an indexed response, it retains the batch.
+A legacy `{success: true, visitor_id: "..."}` response acknowledges the full batch, including after an indexed response or restart. If an endpoint returns compatible indexed responses, the SDK reads their `accepted` count and `rejected` index/code entries. The optional `onIngestRejected` listener receives only `distinctId` and the returned `code`, after the queue update is saved. Malformed responses, failed saves, and transport failures (including HTTP 400) leave events queued. Each batch contains one captured visitor ID and identity mode; changing identity does not rewrite queued events. Older queue items without a captured mode use the current mode.
 
 ```js
 await op.init('YOUR_API_TOKEN', {
@@ -197,11 +201,11 @@ Initialize the SDK. Must be called before any tracking method.
 | Field                          | Type                             | Description                                                                                                                                  |
 | ------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `trackAutomaticEvents`         | `boolean`                        | Emit canonical mobile lifecycle events when `true` (default: `false`)                                                                        |
-| `appVersion`                   | `string`                         | Host app version, sent as `defaultProperties.app_version`                                                                                    |
-| `appBuild`                     | `string`                         | Host app build, sent as `defaultProperties.app_build`                                                                                        |
-| `onIngestRejected`             | `({ distinctId, code }) => void` | Called after a mobile event is durably removed following an indexed ingest rejection                                                         |
+| `appVersion`                   | `string`                         | Host app version, sent as `eventProperties.app_version`                                                                                      |
+| `appBuild`                     | `string`                         | Host app build, sent as `eventProperties.app_build`                                                                                          |
+| `onIngestRejected`             | `({ distinctId, code }) => void` | Optional listener for compatible indexed rejection responses                                                                                 |
 | `optOutTrackingByDefault`      | `boolean`                        | If `true`, start opted out only without a saved choice (default: `false`)                                                                    |
-| `visitorId`                    | `string`                         | Pre-set the visitor ID; sets `is_manually_set_id: true` on all events                                                                        |
+| `visitorId`                    | `string`                         | Pre-set the visitor ID; sets `is_manually_set_id: true` on subsequent events                                                                 |
 | `defaultEventProperties`       | `object`                         | Properties merged into `eventProperties` on every `track()` call                                                                             |
 | `defaultUserCustomProperties`  | `object`                         | Properties merged into `userProperties.custom_properties` on every event                                                                     |
 | `defaultUserConsentProperties` | `object`                         | JSON-compatible values merged into `userProperties.consent` on every event                                                                   |
@@ -673,7 +677,11 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
       "visitor_id": "550e8400-e29b-41d4-a716-446655440000",
       "distinct_id": "ecff9f0e-d4f8-4d9e-b2f8-8d9b2fcdf7b2",
       "eventProperties": {
-        "price": 99
+        "price": 99,
+        "mobile_contract_version": 1,
+        "mobile_occurred_at": "2026-10-05T12:00:02.000Z",
+        "app_version": "2.0.0",
+        "app_build": "42"
       },
       "userProperties": {
         "custom_properties": {
@@ -690,11 +698,7 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
         "device_vendor": "Apple",
         "device_model": "iPhone 16 Pro",
         "version": "react-native@4.1.0",
-        "sid": "ccda1be4-cfc1-422e-bec7-9772c5c55ea9",
-        "mobile_session_started_at": "2026-10-05T12:00:00.000Z",
-        "mobile_occurred_at": "2026-10-05T12:00:02.000Z",
-        "mobile_platform": "ios",
-        "mobile_contract_version": 1
+        "sid": "1791201600000"
       }
     }
   ]
@@ -711,10 +715,10 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
 | `event`                            | Event name                                                                                                 |
 | `visitor_id`                       | Stable visitor UUID for this install (no prefix)                                                           |
 | `distinct_id`                      | Per-event UUID generated for this event occurrence                                                         |
-| `eventProperties`                  | Properties from `track()` merged with default event properties                                             |
+| `eventProperties`                  | Caller event properties plus SDK-owned occurrence, contract, and host version metadata                     |
 | `userProperties.custom_properties` | From `identify()` and `updateDefaultUserCustomProperties()`                                                |
 | `userProperties.consent`           | From `identify()` and `updateDefaultUserConsentProperties()`                                               |
-| `defaultProperties`                | Device/SDK metadata and SDK-owned mobile session fields on iOS and Android                                 |
+| `defaultProperties`                | Device/SDK metadata and the numeric session-start `sid`                                                    |
 
 ---
 

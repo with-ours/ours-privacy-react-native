@@ -110,7 +110,12 @@ describe('OursPrivacy integration flows', () => {
     const first = queued[1];
     const deepLink = queued[0];
     const booked = queued[4];
-    expect(deepLink.eventProperties).toBeNull();
+    expect(deepLink.eventProperties).toEqual({
+      mobile_contract_version: 1,
+      mobile_occurred_at: expect.any(String),
+      app_version: '2.0.0',
+      app_build: '42',
+    });
     expect(deepLink.visitor_id).toBe('web-123');
     expect(deepLink.defaultProperties).toEqual(
       expect.objectContaining({
@@ -128,12 +133,6 @@ describe('OursPrivacy integration flows', () => {
         utm_source: 'email',
         gclid: 'click-123',
         sid: first.defaultProperties.sid,
-        mobile_session_started_at: expect.any(String),
-        mobile_occurred_at: expect.any(String),
-        mobile_platform: 'ios',
-        mobile_contract_version: 1,
-        app_version: '2.0.0',
-        app_build: '42',
         version: 'react-native@4.1.0',
       }),
     );
@@ -203,7 +202,10 @@ describe('OursPrivacy integration flows', () => {
     ]);
     expect(JSON.stringify(queued)).not.toContain('private-patient');
     expect(JSON.stringify(queued)).not.toContain('private@example.test');
-    expect(queued[0].eventProperties).toBeNull();
+    expect(queued[0].eventProperties).toEqual({
+      mobile_contract_version: 1,
+      mobile_occurred_at: expect.any(String),
+    });
     expect(queued[0].userProperties).toBeNull();
   });
 
@@ -225,10 +227,6 @@ describe('OursPrivacy integration flows', () => {
     expect(booked.defaultProperties).toEqual(
       expect.objectContaining({
         sid: expect.any(String),
-        mobile_session_started_at: expect.any(String),
-        mobile_occurred_at: expect.any(String),
-        mobile_platform: 'android',
-        mobile_contract_version: 1,
         os_name: 'Android',
         version: 'react-native@4.1.0',
       }),
@@ -261,8 +259,6 @@ describe('OursPrivacy integration flows', () => {
       expect(fact.defaultProperties).toEqual(
         expect.objectContaining({
           sid: expect.any(String),
-          mobile_platform: 'android',
-          mobile_contract_version: 1,
         }),
       );
       expect(fact).not.toHaveProperty('time');
@@ -303,7 +299,10 @@ describe('OursPrivacy integration flows', () => {
     ]);
     for (const fact of facts) {
       expect(fact.userProperties).toBeNull();
-      expect(fact.eventProperties).toBeNull();
+      expect(fact.eventProperties).toEqual({
+        mobile_contract_version: 1,
+        mobile_occurred_at: expect.any(String),
+      });
       for (const key of [
         'patient_email',
         'patient_id',
@@ -424,7 +423,7 @@ describe('OursPrivacy integration flows', () => {
     });
   });
 
-  it('keeps a queued event after an indexed token returns a no-index HTTP 200', async () => {
+  it('accepts a legacy ACK after an indexed ACK', async () => {
     require('react-native').Platform.OS = 'web';
     const { OursPrivacy } = require('@oursprivacy/react-native');
     const {
@@ -439,10 +438,6 @@ describe('OursPrivacy integration flows', () => {
     await op.oursprivacyImpl.track(
       'indexed-then-legacy-token',
       'appointment_booked',
-    );
-    const queued = OursPrivacyQueueManager.getQueue(
-      'indexed-then-legacy-token',
-      OursPrivacyType.EVENTS,
     );
     fetchMock.mockResponses(
       [
@@ -459,11 +454,11 @@ describe('OursPrivacy integration flows', () => {
         'indexed-then-legacy-token',
         OursPrivacyType.EVENTS,
       ),
-    ).toEqual([queued[1]]);
+    ).toEqual([]);
     expect(onIngestRejected).not.toHaveBeenCalled();
   });
 
-  it('keeps indexed acknowledgement mode across a client restart', async () => {
+  it('accepts a legacy ACK after restarting with indexed response history', async () => {
     require('react-native').Platform.OS = 'web';
     const values = new Map();
     const storage = {
@@ -518,22 +513,23 @@ describe('OursPrivacy integration flows', () => {
     const send = jest
       .spyOn(OursPrivacyNetwork, 'sendRequest')
       .mockResolvedValueOnce({ success: true, visitor_id: 'v1' });
-    const observedMode = jest.spyOn(OursPrivacyQueueManager, 'getResponseMode');
     const removed = jest.spyOn(OursPrivacyQueueManager, 'removeByIds');
 
     await reloaded.oursprivacyImpl.core.flush('indexed-restart-token');
     expect(send).toHaveBeenCalledTimes(1);
-    expect(observedMode.mock.results.map((result) => result.value)).toContain(
-      'indexed',
+    expect(removed).toHaveBeenCalledWith(
+      'indexed-restart-token',
+      OursPrivacyType.EVENTS,
+      [pending.distinct_id],
+      'legacy',
     );
-    expect(removed).not.toHaveBeenCalled();
 
     expect(
       OursPrivacyQueueManager.getQueue(
         'indexed-restart-token',
         OursPrivacyType.EVENTS,
       ),
-    ).toEqual([pending]);
+    ).toEqual([]);
   });
 
   it('retains a web queued event on HTTP 400 before its token contract is known', async () => {
@@ -877,15 +873,14 @@ describe('OursPrivacy integration flows', () => {
     const [engagement] = queued.filter(
       (item) => item.event === '$mobile_session_engagement',
     );
-    expect(engagement.eventProperties).toEqual({
-      engagement_duration_ms: 5_000,
-      screen_name: 'Schedule',
-    });
-    expect(engagement.defaultProperties.mobile_occurred_at).toBe(
-      new Date(
-        Date.parse(engagement.defaultProperties.mobile_session_started_at) +
-          5_000,
-      ).toISOString(),
+    expect(engagement.eventProperties).toEqual(
+      expect.objectContaining({
+        engagement_duration_ms: 5_000,
+        screen_name: 'Schedule',
+      }),
+    );
+    expect(engagement.eventProperties.mobile_occurred_at).toBe(
+      new Date(Number(engagement.defaultProperties.sid) + 5_000).toISOString(),
     );
   });
 
@@ -905,7 +900,9 @@ describe('OursPrivacy integration flows', () => {
     expect(sent).toEqual([
       expect.objectContaining({
         event: 'appointment_booked',
-        eventProperties: { appointment_id: 'synthetic-booking' },
+        eventProperties: expect.objectContaining({
+          appointment_id: 'synthetic-booking',
+        }),
       }),
     ]);
   });
@@ -1073,8 +1070,14 @@ describe('OursPrivacy integration flows', () => {
         .filter((item) => item.event === '$mobile_session_engagement')
         .map((item) => item.eventProperties),
     ).toEqual([
-      { engagement_duration_ms: 3_000, screen_name: 'Schedule' },
-      { engagement_duration_ms: 2_000, screen_name: 'Confirm' },
+      expect.objectContaining({
+        engagement_duration_ms: 3_000,
+        screen_name: 'Schedule',
+      }),
+      expect.objectContaining({
+        engagement_duration_ms: 2_000,
+        screen_name: 'Confirm',
+      }),
     ]);
   });
 
@@ -1188,6 +1191,7 @@ describe('OursPrivacy integration flows', () => {
       OursPrivacyQueueManager.getQueue('mobile-token', OursPrivacyType.EVENTS),
     ).toEqual([]);
 
+    jest.setSystemTime(Date.now() + 1);
     await op.oursprivacyImpl.optInTracking('mobile-token');
     await op.oursprivacyImpl.track('mobile-token', 'after_opt_in');
     const after = OursPrivacyQueueManager.getQueue(
@@ -1278,6 +1282,7 @@ describe('OursPrivacy integration flows', () => {
     await expect(op.init('identity-token', options)).rejects.toThrow(
       'queue write failed',
     );
+    jest.setSystemTime(Date.now() + 1);
     await op.setVisitorId('visitor-after');
     await op.oursprivacyImpl.initialize('identity-token', {
       storage,
@@ -1452,8 +1457,8 @@ describe('OursPrivacy integration flows', () => {
     );
     const update = queued.find((event) => event.event === '$mobile_app_update');
     expect(firstOpen.distinct_id).toBe(failedId);
-    expect(firstOpen.defaultProperties.app_version).toBe('1.0');
-    expect(update.defaultProperties.app_version).toBe('2.0');
+    expect(firstOpen.eventProperties.app_version).toBe('1.0');
+    expect(update.eventProperties.app_version).toBe('2.0');
     expect(update.eventProperties.previous_app_version).toBe('1.0');
     expect(
       queued.filter((event) => event.event === '$mobile_first_open'),
@@ -1796,10 +1801,8 @@ describe('OursPrivacy integration flows', () => {
         (item) => item.event === '$mobile_session_start',
       );
       expect(starts).toHaveLength(2);
-      expect(
-        Date.parse(starts[1].defaultProperties.mobile_session_started_at),
-      ).toBe(rotationAtMs);
-      expect(Date.parse(starts[1].defaultProperties.mobile_occurred_at)).toBe(
+      expect(Number(starts[1].defaultProperties.sid)).toBe(rotationAtMs);
+      expect(Date.parse(starts[1].eventProperties.mobile_occurred_at)).toBe(
         rotationAtMs,
       );
       const rotatedSid = starts[1].defaultProperties.sid;
@@ -1929,7 +1932,9 @@ describe('OursPrivacy integration flows', () => {
     );
     const firstSid = initial[0].defaultProperties.sid;
 
+    jest.setSystemTime(Date.now() + 1);
     await op.setVisitorId('different-visitor');
+    jest.setSystemTime(Date.now() + 1);
     await op.oursprivacyImpl.reset('active-rotation-token');
     await op.oursprivacyImpl.track(
       'active-rotation-token',
@@ -2006,6 +2011,7 @@ describe('OursPrivacy integration flows', () => {
       }),
     ).rejects.toThrow('queue write failed');
     const originalVisitor = op.getVisitorId();
+    jest.setSystemTime(Date.now() + 1);
     await op.setVisitorId('visitor-after');
     op.oursprivacyImpl.updateDefaultUserCustomProperties('context-token', {
       plan: 'after',
@@ -2050,9 +2056,7 @@ describe('OursPrivacy integration flows', () => {
     const booked = queued.find((event) => event.event === 'appointment_booked');
     expect(end.defaultProperties.sid).toBe(oldSid);
     expect(booked.defaultProperties.sid).not.toBe(oldSid);
-    expect(end.defaultProperties.mobile_session_started_at).toBe(
-      queued[0].defaultProperties.mobile_session_started_at,
-    );
+    expect(end.defaultProperties.sid).toBe(queued[0].defaultProperties.sid);
   });
 
   it('continues foreground engagement after an identity change', async () => {
@@ -2070,6 +2074,7 @@ describe('OursPrivacy integration flows', () => {
     );
     const oldSid = queuedBefore[0].defaultProperties.sid;
 
+    jest.setSystemTime(Date.now() + 1);
     await op.setVisitorId('visitor-after');
     await jest.advanceTimersByTimeAsync(10_000);
     const queuedAfter = OursPrivacyQueueManager.getQueue(
@@ -2119,10 +2124,10 @@ describe('OursPrivacy integration flows', () => {
         event: 'Purchase',
         visitor_id: 'preset-visitor-123',
         distinct_id: expect.any(String),
-        eventProperties: {
+        eventProperties: expect.objectContaining({
           platform: 'mobile',
           price: 99,
-        },
+        }),
         userProperties: {
           custom_properties: { plan: 'pro' },
           consent: { marketing: true },
@@ -2198,7 +2203,10 @@ describe('OursPrivacy integration flows', () => {
     expect(deepLinkEvent.defaultProperties.utm_source).toBe('google');
     expect(deepLinkEvent.defaultProperties.gclid).toBe('init_gclid');
     expect(deepLinkEvent.defaultProperties.aleid).toBe('init_aleid');
-    expect(deepLinkEvent.eventProperties).toBeNull();
+    expect(deepLinkEvent.eventProperties).toEqual({
+      mobile_contract_version: 1,
+      mobile_occurred_at: expect.any(String),
+    });
 
     // Step 2: Track after init — attribution should persist in defaultProperties
     fetchMock.resetMocks();
@@ -2232,7 +2240,10 @@ describe('OursPrivacy integration flows', () => {
     expect(deepLinkEvent.defaultProperties.utm_source).toBe('applovin');
     expect(deepLinkEvent.defaultProperties.aleid).toBe('warm_aleid');
     expect(deepLinkEvent.defaultProperties.gclid).toBeUndefined();
-    expect(deepLinkEvent.eventProperties).toBeNull();
+    expect(deepLinkEvent.eventProperties).toEqual({
+      mobile_contract_version: 1,
+      mobile_occurred_at: expect.any(String),
+    });
     // Visitor ID stitched from ours_visitor_id
     expect(trackEvent.visitor_id).toBe('web-uuid-123');
     expect(trackEvent.visitor_id).not.toBe(visitorIdAfterInit);

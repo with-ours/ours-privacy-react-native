@@ -325,7 +325,10 @@ describe('OursPrivacyMain', () => {
           event: '$identify',
           visitor_id: 'visitor-id-mock',
           distinct_id: expect.any(String),
-          eventProperties: null,
+          eventProperties: {
+            mobile_contract_version: 1,
+            mobile_occurred_at: expect.any(String),
+          },
           userProperties: expect.objectContaining({
             external_id: 'new-distinct-id',
           }),
@@ -688,7 +691,10 @@ describe('OursPrivacyMain', () => {
       );
       expect(call).toBeTruthy();
       const eventData = call[2];
-      expect(eventData.eventProperties).toBeNull();
+      expect(eventData.eventProperties).toEqual({
+        mobile_contract_version: 1,
+        mobile_occurred_at: expect.any(String),
+      });
       expect(eventData.defaultProperties).toEqual(
         expect.objectContaining({
           utm_source: 'email',
@@ -722,7 +728,10 @@ describe('OursPrivacyMain', () => {
       expect(
         oursprivacyMain.oursprivacyPersistent.updateVisitorId,
       ).toHaveBeenCalledWith(token, 'web-123');
-      expect(deepLink.eventProperties).toBeNull();
+      expect(deepLink.eventProperties).toEqual({
+        mobile_contract_version: 1,
+        mobile_occurred_at: expect.any(String),
+      });
       expect(deepLink.defaultProperties).toEqual(
         expect.objectContaining({
           utm_source: 'campaign',
@@ -820,7 +829,10 @@ describe('OursPrivacyMain', () => {
         OursPrivacyType.EVENTS,
         expect.objectContaining({
           event: '$deep_link_opened',
-          eventProperties: null,
+          eventProperties: {
+            mobile_contract_version: 1,
+            mobile_occurred_at: expect.any(String),
+          },
         }),
       );
     });
