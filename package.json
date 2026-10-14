@@ -8,16 +8,9 @@
   "scripts": {
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
-    "qa:capture": "node scripts/capture-ingest.mjs",
-    "qa:check-captures": "node scripts/check-captures.mjs",
-    "e2e": "npm run e2e:android",
-    "e2e:assertions": "node scripts/e2e-assertions.mjs",
+    "lint": "eslint index.js javascript __tests__ *.config.js eslint.config.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "e2e:android": "node scripts/run-e2e.mjs android",
-    "e2e:ios": "node scripts/run-e2e.mjs ios",
-    "test:runner": "node --test scripts/*.test.mjs"
+    "format:check": "prettier --check ."
   },
   "author": "OursPrivacy",
   "license": "Apache-2.0",

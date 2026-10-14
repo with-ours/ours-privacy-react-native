@@ -3,7 +3,7 @@ name: Publish NPM
 on:
   pull_request:
     types: [closed]
-    branches: [dev]
+    branches: [main, dev]
 
   workflow_dispatch:
     inputs:
@@ -25,9 +25,10 @@ jobs:
     name: Build & Test
     runs-on: ubuntu-latest
     if: >
-      (github.event_name == 'workflow_dispatch') ||
+      github.event.repository.private == false &&
+      ((github.event_name == 'workflow_dispatch') ||
       (github.event.pull_request.merged == true &&
-       startsWith(github.event.pull_request.title, 'release:'))
+       startsWith(github.event.pull_request.title, 'release:')))
     permissions:
       contents: read
     outputs:
@@ -81,8 +82,6 @@ jobs:
       - run: npm run format:check
 
       - run: npm run typecheck
-
-      - run: npm run test:runner
 
       - name: Pack tarball
         run: npm pack

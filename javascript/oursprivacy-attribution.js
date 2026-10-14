@@ -10,7 +10,6 @@
  * the server schema has dedicated typed columns for them. Unknown keys in
  * defaultProperties are silently stripped by the server's Zod parse.
  *
- * @see scripts/sync-schema.js
  * @see oursprivacy-schema.js (auto-generated, do not edit)
  */
 

@@ -26,13 +26,6 @@ export default [
     },
   },
   {
-    files: ['scripts/**/*.mjs'],
-    languageOptions: {
-      sourceType: 'module',
-      globals: globals.node,
-    },
-  },
-  {
     files: ['*.config.js', 'react-native.config.js'],
     languageOptions: {
       sourceType: 'commonjs',

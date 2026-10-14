@@ -5,9 +5,8 @@
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
-    "lint": "eslint . && oxlint App.tsx __tests__ --deny-warnings -D no-unused-vars --react-plugin --jest-plugin --jsx-a11y-plugin",
+    "lint": "eslint . && oxlint App.tsx --deny-warnings -D no-unused-vars --react-plugin --jsx-a11y-plugin",
     "start": "react-native start",
-    "test": "jest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
