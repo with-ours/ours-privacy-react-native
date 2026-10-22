@@ -51,6 +51,25 @@ describe('OursPrivacyNetwork', () => {
     );
   });
 
+  it('returns the indexed HTTP 200 response for queue acknowledgement', async () => {
+    const indexed = {
+      success: true,
+      visitor_id: 'abc',
+      accepted: 0,
+      rejected: [{ index: 0, code: 'invalid_session' }],
+    };
+    fetchMock.mockResponseOnce(JSON.stringify(indexed), { status: 200 });
+
+    const response = await OursPrivacyNetwork.sendRequest({
+      token: mockToken,
+      endpoint: mockEndpoint,
+      data: mockData,
+      serverURL: mockServerURL,
+    });
+
+    expect(response).toEqual(indexed);
+  });
+
   it('sends JSON body with token, is_manually_set_id, and data', async () => {
     fetchMock.mockResponseOnce(JSON.stringify({ success: true }), {
       status: 200,
@@ -108,23 +127,28 @@ describe('OursPrivacyNetwork', () => {
   });
 
   it('retries on failure and succeeds', async () => {
+    jest.useFakeTimers();
     fetchMock.mockResponses(
       [JSON.stringify({}), { status: 500 }],
       [JSON.stringify({ success: true }), { status: 200 }],
     );
 
-    await OursPrivacyNetwork.sendRequest({
+    const pending = OursPrivacyNetwork.sendRequest({
       token: mockToken,
       endpoint: mockEndpoint,
       data: mockData,
       serverURL: mockServerURL,
     });
+    await jest.advanceTimersByTimeAsync(1999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await jest.advanceTimersByTimeAsync(1);
+    await expect(pending).resolves.toEqual({ success: true });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('fails with an HTTP error and does not retry for client errors', async () => {
-    fetchMock.mockResponseOnce(JSON.stringify({}), { status: 400 });
+    fetchMock.mockResponseOnce('<html>bad request</html>', { status: 400 });
 
     await expect(
       OursPrivacyNetwork.sendRequest({
@@ -133,7 +157,7 @@ describe('OursPrivacyNetwork', () => {
         data: mockData,
         serverURL: mockServerURL,
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ code: 400 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

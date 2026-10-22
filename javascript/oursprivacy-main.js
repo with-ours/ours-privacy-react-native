@@ -8,6 +8,11 @@ import { OursPrivacyLogger } from './oursprivacy-logger';
 import packageJson from '../package.json';
 import { uuidv4 } from './oursprivacy-utils';
 import { parseAttributionFromURL } from './oursprivacy-attribution';
+import { MobileSession } from './oursprivacy-mobile-session';
+import { AsyncStorageAdapter } from './oursprivacy-storage';
+import { normalizeMobilePayload } from './oursprivacy-mobile-payload';
+
+const CHECKPOINT_INTERVAL_MS = 10_000;
 
 // Caller-facing user-property field names are camelCase. The wire format
 // (and server schema in @ours/types) is snake_case. Translate at the wire
@@ -38,15 +43,31 @@ export default class OursPrivacyMain {
     this.token = token;
     this.config = OursPrivacyConfig.getInstance();
     this.core = OursPrivacyCore(storage);
-    Promise.resolve(this.core.initialize(token)).catch(() => {});
-    this.core.startProcessingQueue(token);
+    this._coreReady = Promise.resolve(this.core.initialize(token));
+    this._coreReady.catch(() => {});
     this.oursprivacyPersistent = OursPrivacyPersistent.getInstance();
+    this._mobileStorage = new AsyncStorageAdapter(storage);
+    this._mobileSession = this._createMobileSession(token);
+    this._pendingOperation = Promise.resolve();
+    this._consentRevision = 0;
+    this._disposed = false;
+    this._trackAutomaticEvents = false;
+    this._latestAppState = AppState?.currentState;
+    this._hasAppStateEvent = false;
+    this._latestAppStateAt = null;
+    this._continuingForeground = false;
+    this._reusedSession = false;
+    this._appForegrounded = this._latestAppState === 'active';
+    this._appInactive = false;
+    this._checkpointTimer = null;
+    this._initialized = false;
     this._defaultEventProperties = {};
     this._defaultUserCustomProperties = {};
     this._defaultUserConsentProperties = {};
     this._attributionDefaultProperties = {};
     this._flushOnBackgroundEnabled = true;
     this._appStateSubscription = null;
+    this._subscribeToAppState(token);
   }
 
   /**
@@ -54,24 +75,232 @@ export default class OursPrivacyMain {
    * are camelCase; this is the entry point that converts/applies them.
    */
   async initialize(token, options = {}) {
-    OursPrivacyLogger.log(token, `Initializing OursPrivacy`);
+    return this._serialize(async () => {
+      OursPrivacyLogger.log(token, `Initializing OursPrivacy`);
 
-    await this.oursprivacyPersistent.initializationCompletePromise(token);
+      await this._coreReady;
+      await this.oursprivacyPersistent.initializationCompletePromise(token);
 
-    const serverURL =
-      (options && options.serverURL) || 'https://cdn.oursprivacy.com';
-    this.setServerURL(token, serverURL);
+      const serverURL =
+        (options && options.serverURL) || 'https://cdn.oursprivacy.com';
+      this.setServerURL(token, serverURL);
+      this.config.setOnIngestRejected(token, options.onIngestRejected);
 
-    // Set opt-out flag BEFORE applying options so that initialURL processing
-    // (which may fire $deep_link_opened) respects the opted-out state.
-    await this._setOptedOutTrackingFlag(
+      // Set opt-out flag BEFORE applying options so that initialURL processing
+      // (which may fire $deep_link_opened) respects the opted-out state.
+      if (
+        !this.oursprivacyPersistent.hasStoredOptOutDecision?.(token) &&
+        (this.oursprivacyPersistent.hasStoredOptOutDefault?.(token) ||
+          (options.optOutTrackingByDefault &&
+            !this.oursprivacyPersistent.getOptedOut(token)))
+      ) {
+        await this._setOptedOutTrackingFlag(
+          token,
+          !!options.optOutTrackingByDefault,
+          false,
+        );
+      }
+
+      this._trackAutomaticEvents = options.trackAutomaticEvents === true;
+      this._appVersion = options.appVersion;
+      this._appBuild = options.appBuild;
+      this._mobileSession.appVersion = this._appVersion;
+      this._mobileSession.appBuild = this._appBuild;
+      this._mobileSession.existingInstall =
+        this.oursprivacyPersistent.hasExistingInstall?.(token) === true;
+      await this._mobileSession.load();
+      await this._applyInitializationOptions(token, options);
+
+      const currentState = this._hasAppStateEvent
+        ? this._latestAppState
+        : AppState?.currentState;
+      const currentStateAt =
+        this._mobileSession.state.startedAtMs != null &&
+        this._latestAppStateAt?.wallMs < this._mobileSession.state.startedAtMs
+          ? undefined
+          : this._latestAppStateAt;
+      this._appForegrounded = currentState === 'active';
+      this._appInactive = currentState === 'inactive';
+      this._initialized = true;
+      try {
+        if (this.oursprivacyPersistent.getOptedOut(token)) {
+          await this._mobileSession.disableTracking(
+            OursPrivacyQueueManager.hasAcceptedFirstOpen(
+              token,
+              OursPrivacyType.EVENTS,
+            ),
+          );
+          await OursPrivacyQueueManager.clearQueue(
+            token,
+            OursPrivacyType.EVENTS,
+          );
+        } else {
+          await this._enqueuePendingFacts(token);
+          if (this._appForegrounded && this._isMobilePlatform()) {
+            const resumed =
+              this._reusedSession &&
+              (await this._mobileSession.resume(currentStateAt));
+            if (!resumed) {
+              await this._mobileSession.foreground(
+                this._trackAutomaticEvents,
+                true,
+                currentStateAt,
+                !this._continuingForeground,
+              );
+            }
+            await this._enqueuePendingFacts(token);
+            this._startCheckpoint(token);
+          } else if (this._reusedSession && this._isMobilePlatform()) {
+            if (this._appInactive) {
+              await this._mobileSession.pause(currentStateAt);
+            } else {
+              await this._mobileSession.background(currentStateAt);
+            }
+            await this._enqueuePendingFacts(token);
+          }
+        }
+        this.core.startProcessingQueue(token);
+      } catch (error) {
+        this._initialized = false;
+        this._stopCheckpoint();
+        throw error;
+      }
+    });
+  }
+
+  restoreLifecycle(previous, options) {
+    if (!this._hasAppStateEvent && previous._hasAppStateEvent) {
+      this._latestAppState = previous._latestAppState;
+      this._hasAppStateEvent = true;
+    }
+    this._continuingForeground =
+      previous._appForegrounded &&
+      previous._trackAutomaticEvents &&
+      previous._mobileSession.foregrounded &&
+      !previous._mobileSession.disabled;
+    if (
+      previous.token === this.token &&
+      previous._mobileStorage.storage === this._mobileStorage.storage &&
+      previous._trackAutomaticEvents ===
+        (options.trackAutomaticEvents === true) &&
+      !previous._mobileSession.disabled
+    ) {
+      this._mobileSession = previous._mobileSession;
+      this._reusedSession = true;
+    }
+  }
+
+  dispose() {
+    this._disposed = true;
+    this.core.cancelPendingUploads(this.token);
+    this._initialized = false;
+    this._appStateSubscription?.remove?.();
+    this._appStateSubscription = null;
+    this._stopCheckpoint();
+    this.core.stopProcessingQueue?.();
+    return this._pendingOperation.then(() => {
+      this._stopCheckpoint();
+      this.core.stopProcessingQueue?.();
+    });
+  }
+
+  _serialize(action) {
+    const result = this._pendingOperation.then(action);
+    this._pendingOperation = result.catch(() => {});
+    return result;
+  }
+
+  _isMobilePlatform() {
+    return Platform.OS === 'ios' || Platform.OS === 'android';
+  }
+
+  _createMobileSession(token) {
+    return new MobileSession({
       token,
-      !!options.optOutTrackingByDefault,
-    );
+      storage: {
+        getItem: (key) => this._mobileStorage.getItemStrict(key),
+        setItem: (key, value) => this._mobileStorage.setItemStrict(key, value),
+      },
+      wallNow: () => Date.now(),
+      monotonicNow: () => globalThis.performance?.now?.() ?? Date.now(),
+      getVisitorId: () => this.oursprivacyPersistent.getVisitorId(token),
+      getIsManuallySetId: () =>
+        this.config.getIsManuallySetId?.(token) ?? false,
+    });
+  }
 
-    await this._applyInitializationOptions(token, options);
+  _startCheckpoint(token, retryDelayMs) {
+    if (
+      this._disposed ||
+      this._checkpointTimer ||
+      !this._trackAutomaticEvents ||
+      !this._appForegrounded ||
+      this.oursprivacyPersistent.getOptedOut(token) ||
+      !this._isMobilePlatform()
+    ) {
+      return;
+    }
+    const delayMs = retryDelayMs ?? this._mobileSession.remainingCheckpointMs();
+    if (delayMs == null) return;
+    const timer = setTimeout(() => {
+      let failed = false;
+      this._serialize(async () => {
+        if (this._checkpointTimer !== timer || !this._appForegrounded) return;
+        await this._mobileSession.checkpoint();
+        await this._enqueuePendingFacts(token);
+      })
+        .catch((error) => {
+          failed = true;
+          OursPrivacyLogger.error(token, String(error));
+        })
+        .finally(() => {
+          if (this._checkpointTimer !== timer) return;
+          this._checkpointTimer = null;
+          this._startCheckpoint(
+            token,
+            failed ? CHECKPOINT_INTERVAL_MS : undefined,
+          );
+        });
+    }, delayMs);
+    this._checkpointTimer = timer;
+  }
 
-    this._subscribeToAppState(token);
+  _stopCheckpoint() {
+    if (this._checkpointTimer) clearTimeout(this._checkpointTimer);
+    this._checkpointTimer = null;
+  }
+
+  async _enqueuePendingFacts(token) {
+    if (this.oursprivacyPersistent.getOptedOut(token)) return;
+    const pending = await this._mobileSession.pendingQueueFacts();
+    for (const record of pending) {
+      const fact = normalizeMobilePayload(record.fact);
+      const queued = await this._enqueueEvent(
+        token,
+        fact.event,
+        fact.eventProperties,
+        null,
+        {
+          sid: fact.defaultProperties.sid,
+          mobile_occurred_at: fact.eventProperties.mobile_occurred_at,
+        },
+        record.id,
+        record.visitorId,
+        false,
+        {
+          appVersion: record.appVersion ?? fact.eventProperties.app_version,
+          appBuild: record.appBuild ?? fact.eventProperties.app_build,
+        },
+        true,
+        record.isManuallySetId,
+      );
+      if (queued === false) {
+        if (this.oursprivacyPersistent.getOptedOut(token)) return;
+        throw new Error('Mobile fact was not queued');
+      }
+      await this._mobileSession.markFactQueued(record.id);
+      await this._mobileSession.acknowledgeFact(record.id);
+    }
   }
 
   _subscribeToAppState(token) {
@@ -85,22 +314,73 @@ export default class OursPrivacyMain {
     this._appStateSubscription = AppState.addEventListener(
       'change',
       (nextState) => {
-        if (!this._flushOnBackgroundEnabled) return;
-        if (nextState === 'background') {
-          this.flush(token);
-        }
+        this._latestAppState = nextState;
+        this._hasAppStateEvent = true;
+        const at = {
+          wallMs: this._mobileSession.wallNow(),
+          monotonicMs: this._mobileSession.monotonicNow(),
+        };
+        this._latestAppStateAt = at;
+        if (!this._initialized) return Promise.resolve();
+        return this._serialize(async () => {
+          // Drain receipts queued before disposal so background time stays out of engagement.
+          if (!this._initialized && !this._disposed) return;
+          if (nextState === 'inactive' && Platform.OS === 'ios') {
+            if (!this._appForegrounded) return;
+            this._appForegrounded = false;
+            this._appInactive = true;
+            this._stopCheckpoint();
+            if (
+              !this.oursprivacyPersistent.getOptedOut(token) &&
+              this._isMobilePlatform()
+            ) {
+              await this._mobileSession.pause(at);
+              await this._enqueuePendingFacts(token);
+            }
+          } else if (nextState === 'background') {
+            this._appForegrounded = false;
+            this._appInactive = false;
+            this._stopCheckpoint();
+            if (
+              !this.oursprivacyPersistent.getOptedOut(token) &&
+              this._isMobilePlatform()
+            ) {
+              await this._mobileSession.background(at);
+              await this._enqueuePendingFacts(token);
+            }
+            if (this._flushOnBackgroundEnabled) {
+              this.flush(token).catch((error) =>
+                OursPrivacyLogger.error(token, String(error)),
+              );
+            }
+          } else if (nextState === 'active') {
+            const wasInactive = this._appInactive;
+            this._appForegrounded = true;
+            this._appInactive = false;
+            if (
+              !this.oursprivacyPersistent.getOptedOut(token) &&
+              this._isMobilePlatform()
+            ) {
+              const resumed =
+                wasInactive && (await this._mobileSession.resume(at));
+              if (!resumed) {
+                await this._mobileSession.foreground(
+                  this._trackAutomaticEvents,
+                  true,
+                  at,
+                );
+              }
+              await this._enqueuePendingFacts(token);
+              this._startCheckpoint(token);
+            }
+          }
+        }).catch((error) => OursPrivacyLogger.error(token, String(error)));
       },
     );
   }
 
-  /**
-   * Build the defaultProperties object for an event.
-   *
-   * Contains device metadata plus any marketing attribution captured via
-   * trackDeepLink(). All keys here must exist in the server's defaultPayload
-   * Zod schema — unknown keys are silently stripped server-side.
-   */
-  getDefaultProperties(token) {
+  // Ingest strips unknown defaults, so mobile metadata belongs in eventProperties.
+  getDefaultProperties(token, mobileSnapshot, includeAttribution = true) {
     const { OS, Version, constants } = Platform;
     const { Model, Manufacturer, Brand } = constants || {};
     const { width, height } = Dimensions.get('screen');
@@ -122,23 +402,89 @@ export default class OursPrivacyMain {
     }
 
     const attribution = this._attributionDefaultProperties[token];
-    if (attribution && Object.keys(attribution).length > 0) {
+    if (
+      includeAttribution &&
+      attribution &&
+      Object.keys(attribution).length > 0
+    ) {
       Object.assign(props, attribution);
+    }
+
+    if (mobileSnapshot && this._isMobilePlatform()) {
+      props.sid = mobileSnapshot.sid;
     }
 
     return props;
   }
 
   async reset(token) {
-    await this.oursprivacyPersistent.reset(token);
-    this.config.setIsManuallySetId(token, false);
-    this._defaultEventProperties[token] = {};
-    this._defaultUserCustomProperties[token] = {};
-    this._defaultUserConsentProperties[token] = {};
-    this._attributionDefaultProperties[token] = {};
+    return this._serialize(async () => {
+      const resumeForeground =
+        this._appForegrounded &&
+        this._initialized &&
+        !this.oursprivacyPersistent.getOptedOut(token) &&
+        this._isMobilePlatform();
+      this._stopCheckpoint();
+      if (resumeForeground) {
+        await this._mobileSession.rotateSession();
+        await this._enqueuePendingFacts(token);
+      } else {
+        await this._mobileSession.resetSession();
+        await this._enqueuePendingFacts(token);
+      }
+      await this.oursprivacyPersistent.reset(token);
+      this.config.setIsManuallySetId(token, false);
+      this._defaultEventProperties[token] = {};
+      this._defaultUserCustomProperties[token] = {};
+      this._defaultUserConsentProperties[token] = {};
+      this._attributionDefaultProperties[token] = {};
+      if (resumeForeground) {
+        await this._mobileSession.announceRotatedSession();
+        await this._enqueuePendingFacts(token);
+        this._startCheckpoint(token);
+      }
+    });
   }
 
   async track(token, eventName, properties, userProperties) {
+    if (typeof eventName === 'string' && eventName.startsWith('$mobile_')) {
+      OursPrivacyLogger.warn(
+        token,
+        'Event names starting with $mobile_ are reserved',
+      );
+      return;
+    }
+    const atMs = Date.now();
+    return this._serialize(() =>
+      this._track(token, eventName, properties, userProperties, true, atMs),
+    );
+  }
+
+  async trackScreen(token, screenName) {
+    const at = {
+      wallMs: Date.now(),
+      monotonicMs: this._mobileSession.monotonicNow(),
+    };
+    return this._serialize(async () => {
+      if (
+        this.oursprivacyPersistent.getOptedOut(token) ||
+        !this._isMobilePlatform()
+      ) {
+        return;
+      }
+      await this._mobileSession.screen(screenName, at);
+      await this._enqueuePendingFacts(token);
+    });
+  }
+
+  async _track(
+    token,
+    eventName,
+    properties,
+    userProperties,
+    includeEventDefaults = true,
+    atMs = Date.now(),
+  ) {
     if (this.oursprivacyPersistent.getOptedOut(token)) {
       OursPrivacyLogger.log(
         token,
@@ -153,39 +499,85 @@ export default class OursPrivacyMain {
       properties,
     );
 
-    const visitorId = this.oursprivacyPersistent.getVisitorId(token);
-    const distinctId = uuidv4();
+    const snapshot = this._isMobilePlatform()
+      ? await this._mobileSession.snapshot(atMs)
+      : null;
+    if (snapshot) {
+      await this._mobileSession.drainPendingFacts();
+      await this._enqueuePendingFacts(token);
+    }
+    await this._enqueueEvent(
+      token,
+      eventName,
+      properties,
+      userProperties,
+      snapshot,
+      undefined,
+      undefined,
+      includeEventDefaults,
+    );
+  }
 
+  async _enqueueEvent(
+    token,
+    eventName,
+    properties,
+    userProperties,
+    snapshot,
+    distinctId = uuidv4(),
+    visitorId = this.oursprivacyPersistent.getVisitorId(token),
+    includeEventDefaults = true,
+    appMetadata,
+    isCanonicalFact = false,
+    isManuallySetId = this.config.getIsManuallySetId?.(token) ?? false,
+  ) {
     const rawEventProps = {
-      ...(this._defaultEventProperties[token] || {}),
+      ...(includeEventDefaults
+        ? this._defaultEventProperties[token] || {}
+        : {}),
       ...properties,
     };
-
-    const mergedUserProps = this._composeUserProperties(token, userProperties);
-
-    const eventData = {
+    let eventData = {
       event: eventName,
       visitor_id: visitorId,
       distinct_id: distinctId,
+      isManuallySetId,
       eventProperties:
         Object.keys(rawEventProps).length > 0 ? rawEventProps : null,
-      userProperties: mergedUserProps,
-      defaultProperties: this.getDefaultProperties(token),
+      userProperties: isCanonicalFact
+        ? null
+        : this._composeUserProperties(token, userProperties),
+      defaultProperties: this.getDefaultProperties(
+        token,
+        snapshot,
+        !isCanonicalFact,
+      ),
     };
-
-    await this.core.addToOursPrivacyQueue(
+    if (snapshot && this._isMobilePlatform()) {
+      eventData = normalizeMobilePayload(eventData, {
+        mobile_occurred_at: snapshot.mobile_occurred_at,
+        app_version: appMetadata
+          ? appMetadata.appVersion
+          : this._mobileSession.appVersion,
+        app_build: appMetadata
+          ? appMetadata.appBuild
+          : this._mobileSession.appBuild,
+      });
+      if (eventData.eventProperties.mobile_contract_version == null) {
+        OursPrivacyLogger.warn(
+          token,
+          'Mobile analytics metadata omitted to keep event properties within ingest limits.',
+        );
+      }
+    }
+    await this._coreReady;
+    return this.core.addToOursPrivacyQueue(
       token,
       OursPrivacyType.EVENTS,
       eventData,
     );
   }
 
-  // Accepts camelCase userProperties at the caller surface and produces wire-format
-  // (snake_case) for the queue payload.
-  //
-  // Top-level keys (email, externalId → external_id, etc.) spread onto userProperties;
-  // nested customProperties and consent merge on top of the store defaults. Consent is
-  // intentionally omitted when nothing carries it.
   _composeUserProperties(token, perCallUserProps) {
     const wirePerCall = toWireUserProperties(perCallUserProps);
 
@@ -208,12 +600,14 @@ export default class OursPrivacyMain {
       };
     }
 
-    if (hasDefaultConsent || wirePerCall?.consent) {
-      merged.consent = {
-        ...defaultConsent,
-        ...(wirePerCall?.consent || {}),
-      };
+    const consent = { ...defaultConsent, ...(wirePerCall?.consent || {}) };
+    if (Object.keys(consent).length > 0) {
+      merged.consent = consent;
+    } else {
+      delete merged.consent;
     }
+
+    if (Object.keys(merged).length === 0) return null;
 
     return merged;
   }
@@ -239,29 +633,83 @@ export default class OursPrivacyMain {
   }
 
   flush(token) {
-    this.core.flush(token);
+    return this._serialize(() => ({
+      completion: this._initialized ? this.core.flush(token) : undefined,
+    })).then(({ completion }) => completion);
   }
 
   async optOutTracking(token) {
-    await this._setOptedOutTrackingFlag(token, true);
-    await OursPrivacyQueueManager.clearQueue(token, OursPrivacyType.EVENTS);
-    OursPrivacyLogger.log(token, 'User has opted out of tracking');
-    await this.oursprivacyPersistent.reset(token, { preserveVisitorId: true });
-    this._defaultEventProperties[token] = {};
-    this._defaultUserCustomProperties[token] = {};
-    this._defaultUserConsentProperties[token] = {};
-    this._attributionDefaultProperties[token] = {};
+    this._consentRevision += 1;
+    this.core.cancelPendingUploads(token);
+    const persistOptOut = this._setOptedOutTrackingFlag(token, true);
+    return this._serialize(async () => {
+      await persistOptOut;
+      await this._setOptedOutTrackingFlag(token, true);
+      this._stopCheckpoint();
+      await this._mobileSession.disableTracking(
+        OursPrivacyQueueManager.hasAcceptedFirstOpen(
+          token,
+          OursPrivacyType.EVENTS,
+        ),
+      );
+      await OursPrivacyQueueManager.clearQueue(token, OursPrivacyType.EVENTS);
+      OursPrivacyLogger.log(token, 'User has opted out of tracking');
+      await this.oursprivacyPersistent.reset(token, {
+        preserveVisitorId: true,
+      });
+      this._defaultEventProperties[token] = {};
+      this._defaultUserCustomProperties[token] = {};
+      this._defaultUserConsentProperties[token] = {};
+      this._attributionDefaultProperties[token] = {};
+    });
   }
 
   async optInTracking(token) {
-    await this._setOptedOutTrackingFlag(token, false);
-    OursPrivacyLogger.log(token, 'User has opted in to tracking');
-    await this.track(token, '$opt_in');
+    const revision = ++this._consentRevision;
+    return this._serialize(async () => {
+      if (revision !== this._consentRevision) return;
+      await this._setOptedOutTrackingFlag(token, false);
+      this._mobileSession = this._createMobileSession(token);
+      this._mobileSession.appVersion = this._appVersion;
+      this._mobileSession.appBuild = this._appBuild;
+      await this._mobileSession.load();
+      if (this._appForegrounded && this._isMobilePlatform()) {
+        await this._mobileSession.foreground(this._trackAutomaticEvents);
+        await this._enqueuePendingFacts(token);
+        this._startCheckpoint(token);
+      }
+      this.core.startProcessingQueue(token);
+      OursPrivacyLogger.log(token, 'User has opted in to tracking');
+      await this._track(token, '$opt_in');
+    });
   }
 
-  async _setOptedOutTrackingFlag(token, optedOut) {
-    this.oursprivacyPersistent.updateOptedOut(token, optedOut);
-    await this.oursprivacyPersistent.persistOptedOut(token);
+  async _setOptedOutTrackingFlag(token, optedOut, explicitDecision = true) {
+    const consentRevision = this._consentRevision;
+    const previous = this.oursprivacyPersistent.getOptedOut(token);
+    const revision = this.oursprivacyPersistent.updateOptedOut(token, optedOut);
+    try {
+      await this.oursprivacyPersistent.persistOptedOut(token, explicitDecision);
+    } catch (error) {
+      if (!optedOut) {
+        this.oursprivacyPersistent.updateOptedOut(token, previous, revision);
+      }
+      if (
+        explicitDecision &&
+        consentRevision === this._consentRevision &&
+        this.oursprivacyPersistent.getOptedOut(token)
+      ) {
+        try {
+          await this.oursprivacyPersistent.persistOptedOut(token, true);
+        } catch {
+          OursPrivacyLogger.error(
+            token,
+            'Unable to persist closed tracking decision',
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   hasOptedOutTracking(token) {
@@ -273,26 +721,9 @@ export default class OursPrivacyMain {
   // default custom/consent properties is identical to track() — see
   // _composeUserProperties for the consent guard.
   async identify(token, userProperties) {
-    OursPrivacyLogger.log(token, `Identify`, userProperties);
-
-    const visitorId = this.oursprivacyPersistent.getVisitorId(token);
-    const distinctId = uuidv4();
-
-    const mergedUserProps = this._composeUserProperties(token, userProperties);
-
-    const eventData = {
-      event: '$identify',
-      visitor_id: visitorId,
-      distinct_id: distinctId,
-      eventProperties: null,
-      userProperties: mergedUserProps,
-      defaultProperties: this.getDefaultProperties(token),
-    };
-
-    await this.core.addToOursPrivacyQueue(
-      token,
-      OursPrivacyType.EVENTS,
-      eventData,
+    const atMs = Date.now();
+    return this._serialize(() =>
+      this._track(token, '$identify', null, userProperties, false, atMs),
     );
   }
 
@@ -301,12 +732,43 @@ export default class OursPrivacyMain {
   }
 
   async setVisitorId(token, visitorId) {
+    return this._serialize(() => this._setVisitorId(token, visitorId));
+  }
+
+  async _setVisitorId(token, visitorId) {
+    const previous = this.oursprivacyPersistent.getVisitorId(token);
+    const resumeForeground =
+      previous !== visitorId &&
+      this._initialized &&
+      this._appForegrounded &&
+      !this.oursprivacyPersistent.getOptedOut(token) &&
+      this._isMobilePlatform();
+    if (previous !== visitorId) {
+      this._stopCheckpoint();
+      if (resumeForeground) {
+        await this._mobileSession.rotateSession();
+        await this._enqueuePendingFacts(token);
+      } else {
+        await this._mobileSession.resetSession();
+        await this._enqueuePendingFacts(token);
+      }
+    }
     this.config.setIsManuallySetId(token, true);
     this.oursprivacyPersistent.updateVisitorId(token, visitorId);
     await this.oursprivacyPersistent.persistVisitorId(token);
+    if (resumeForeground) {
+      await this._mobileSession.announceRotatedSession();
+      await this._enqueuePendingFacts(token);
+      this._startCheckpoint(token);
+    }
   }
 
   async trackDeepLink(token, url) {
+    const atMs = Date.now();
+    return this._serialize(() => this._trackDeepLink(token, url, atMs));
+  }
+
+  async _trackDeepLink(token, url, atMs = Date.now()) {
     if (!url || typeof url !== 'string') {
       OursPrivacyLogger.log(
         token,
@@ -320,22 +782,27 @@ export default class OursPrivacyMain {
       return;
     }
 
-    OursPrivacyLogger.log(token, `trackDeepLink: ${url}`);
+    OursPrivacyLogger.log(token, 'trackDeepLink processed');
 
     const attribution = parseAttributionFromURL(url);
-
-    if (attribution.oursVisitorId) {
-      await this.setVisitorId(token, attribution.oursVisitorId);
-    }
 
     this._attributionDefaultProperties[token] = {
       ...(attribution.utmParams || {}),
       ...(attribution.clickIds || {}),
     };
 
-    await this.track(token, '$deep_link_opened', {
-      url: attribution.rawURL,
-    });
+    if (attribution.oursVisitorId) {
+      await this._setVisitorId(token, attribution.oursVisitorId);
+    }
+
+    await this._track(
+      token,
+      '$deep_link_opened',
+      undefined,
+      undefined,
+      false,
+      atMs,
+    );
   }
 
   updateDefaultEventProperties(token, properties) {
@@ -380,10 +847,10 @@ export default class OursPrivacyMain {
       );
     }
     if (options.visitorId) {
-      await this.setVisitorId(token, options.visitorId);
+      await this._setVisitorId(token, options.visitorId);
     }
     if (options.initialURL) {
-      await this.trackDeepLink(token, options.initialURL);
+      await this._trackDeepLink(token, options.initialURL);
     }
   }
 }

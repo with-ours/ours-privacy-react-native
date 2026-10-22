@@ -4,6 +4,10 @@ import {
   getTimeEventsKey,
   getOptedOutKey as getOutedOutKey,
   getQueueKey,
+  getQueueMetadataKey,
+  getOptOutDecisionKey,
+  getOptOutDefaultKey,
+  getMobileInstallKey,
   getAppHasOpenedBeforeKey,
 } from './oursprivacy-constants';
 
@@ -32,7 +36,12 @@ export class OursPrivacyPersistent {
     this._superProperties = {};
     this._timeEvents = {};
     this._identity = {};
+    this._existingInstall = {};
     this._optedOut = {};
+    this._optOutLoaded = {};
+    this._storedOptOutDecision = {};
+    this._storedOptOutDefault = {};
+    this._optOutRevision = {};
     this._appHasOpenedBefore = {};
   }
 
@@ -47,17 +56,27 @@ export class OursPrivacyPersistent {
   }
 
   async loadVisitorId(token) {
-    await this.storageAdapter
-      .getItem(getVisitorIdKey(token))
-      .then((visitorId) => {
-        if (!this._identity[token]) {
-          this._identity[token] = {};
-        }
-        this._identity[token].visitorId = visitorId;
-      });
+    const visitorId = await this.storageAdapter.getItemStrict(
+      getVisitorIdKey(token),
+    );
+    let installation = await this.storageAdapter.getItemStrict(
+      getMobileInstallKey(token),
+    );
+    if (installation != null && !['fresh', 'legacy'].includes(installation)) {
+      throw new Error('Invalid stored mobile installation');
+    }
+    if (installation == null) {
+      installation = visitorId ? 'legacy' : 'fresh';
+      await this.storageAdapter.setItemStrict(
+        getMobileInstallKey(token),
+        installation,
+      );
+    }
+    this._existingInstall[token] = installation === 'legacy';
+    this._identity[token] = { visitorId };
     if (!this._identity[token].visitorId) {
       this._identity[token].visitorId = uuidv4();
-      await this.storageAdapter.setItem(
+      await this.storageAdapter.setItemStrict(
         getVisitorIdKey(token),
         this._identity[token].visitorId,
       );
@@ -71,6 +90,12 @@ export class OursPrivacyPersistent {
 
   async persistIdentity(token) {
     await this.persistVisitorId(token);
+  }
+
+  hasExistingInstall(token) {
+    return (
+      this._existingInstall[token] === true || this.getAppHasOpenedBefore(token)
+    );
   }
 
   getVisitorId(token) {
@@ -152,41 +177,149 @@ export class OursPrivacyPersistent {
   }
 
   async loadOptOut(token) {
-    const optOutString = await this.storageAdapter.getItem(
+    const revision = this._optOutRevision[token] || 0;
+    if (revision > 0) return;
+    this._optOutLoaded[token] = false;
+    this._optedOut[token] = true;
+    const optOutString = await this.storageAdapter.getItemStrict(
       getOutedOutKey(token),
     );
-    this._optedOut[token] = optOutString === 'true';
+    if (revision !== (this._optOutRevision[token] || 0)) return;
+    if (
+      optOutString !== null &&
+      optOutString !== undefined &&
+      optOutString !== 'true' &&
+      optOutString !== 'false'
+    ) {
+      throw new Error('Invalid stored tracking decision');
+    }
+    const explicitDecision = await this.storageAdapter.getItemStrict(
+      getOptOutDecisionKey(token),
+    );
+    if (revision !== (this._optOutRevision[token] || 0)) return;
+    if (
+      explicitDecision != null &&
+      explicitDecision !== 'true' &&
+      explicitDecision !== 'false'
+    ) {
+      throw new Error('Invalid stored tracking decision');
+    }
+    const defaultDecision = await this.storageAdapter.getItemStrict(
+      getOptOutDefaultKey(token),
+    );
+    if (revision !== (this._optOutRevision[token] || 0)) return;
+    if (
+      defaultDecision != null &&
+      defaultDecision !== 'true' &&
+      defaultDecision !== 'false'
+    ) {
+      throw new Error('Invalid stored tracking default');
+    }
+    this._storedOptOutDecision[token] =
+      explicitDecision === 'true' || explicitDecision === 'false';
+    this._storedOptOutDefault[token] =
+      defaultDecision != null && defaultDecision === optOutString;
+    this._optedOut[token] =
+      optOutString === 'true' ||
+      explicitDecision === 'true' ||
+      (!this._storedOptOutDecision[token] && defaultDecision === 'true');
+    this._optOutLoaded[token] = true;
   }
 
   getOptedOut(token) {
-    return this._optedOut[token] === true;
+    return this._optOutLoaded[token] !== true || this._optedOut[token] === true;
   }
 
-  updateOptedOut(token, optOut) {
+  hasStoredOptOutDecision(token) {
+    return this._storedOptOutDecision[token] === true;
+  }
+
+  hasStoredOptOutDefault(token) {
+    return this._storedOptOutDefault[token] === true;
+  }
+
+  updateOptedOut(token, optOut, expectedRevision) {
+    const currentRevision = this._optOutRevision[token] || 0;
+    if (expectedRevision !== undefined && expectedRevision !== currentRevision)
+      return currentRevision;
+    const revision = currentRevision + 1;
+    this._optOutRevision[token] = revision;
     this._optedOut = { ...this._optedOut, [token]: optOut };
+    return revision;
   }
 
-  async persistOptedOut(token) {
+  async persistOptedOut(token, explicitDecision = true) {
     if (this._optedOut[token] === null) {
       return;
     }
-    await this.storageAdapter.setItem(
+    if (explicitDecision) {
+      this._storedOptOutDecision[token] = true;
+      this._storedOptOutDefault[token] = false;
+    }
+    await this.storageAdapter.setItemStrict(
       getOutedOutKey(token),
       this._optedOut[token].toString(),
     );
+    if (explicitDecision) {
+      await this.storageAdapter.setItemStrict(
+        getOptOutDecisionKey(token),
+        this._optedOut[token].toString(),
+      );
+      this._storedOptOutDecision[token] = true;
+      this._storedOptOutDefault[token] = false;
+    } else {
+      await this.storageAdapter.setItemStrict(
+        getOptOutDefaultKey(token),
+        this._optedOut[token].toString(),
+      );
+      this._storedOptOutDefault[token] = true;
+    }
+    this._optOutLoaded[token] = true;
   }
 
   async loadQueue(token, type) {
-    const queueString = await this.storageAdapter.getItem(
-      getQueueKey(token, type),
-    );
-    return queueString ? JSON.parse(queueString) : [];
+    let queue;
+    try {
+      const queueString = await this.storageAdapter.getItemStrict(
+        getQueueKey(token, type),
+      );
+      queue = queueString ? JSON.parse(queueString) : [];
+    } catch {
+      OursPrivacyLogger.error(
+        token,
+        'Saved event queue could not be read; starting an empty queue.',
+      );
+      return [];
+    }
+    if (!Array.isArray(queue)) return queue;
+    try {
+      const metadataString = await this.storageAdapter.getItemStrict(
+        getQueueMetadataKey(token, type),
+      );
+      return {
+        ...(metadataString ? JSON.parse(metadataString) : {}),
+        items: queue,
+      };
+    } catch {
+      OursPrivacyLogger.error(
+        token,
+        'Saved queue metadata could not be read; preserving queued events.',
+      );
+      return queue;
+    }
   }
 
   async saveQueue(token, type, queue) {
-    await this.storageAdapter.setItem(
+    await this.storageAdapter.setItemStrict(
       getQueueKey(token, type),
-      JSON.stringify(queue),
+      JSON.stringify(queue.items ?? queue),
+    );
+  }
+
+  async saveQueueMetadata(token, type, metadata) {
+    await this.storageAdapter.setItemStrict(
+      getQueueMetadataKey(token, type),
+      JSON.stringify(metadata),
     );
   }
 

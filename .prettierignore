@@ -4,5 +4,6 @@ Demo/ios/Pods/
 Demo/ios/build/
 Demo/android/build/
 Demo/android/app/build/
+Demo/android/app/.cxx/
 tmp/
 coverage/

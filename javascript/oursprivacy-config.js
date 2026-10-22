@@ -91,4 +91,12 @@ export class OursPrivacyConfig {
       (this._config[token] && this._config[token].isManuallySetId) || false
     );
   }
+
+  setOnIngestRejected(token, onIngestRejected) {
+    this._config[token] = { ...this._config[token], onIngestRejected };
+  }
+
+  getOnIngestRejected(token) {
+    return this._config[token]?.onIngestRejected;
+  }
 }

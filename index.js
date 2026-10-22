@@ -1,6 +1,7 @@
 'use strict';
 
 import OursPrivacyMain from './javascript/oursprivacy-main';
+import { OursPrivacyLogger } from './javascript/oursprivacy-logger';
 
 const ERROR_MESSAGE = {
   INVALID_OBJECT: ' is not a valid json object',
@@ -10,6 +11,7 @@ const ERROR_MESSAGE = {
 const PARAMS = {
   TOKEN: 'token',
   EVENT_NAME: 'eventName',
+  SCREEN_NAME: 'screenName',
   PROPERTIES: 'properties',
   USER_PROPERTIES: 'userProperties',
   OPTIONS: 'options',
@@ -39,7 +41,9 @@ export class OursPrivacy {
    *
    * @param {string} token Your OursPrivacy project token.
    * @param {OursPrivacyInitOptions} [options] Optional configuration:
-   *   - trackAutomaticEvents: boolean — reserved for future automatic event tracking
+   *   - trackAutomaticEvents: boolean — enable mobile lifecycle events (default false)
+   *   - appVersion, appBuild: string — host app release metadata
+   *   - onIngestRejected: callback receiving { distinctId, code } after a mobile ingest rejection
    *   - optOutTrackingByDefault: boolean — start in an opted-out state (default false)
    *   - serverURL: string — override the ingest endpoint
    *   - visitorId: string — pre-set the visitor ID (sets is_manually_set_id: true)
@@ -57,8 +61,16 @@ export class OursPrivacy {
       ObjectHelper.raiseError(PARAMS.OPTIONS);
     }
     const opts = options || {};
+    const previousImpl = this.oursprivacyImpl;
+    const previous = previousImpl?.dispose?.();
     this.token = token;
     this.oursprivacyImpl = new OursPrivacyMain(token, opts.storage);
+    if (previous) {
+      const next = this.oursprivacyImpl;
+      next._pendingOperation = Promise.resolve(previous).then(() =>
+        next.restoreLifecycle(previousImpl, opts),
+      );
+    }
     await this.oursprivacyImpl.initialize(token, opts);
   }
 
@@ -111,16 +123,16 @@ export class OursPrivacy {
    */
   optInTracking() {
     this._requireInit();
-    this.oursprivacyImpl.optInTracking(this.token);
+    return this.oursprivacyImpl.optInTracking(this.token);
   }
 
   /**
    * Stop all tracking immediately. Queued events that have not been flushed
-   * are discarded. Call flush() first to preserve them.
+   * are discarded. Await flush() before opting out to send queued events first.
    */
   optOutTracking() {
     this._requireInit();
-    this.oursprivacyImpl.optOutTracking(this.token);
+    return this.oursprivacyImpl.optOutTracking(this.token);
   }
 
   /**
@@ -150,17 +162,40 @@ export class OursPrivacy {
     if (!StringHelper.isValid(eventName)) {
       StringHelper.raiseError(PARAMS.EVENT_NAME);
     }
+    if (eventName.startsWith('$mobile_')) {
+      OursPrivacyLogger.warn(
+        this.token,
+        'Event names starting with $mobile_ are reserved',
+      );
+      return Promise.resolve();
+    }
     if (!ObjectHelper.isValidOrUndefined(eventProperties)) {
       ObjectHelper.raiseError(PARAMS.PROPERTIES);
     }
     if (!ObjectHelper.isValidOrUndefined(userProperties)) {
       ObjectHelper.raiseError(PARAMS.USER_PROPERTIES);
     }
-    this.oursprivacyImpl.track(
-      this.token,
-      eventName,
-      eventProperties,
-      userProperties,
+    return this._observeOperation(
+      this.oursprivacyImpl.track(
+        this.token,
+        eventName,
+        eventProperties,
+        userProperties,
+      ),
+    );
+  }
+
+  trackScreen(screenName) {
+    this._requireInit();
+    if (
+      typeof screenName !== 'string' ||
+      screenName.trim() !== screenName ||
+      !/^[A-Za-z][A-Za-z0-9 _-]{0,79}$/.test(screenName)
+    ) {
+      throw new Error(`${PARAMS.SCREEN_NAME} must be a stable screen label`);
+    }
+    return this._observeOperation(
+      this.oursprivacyImpl.trackScreen(this.token, screenName),
     );
   }
 
@@ -170,7 +205,7 @@ export class OursPrivacy {
    */
   reset() {
     this._requireInit();
-    this.oursprivacyImpl.reset(this.token);
+    return this._observeOperation(this.oursprivacyImpl.reset(this.token));
   }
 
   /**
@@ -255,7 +290,14 @@ export class OursPrivacy {
    */
   flush() {
     this._requireInit();
-    this.oursprivacyImpl.flush(this.token);
+    return this.oursprivacyImpl.flush(this.token);
+  }
+
+  _observeOperation(completion) {
+    completion.catch((error) =>
+      OursPrivacyLogger.error(this.token, String(error)),
+    );
+    return completion;
   }
 
   _requireInit() {

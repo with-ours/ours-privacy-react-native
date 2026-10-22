@@ -5,18 +5,59 @@ import { OursPrivacyConfig } from './oursprivacy-config';
 import { OursPrivacyPersistent } from './oursprivacy-persistent';
 import { OursPrivacyLogger } from './oursprivacy-logger';
 
+const pendingFlushes = new Map();
+
+const hasIndexedResult = (response) =>
+  response !== null &&
+  typeof response === 'object' &&
+  (Object.prototype.hasOwnProperty.call(response, 'accepted') ||
+    Object.prototype.hasOwnProperty.call(response, 'rejected'));
+
+const rejectedFromMobileResponse = (response, batchSize) => {
+  if (
+    !response ||
+    response.success !== true ||
+    !Number.isSafeInteger(response.accepted) ||
+    response.accepted < 0 ||
+    !Array.isArray(response.rejected) ||
+    response.accepted + response.rejected.length !== batchSize
+  ) {
+    throw new Error('Invalid mobile ingest response');
+  }
+  const indexes = new Set();
+  for (const item of response.rejected) {
+    if (
+      !item ||
+      !Number.isSafeInteger(item.index) ||
+      item.index < 0 ||
+      item.index >= batchSize ||
+      typeof item.code !== 'string' ||
+      item.code.trim().length === 0 ||
+      indexes.has(item.index)
+    ) {
+      throw new Error('Invalid mobile ingest response');
+    }
+    indexes.add(item.index);
+  }
+  return response.rejected;
+};
+
 export const OursPrivacyCore = (storage) => {
   const oursprivacyPersistent = OursPrivacyPersistent.getInstance(storage);
   const config = OursPrivacyConfig.getInstance();
   let isProcessingQueue = false;
   let processQueueInterval = null;
+  let disposed = false;
+  let privacyGeneration = 0;
+  let malformedBatchKey = null;
+  let malformedAttempts = 0;
 
   const initialize = async (token) => {
     await OursPrivacyQueueManager.initialize(token, OursPrivacyType.EVENTS);
   };
 
   const startProcessingQueue = (token) => {
-    if (oursprivacyPersistent.getOptedOut(token)) {
+    if (disposed || oursprivacyPersistent.getOptedOut(token)) {
       OursPrivacyLogger.log(
         token,
         `User has opted out of tracking, skipping processing queue.`,
@@ -59,20 +100,21 @@ export const OursPrivacyCore = (storage) => {
         token,
         `User has opted out of tracking, skipping tracking.`,
       );
-      return;
+      return false;
     }
     if (!isValidAndSerializable(token, data)) {
       OursPrivacyLogger.error(
         token,
         `The OursPrivacy payload is not valid or not serializable.`,
       );
-      return;
+      return false;
     }
     await OursPrivacyQueueManager.enqueue(token, type, data);
     OursPrivacyLogger.log(
       token,
       `Event added to queue. Payload: '${JSON.stringify(data)}'`,
     );
+    return true;
   };
 
   const flush = async (token) => {
@@ -86,66 +128,200 @@ export const OursPrivacyCore = (storage) => {
     await processQueue(token, OursPrivacyType.EVENTS);
   };
 
-  const processQueue = async (token, type) => {
-    OursPrivacyLogger.log(token, `Processing queue for endpoint: ${type}`);
-    const processBatch = async () => {
-      const queue = OursPrivacyQueueManager.getQueue(token, type);
-      if (queue.length > 0) {
-        OursPrivacyLogger.log(token, `[Flushing queue] endpoint: ${type}`);
-        OursPrivacyLogger.log(
-          token,
-          `[Flushing queue] queue: ${JSON.stringify(queue)}`,
-        );
-        const batchSize = config.getFlushBatchSize(token);
-        const batch = queue.slice(0, batchSize);
-        try {
-          await OursPrivacyNetwork.sendRequest({
-            token,
-            data: batch,
-            endpoint: type,
-            serverURL: config.getServerURL(token),
-            isManuallySetId: config.getIsManuallySetId(token),
-          });
-          await OursPrivacyQueueManager.spliceQueue(
-            token,
-            type,
-            0,
-            batch.length,
-          );
-          // Process the next batch if there are more events in the queue
+  const processQueue = (token, type) => {
+    const generation = privacyGeneration;
+    const key = `${token}:${type}`;
+    const result = (pendingFlushes.get(key) || Promise.resolve()).then(
+      async () => {
+        if (disposed || generation !== privacyGeneration) return;
+        OursPrivacyLogger.log(token, `Processing queue for endpoint: ${type}`);
+        while (
+          !disposed &&
+          generation === privacyGeneration &&
+          !oursprivacyPersistent.getOptedOut(token)
+        ) {
           const queue = OursPrivacyQueueManager.getQueue(token, type);
-          if (queue.length > 0) {
-            setTimeout(processBatch, 0);
+          if (queue.length === 0) return;
+          OursPrivacyLogger.log(token, `[Flushing queue] endpoint: ${type}`);
+          OursPrivacyLogger.log(
+            token,
+            `[Flushing queue] queue: ${JSON.stringify(queue)}`,
+          );
+          const batchSize = config.getFlushBatchSize(token);
+          const fallbackIdentityMode = config.getIsManuallySetId(token);
+          const identityMode = (item) =>
+            typeof item.isManuallySetId === 'boolean'
+              ? item.isManuallySetId
+              : fallbackIdentityMode;
+          const isManuallySetId = identityMode(queue[0]);
+          const batch = [];
+          for (const item of queue.slice(0, batchSize)) {
+            if (
+              item.visitor_id !== queue[0].visitor_id ||
+              identityMode(item) !== isManuallySetId
+            ) {
+              break;
+            }
+            batch.push(item);
           }
-        } catch (error) {
-          handleBatchError(token, error, type, processBatch);
+          const batchKey = JSON.stringify([
+            token,
+            generation,
+            queue[0].distinct_id,
+          ]);
+          if (malformedBatchKey !== batchKey) {
+            malformedBatchKey = batchKey;
+            malformedAttempts = 0;
+          }
+          const removeBatch = async (rejected, responseMode) => {
+            if (
+              disposed ||
+              generation !== privacyGeneration ||
+              oursprivacyPersistent.getOptedOut(token)
+            )
+              return;
+            await OursPrivacyQueueManager.removeByIds(
+              token,
+              type,
+              batch.map((item) => item.distinct_id),
+              responseMode,
+            );
+            malformedBatchKey = null;
+            malformedAttempts = 0;
+            if (
+              disposed ||
+              generation !== privacyGeneration ||
+              oursprivacyPersistent.getOptedOut(token)
+            )
+              return;
+            const onIngestRejected = config.getOnIngestRejected(token);
+            if (typeof onIngestRejected !== 'function') return;
+            for (const { index, code } of rejected) {
+              if (
+                disposed ||
+                generation !== privacyGeneration ||
+                oursprivacyPersistent.getOptedOut(token)
+              )
+                return;
+              try {
+                onIngestRejected({
+                  distinctId: batch[index].distinct_id,
+                  code,
+                });
+              } catch {
+                OursPrivacyLogger.error(
+                  token,
+                  'onIngestRejected callback failed',
+                );
+              }
+            }
+          };
+          try {
+            const response = await OursPrivacyNetwork.sendRequest({
+              token,
+              data: batch.map(({ isManuallySetId: _mode, ...item }) => item),
+              endpoint: type,
+              serverURL: config.getServerURL(token),
+              isManuallySetId,
+            });
+            if (
+              disposed ||
+              generation !== privacyGeneration ||
+              oursprivacyPersistent.getOptedOut(token)
+            )
+              return;
+            if (
+              response === null ||
+              typeof response !== 'object' ||
+              Array.isArray(response)
+            ) {
+              const error = new Error('Invalid mobile ingest response');
+              error.invalidAcknowledgment = true;
+              throw error;
+            }
+            let rejected = [];
+            let responseMode;
+            if (response?.success === false) {
+              if (response.retryable === true) return;
+              rejected = batch.map((_item, index) => ({
+                index,
+                code: 'ingest_rejected',
+              }));
+            } else if (hasIndexedResult(response)) {
+              try {
+                rejected = rejectedFromMobileResponse(response, batch.length);
+              } catch (error) {
+                error.invalidAcknowledgment = true;
+                throw error;
+              }
+              responseMode = 'indexed';
+            } else {
+              responseMode = 'legacy';
+            }
+            await removeBatch(rejected, responseMode);
+          } catch (error) {
+            if (
+              disposed ||
+              generation !== privacyGeneration ||
+              oursprivacyPersistent.getOptedOut(token)
+            )
+              return;
+            const permanent =
+              error.code >= 400 &&
+              error.code < 500 &&
+              ![403, 408, 425, 429].includes(error.code);
+            if (error.invalidAcknowledgment) malformedAttempts += 1;
+            if (
+              permanent ||
+              (error.invalidAcknowledgment && malformedAttempts >= 5)
+            ) {
+              try {
+                await removeBatch(
+                  batch.map((_item, index) => ({
+                    index,
+                    code: permanent
+                      ? `http_${error.code}`
+                      : 'invalid_acknowledgment',
+                  })),
+                );
+                continue;
+              } catch (saveError) {
+                OursPrivacyLogger.error(
+                  token,
+                  `Failed to save rejected batch removal: ${saveError}`,
+                );
+                return;
+              }
+            }
+            OursPrivacyLogger.error(
+              token,
+              `Error sending event batch from queue, error: ${error}`,
+            );
+            return;
+          }
         }
-      }
-    };
-
-    processBatch();
-  };
-
-  const handleBatchError = (token, error, type, callback) => {
-    if (error.code === 400) {
-      OursPrivacyLogger.error(
-        token,
-        `Bad request received due to corrupted data within the batch. The corrupted data is now being removed from the queue...`,
-      );
-      // Remove the corrupted data from the queue, to avoid the data loss, only remove one event at a time
-      OursPrivacyQueueManager.spliceQueue(token, type, 0, 1).then(() => {
-        setTimeout(callback, 0);
-      });
-    } else {
-      OursPrivacyLogger.error(
-        token,
-        `Error sending event batch from queue, error: ${error}`,
-      );
-    }
+      },
+    );
+    pendingFlushes.set(
+      key,
+      result.catch(() => {}),
+    );
+    return result;
   };
 
   return {
     initialize,
+    stopProcessingQueue: () => {
+      disposed = true;
+      clearInterval(processQueueInterval);
+      processQueueInterval = null;
+    },
+    cancelPendingUploads: (token) => {
+      privacyGeneration += 1;
+      malformedBatchKey = null;
+      malformedAttempts = 0;
+      OursPrivacyNetwork.cancelRequests(token);
+    },
     startProcessingQueue,
     addToOursPrivacyQueue,
     flush,
