@@ -8,6 +8,15 @@ export const getQueueKey = (token, type) =>
 // Storage key string kept as-is for backwards compatibility with existing installs.
 export const getVisitorIdKey = (token) => `OURSPRIVACY_${token}_DEVICE_ID`;
 
+export const getOptOutDecisionKey = (token) =>
+  `OURSPRIVACY_${token}_OPT_OUT_DECISION_V1`;
+export const getOptOutDefaultKey = (token) =>
+  `OURSPRIVACY_${token}_OPT_OUT_DEFAULT_V1`;
+export const getMobileInstallKey = (token) =>
+  `OURSPRIVACY_${token}_MOBILE_INSTALL_V1`;
+export const getQueueMetadataKey = (token, type) =>
+  `${getQueueKey(token, type)}_METADATA_V1`;
+
 export const getOptedOutKey = (token) => `OURSPRIVACY_${token}_OPT_OUT`;
 export const getSuperPropertiesKey = (token) =>
   `OURSPRIVACY_${token}_SUPER_PROPERTIES`;
