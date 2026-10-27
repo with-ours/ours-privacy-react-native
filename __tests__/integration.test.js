@@ -1,4 +1,5 @@
 import fetchMock from 'jest-fetch-mock';
+import packageJson from '../package.json';
 
 jest.unmock('../javascript/oursprivacy-storage');
 
@@ -136,7 +137,7 @@ describe('OursPrivacy integration flows', () => {
         utm_source: 'email',
         gclid: 'click-123',
         sid: first.defaultProperties.sid,
-        version: 'react-native@4.1.0',
+        version: `react-native@${packageJson.version}`,
       }),
     );
     expect(booked).not.toHaveProperty('time');
@@ -231,7 +232,7 @@ describe('OursPrivacy integration flows', () => {
       expect.objectContaining({
         sid: expect.any(String),
         os_name: 'Android',
-        version: 'react-native@4.1.0',
+        version: `react-native@${packageJson.version}`,
       }),
     );
     expect(booked.defaultProperties).not.toHaveProperty('app_version');

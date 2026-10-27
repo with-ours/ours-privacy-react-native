@@ -1,4 +1,5 @@
 import fetchMock from 'jest-fetch-mock';
+import packageJson from '../package.json';
 
 jest.unmock('../javascript/oursprivacy-storage');
 fetchMock.enableMocks();
@@ -74,7 +75,7 @@ it.each(['ios', 'android'])(
       expect(event.defaultProperties.sid).toBe(String(START));
       expect(event.defaultProperties).toMatchObject({
         os_name: platform === 'ios' ? 'iOS' : 'Android',
-        version: 'react-native@4.1.0',
+        version: `react-native@${packageJson.version}`,
         device_type: 'mobile',
       });
       expect(event.eventProperties).toMatchObject({

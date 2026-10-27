@@ -1,4 +1,5 @@
 import fetchMock from 'jest-fetch-mock';
+import packageJson from '../package.json';
 
 jest.unmock('../javascript/oursprivacy-storage');
 fetchMock.enableMocks();
@@ -91,7 +92,7 @@ it.each([
     expect(event.defaultProperties).toMatchObject({
       sid: String(START),
       os_name: 'iOS',
-      version: 'react-native@4.1.0',
+      version: `react-native@${packageJson.version}`,
     });
   },
 );
