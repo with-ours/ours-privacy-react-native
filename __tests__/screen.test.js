@@ -1,6 +1,7 @@
 import { OursPrivacy } from '@oursprivacy/react-native';
 import { OursPrivacyQueueManager } from '../javascript/oursprivacy-queue';
 import { OursPrivacyType } from '../javascript/oursprivacy-constants';
+import packageJson from '../package.json';
 
 let tokenIndex = 0;
 let token;
@@ -56,7 +57,7 @@ test('a public screen call queues the exact canonical payload and configured hos
       device_type: 'mobile',
       os_name: 'iOS',
       os_version: 'undefined',
-      version: 'react-native@4.1.0',
+      version: `react-native@${packageJson.version}`,
       screen_width: 375,
       screen_height: 812,
       device_vendor: 'Apple',
