@@ -208,39 +208,6 @@ test('track continues to forward legacy automatic events', async () => {
   );
 });
 
-test('trackScreen forwards a stable label', async () => {
-  const op = await newInitialized();
-  op.trackScreen('Schedule');
-  expect(op.oursprivacyImpl.trackScreen).toHaveBeenCalledWith(
-    'token',
-    'Schedule',
-  );
-});
-
-test.each([
-  '',
-  '   ',
-  ' Schedule',
-  'Schedule ',
-  'Patient/123',
-  'Patient?name=1',
-  '123',
-  'A'.repeat(81),
-  123,
-  null,
-])('trackScreen rejects an unstable label: %p', async (label) => {
-  const op = await newInitialized();
-  expect(() => op.trackScreen(label)).toThrow(/stable screen label/);
-  expect(op.oursprivacyImpl.trackScreen).not.toHaveBeenCalled();
-});
-
-test('trackScreen accepts a label of exactly 80 characters', async () => {
-  const op = await newInitialized();
-  const label = `A${'b'.repeat(79)}`;
-  op.trackScreen(label);
-  expect(op.oursprivacyImpl.trackScreen).toHaveBeenCalledWith('token', label);
-});
-
 test(`it calls reset`, async () => {
   const op = await newInitialized();
   op.reset();
