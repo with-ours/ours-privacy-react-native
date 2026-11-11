@@ -11,7 +11,6 @@ const ERROR_MESSAGE = {
 const PARAMS = {
   TOKEN: 'token',
   EVENT_NAME: 'eventName',
-  SCREEN_NAME: 'screenName',
   PROPERTIES: 'properties',
   USER_PROPERTIES: 'userProperties',
   OPTIONS: 'options',
@@ -192,7 +191,11 @@ export class OursPrivacy {
       screenName.trim() !== screenName ||
       !/^[A-Za-z][A-Za-z0-9 _-]{0,79}$/.test(screenName)
     ) {
-      throw new Error(`${PARAMS.SCREEN_NAME} must be a stable screen label`);
+      OursPrivacyLogger.warn(
+        this.token,
+        'trackScreen ignored an invalid screen label. Use 1-80 ASCII characters starting with a letter, containing only letters, digits, spaces, underscores, or hyphens, with no trailing whitespace.',
+      );
+      return Promise.resolve();
     }
     return this._observeOperation(
       this.oursprivacyImpl.trackScreen(this.token, screenName),

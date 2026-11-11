@@ -262,7 +262,7 @@ op.track('Page View', { page: '/home', referrer: 'google' });
 
 #### `op.trackScreen(screenName)`
 
-Track a visible screen on iOS or Android. `screenName` must be a stable, developer-chosen label of 1–80 characters: start with an ASCII letter, then use only ASCII letters, numbers, spaces, underscores, or hyphens. Leading and trailing whitespace is rejected. Never pass a route path, URL, query string, route parameter, screen title containing patient data, or other dynamic identifier. A duplicate call for the current visible screen does not add another view. Call again when that screen is entered after a background/foreground transition.
+Track a visible screen on iOS or Android. `screenName` must be a stable, developer-chosen label of 1–80 characters: start with an ASCII letter, then use only ASCII letters, numbers, spaces, underscores, or hyphens. Leading and trailing whitespace is rejected. Invalid labels are ignored without throwing, and the SDK logs a warning when logging is enabled. Never pass a route path, URL, query string, route parameter, screen title containing patient data, or other dynamic identifier. A duplicate call for the current visible screen does not add another view. Call again when that screen is entered after a background/foreground transition.
 
 **Returns:** `Promise<void>`
 
@@ -701,7 +701,7 @@ The SDK sends a JSON body to `POST /ingest` on the configured `serverURL`. Under
         "os_version": "17.0",
         "device_vendor": "Apple",
         "device_model": "iPhone 16 Pro",
-        "version": "react-native@4.1.0",
+        "version": "react-native@4.1.2",
         "sid": "1791201600000"
       }
     }
