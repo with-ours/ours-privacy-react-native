@@ -80,6 +80,9 @@ export default class OursPrivacyMain {
 
       await this._coreReady;
       await this.oursprivacyPersistent.initializationCompletePromise(token);
+      if (this.oursprivacyPersistent.getIsManuallySetId?.(token)) {
+        this.config.setIsManuallySetId(token, true);
+      }
 
       const serverURL =
         (options && options.serverURL) || 'https://cdn.oursprivacy.com';
@@ -432,8 +435,15 @@ export default class OursPrivacyMain {
         await this._mobileSession.resetSession();
         await this._enqueuePendingFacts(token);
       }
-      await this.oursprivacyPersistent.reset(token);
-      this.config.setIsManuallySetId(token, false);
+      try {
+        await this.oursprivacyPersistent.reset(token);
+      } catch (error) {
+        if (this.oursprivacyPersistent.getIsManuallySetId?.(token)) {
+          this.config.setIsManuallySetId(token, true);
+        }
+        throw error;
+      }
+      this.config.setIsManuallySetId(token, true);
       this._defaultEventProperties[token] = {};
       this._defaultUserCustomProperties[token] = {};
       this._defaultUserConsentProperties[token] = {};
@@ -754,8 +764,7 @@ export default class OursPrivacyMain {
       }
     }
     this.config.setIsManuallySetId(token, true);
-    this.oursprivacyPersistent.updateVisitorId(token, visitorId);
-    await this.oursprivacyPersistent.persistVisitorId(token);
+    await this.oursprivacyPersistent.setExplicitVisitorId(token, visitorId);
     if (resumeForeground) {
       await this._mobileSession.announceRotatedSession();
       await this._enqueuePendingFacts(token);

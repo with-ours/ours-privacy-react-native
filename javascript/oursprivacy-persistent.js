@@ -1,5 +1,6 @@
 import {
   getVisitorIdKey,
+  getIsManuallySetIdKey,
   getSuperPropertiesKey,
   getTimeEventsKey,
   getOptedOutKey as getOutedOutKey,
@@ -36,6 +37,10 @@ export class OursPrivacyPersistent {
     this._superProperties = {};
     this._timeEvents = {};
     this._identity = {};
+    // The visitor last read from or written to storage, with its stored mode.
+    // Authority lists are built from this, not from the in-memory visitor,
+    // which can be ahead of storage after a failed write.
+    this._durableIdentity = {};
     this._existingInstall = {};
     this._optedOut = {};
     this._optOutLoaded = {};
@@ -73,7 +78,19 @@ export class OursPrivacyPersistent {
       );
     }
     this._existingInstall[token] = installation === 'legacy';
-    this._identity[token] = { visitorId };
+    const storedAuthority = visitorId
+      ? await this.storageAdapter.getItemStrict(getIsManuallySetIdKey(token))
+      : null;
+    const authoritativeVisitorIds =
+      storedAuthority === 'true'
+        ? [visitorId]
+        : storedAuthority
+          ? JSON.parse(storedAuthority).visitorIds
+          : [];
+    this._identity[token] = {
+      visitorId,
+      isManuallySetId: authoritativeVisitorIds.includes(visitorId),
+    };
     if (!this._identity[token].visitorId) {
       this._identity[token].visitorId = uuidv4();
       await this.storageAdapter.setItemStrict(
@@ -81,6 +98,7 @@ export class OursPrivacyPersistent {
         this._identity[token].visitorId,
       );
     }
+    this._durableIdentity[token] = { ...this._identity[token] };
     OursPrivacyLogger.log(token, 'visitorId:', this._identity[token].visitorId);
   }
 
@@ -105,8 +123,47 @@ export class OursPrivacyPersistent {
     return this._identity[token].visitorId;
   }
 
+  getIsManuallySetId(token) {
+    return this._identity[token]?.isManuallySetId === true;
+  }
+
   updateVisitorId(token, visitorId) {
     this._identity[token].visitorId = visitorId;
+  }
+
+  // Writes an authoritative visitor. Authority is written before the visitor,
+  // and keeps the stored visitor listed when it is itself authoritative, so a
+  // failed second write still reloads the stored visitor with its own mode.
+  // The list comes from storage, not memory, so repeated failures can't drop
+  // the stored visitor's authority.
+  async _commitAuthoritativeVisitorId(token, visitorId) {
+    const durable = this._durableIdentity[token];
+    const authoritativeVisitorIds =
+      durable?.isManuallySetId && durable.visitorId !== visitorId
+        ? [durable.visitorId, visitorId]
+        : [visitorId];
+    await this.storageAdapter.setItemStrict(
+      getIsManuallySetIdKey(token),
+      JSON.stringify({ visitorIds: authoritativeVisitorIds }),
+    );
+    await this.storageAdapter.setItemStrict(getVisitorIdKey(token), visitorId);
+    this._durableIdentity[token] = { visitorId, isManuallySetId: true };
+  }
+
+  // Commits an explicitly chosen visitor ID (setVisitorId, the visitorId
+  // option, or a deep link) with its authority, so a cold restart keeps
+  // sending it as manually set. A storage failure keeps the new identity for
+  // this runtime only.
+  async setExplicitVisitorId(token, visitorId) {
+    this._identity[token] = { visitorId, isManuallySetId: true };
+    try {
+      await this._commitAuthoritativeVisitorId(token, visitorId);
+    } catch {
+      OursPrivacyLogger.error(
+        token,
+        'error saving visitor ID; it applies until the app restarts',
+      );
+    }
   }
 
   async persistVisitorId(token) {
@@ -352,13 +409,12 @@ export class OursPrivacyPersistent {
   }
 
   async reset(token, { preserveVisitorId = false } = {}) {
-    if (!preserveVisitorId) {
-      await this.storageAdapter.removeItem(getVisitorIdKey(token));
-    }
     await this.storageAdapter.removeItem(getSuperPropertiesKey(token));
     await this.storageAdapter.removeItem(getTimeEventsKey(token));
     if (!preserveVisitorId) {
-      await this.loadIdentity(token);
+      const visitorId = uuidv4();
+      await this._commitAuthoritativeVisitorId(token, visitorId);
+      this._identity[token] = { visitorId, isManuallySetId: true };
     }
     await this.loadSuperProperties(token);
     await this.loadTimeEvents(token);

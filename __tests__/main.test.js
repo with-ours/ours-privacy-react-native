@@ -50,6 +50,7 @@ jest.mock('@oursprivacy/react-native/javascript/oursprivacy-persistent', () => {
           loadVisitorId: jest.fn(),
           updateVisitorId: jest.fn(),
           persistVisitorId: jest.fn(),
+          setExplicitVisitorId: jest.fn(),
           loadSuperProperties: jest.fn(),
           persistSuperProperties: jest.fn(),
           loadOptedOut: jest.fn(),
@@ -125,11 +126,8 @@ describe('OursPrivacyMain', () => {
       serverURL: 'https://cdn.oursprivacy.com',
     });
     expect(
-      oursprivacyMain.oursprivacyPersistent.updateVisitorId,
+      oursprivacyMain.oursprivacyPersistent.setExplicitVisitorId,
     ).toHaveBeenCalledWith(token, 'preset-visitor-123');
-    expect(
-      oursprivacyMain.oursprivacyPersistent.persistVisitorId,
-    ).toHaveBeenCalledWith(token);
   });
 
   it('should preserve init options when starting opted out', async () => {
@@ -150,7 +148,7 @@ describe('OursPrivacyMain', () => {
       oursprivacyMain.oursprivacyPersistent.updateOptedOut,
     ).toHaveBeenCalledWith(token, true);
     expect(
-      oursprivacyMain.oursprivacyPersistent.updateVisitorId,
+      oursprivacyMain.oursprivacyPersistent.setExplicitVisitorId,
     ).toHaveBeenCalledWith(token, 'preset-visitor-123');
     expect(oursprivacyMain._defaultEventProperties[token]).toEqual({
       platform: 'mobile',
@@ -194,7 +192,7 @@ describe('OursPrivacyMain', () => {
       {},
     );
     expect(
-      oursprivacyMain.oursprivacyPersistent.updateVisitorId,
+      oursprivacyMain.oursprivacyPersistent.setExplicitVisitorId,
     ).not.toHaveBeenCalledWith(token, 'web-123');
   });
 
@@ -617,7 +615,7 @@ describe('OursPrivacyMain', () => {
     );
     expect(oursprivacyMain.config.setIsManuallySetId).toHaveBeenCalledWith(
       token,
-      false,
+      true,
     );
     expect(oursprivacyMain._defaultEventProperties[token]).toEqual({});
     expect(oursprivacyMain._defaultUserCustomProperties[token]).toEqual({});
@@ -726,7 +724,7 @@ describe('OursPrivacyMain', () => {
         (item) => item.event === 'appointment_booked',
       );
       expect(
-        oursprivacyMain.oursprivacyPersistent.updateVisitorId,
+        oursprivacyMain.oursprivacyPersistent.setExplicitVisitorId,
       ).toHaveBeenCalledWith(token, 'web-123');
       expect(deepLink.eventProperties).toEqual({
         mobile_contract_version: 1,
@@ -781,7 +779,7 @@ describe('OursPrivacyMain', () => {
         'myapp://open?ours_visitor_id=web-uuid-123&utm_source=email',
       );
       expect(
-        oursprivacyMain.oursprivacyPersistent.updateVisitorId,
+        oursprivacyMain.oursprivacyPersistent.setExplicitVisitorId,
       ).toHaveBeenCalledWith(token, 'web-uuid-123');
       expect(oursprivacyMain.config.setIsManuallySetId).toHaveBeenCalledWith(
         token,
@@ -795,7 +793,7 @@ describe('OursPrivacyMain', () => {
         'myapp://open?utm_source=google',
       );
       expect(
-        oursprivacyMain.oursprivacyPersistent.updateVisitorId,
+        oursprivacyMain.oursprivacyPersistent.setExplicitVisitorId,
       ).not.toHaveBeenCalled();
     });
 
@@ -817,7 +815,7 @@ describe('OursPrivacyMain', () => {
         oursprivacyMain._attributionDefaultProperties[token] || {},
       ).toEqual({});
       expect(
-        oursprivacyMain.oursprivacyPersistent.updateVisitorId,
+        oursprivacyMain.oursprivacyPersistent.setExplicitVisitorId,
       ).not.toHaveBeenCalled();
       expect(oursprivacyMain.config.setIsManuallySetId).not.toHaveBeenCalled();
     });
@@ -842,11 +840,8 @@ describe('OursPrivacyMain', () => {
     it('should update visitor_id and set is_manually_set_id', async () => {
       await oursprivacyMain.setVisitorId(token, 'new-visitor-id');
       expect(
-        oursprivacyMain.oursprivacyPersistent.updateVisitorId,
+        oursprivacyMain.oursprivacyPersistent.setExplicitVisitorId,
       ).toHaveBeenCalledWith(token, 'new-visitor-id');
-      expect(
-        oursprivacyMain.oursprivacyPersistent.persistVisitorId,
-      ).toHaveBeenCalledWith(token);
       expect(oursprivacyMain.config.setIsManuallySetId).toHaveBeenCalledWith(
         token,
         true,
@@ -884,7 +879,7 @@ describe('OursPrivacyMain', () => {
       });
       // visitorId option is applied first, then initialURL overrides with ours_visitor_id
       expect(
-        oursprivacyMain.oursprivacyPersistent.updateVisitorId,
+        oursprivacyMain.oursprivacyPersistent.setExplicitVisitorId,
       ).toHaveBeenCalledWith(token, 'url-visitor-id');
     });
   });

@@ -7,6 +7,8 @@ export const getQueueKey = (token, type) =>
 
 // Storage key string kept as-is for backwards compatibility with existing installs.
 export const getVisitorIdKey = (token) => `OURSPRIVACY_${token}_DEVICE_ID`;
+export const getIsManuallySetIdKey = (token) =>
+  `OURSPRIVACY_${token}_IS_MANUALLY_SET_ID`;
 
 export const getOptOutDecisionKey = (token) =>
   `OURSPRIVACY_${token}_OPT_OUT_DECISION_V1`;
