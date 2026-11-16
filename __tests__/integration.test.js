@@ -1921,6 +1921,517 @@ describe('OursPrivacy integration flows', () => {
     );
   });
 
+  it.each([
+    ['first-install', undefined, false],
+    ['explicit', 'visitor-before-reset', true],
+  ])(
+    'sends captured identities and authority across reset from a %s identity',
+    async (_source, visitorId, initialMode) => {
+      suspendPeriodicNetworkFlush();
+      mockIndexedMobileSuccess();
+      const { OursPrivacy } = require('@oursprivacy/react-native');
+      const op = new OursPrivacy();
+      await op.init('reset-authority-token', {
+        trackAutomaticEvents: true,
+        visitorId,
+      });
+      const previousVisitor = op.getVisitorId();
+      await op.track('before_reset');
+
+      jest.setSystemTime(Date.now() + 1);
+      await op.reset();
+      const resetVisitor = op.getVisitorId();
+      expect(resetVisitor).not.toBe(previousVisitor);
+      await op.track('after_reset');
+      await jest.advanceTimersByTimeAsync(10_000);
+      await op.flush();
+
+      const bodies = fetchMock.mock.calls.map(([, options]) =>
+        JSON.parse(options.body),
+      );
+      expect(bodies).toHaveLength(2);
+      expect(bodies[0].is_manually_set_id).toBe(initialMode);
+      expect(bodies[0].data.map((event) => event.event)).toEqual([
+        '$mobile_first_open',
+        '$mobile_app_open',
+        '$mobile_session_start',
+        'before_reset',
+        '$mobile_session_end',
+      ]);
+      expect(bodies[1].is_manually_set_id).toBe(true);
+      expect(bodies[1].data.map((event) => event.event)).toEqual([
+        '$mobile_session_start',
+        'after_reset',
+        '$mobile_session_engagement',
+      ]);
+      for (const event of bodies[0].data) {
+        expect(event.visitor_id).toBe(previousVisitor);
+        expect(event).not.toHaveProperty('isManuallySetId');
+      }
+      for (const event of bodies[1].data) {
+        expect(event.visitor_id).toBe(resetVisitor);
+        expect(event).not.toHaveProperty('isManuallySetId');
+        expect(event.defaultProperties.sid).not.toBe(
+          bodies[0].data[0].defaultProperties.sid,
+        );
+      }
+    },
+  );
+
+  it('restores reset authority on relaunch while keeping another token automatic', async () => {
+    suspendPeriodicNetworkFlush();
+    const values = new Map();
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => values.set(key, value),
+      removeItem: async (key) => values.delete(key),
+    };
+    const token = 'reset-relaunch-token';
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const first = new OursPrivacy();
+    await first.init(token, { storage });
+    const initialVisitor = first.getVisitorId();
+    await first.track('before_reset');
+    await first.reset();
+    const resetVisitor = first.getVisitorId();
+    expect(resetVisitor).not.toBe(initialVisitor);
+    await first.track('after_reset');
+    await first.oursprivacyImpl.dispose();
+
+    jest.resetModules();
+    suspendPeriodicNetworkFlush();
+    mockIndexedMobileSuccess();
+    const {
+      OursPrivacy: ReloadedOursPrivacy,
+    } = require('@oursprivacy/react-native');
+    const reloaded = new ReloadedOursPrivacy();
+    await reloaded.init(token, { storage });
+    expect(reloaded.getVisitorId()).toBe(resetVisitor);
+    await reloaded.track('after_relaunch');
+    await reloaded.flush();
+
+    const fresh = new ReloadedOursPrivacy();
+    await fresh.init('other-install-token', { storage });
+    await fresh.track('fresh_install');
+    await fresh.flush();
+
+    const bodies = fetchMock.mock.calls.map(([, options]) =>
+      JSON.parse(options.body),
+    );
+    expect(
+      bodies.find((body) =>
+        body.data.some((event) => event.event === 'after_relaunch'),
+      ).is_manually_set_id,
+    ).toBe(true);
+    expect(bodies).toHaveLength(3);
+    expect(bodies[0].is_manually_set_id).toBe(false);
+    expect(bodies[0].data).toEqual([
+      expect.objectContaining({
+        event: 'before_reset',
+        visitor_id: initialVisitor,
+      }),
+    ]);
+    expect(bodies[1].is_manually_set_id).toBe(true);
+    expect(bodies[1].data).toEqual([
+      expect.objectContaining({
+        event: 'after_reset',
+        visitor_id: resetVisitor,
+      }),
+      expect.objectContaining({
+        event: 'after_relaunch',
+        visitor_id: resetVisitor,
+      }),
+    ]);
+    expect(bodies[2].is_manually_set_id).toBe(false);
+    expect(bodies[2].data).toEqual([
+      expect.objectContaining({
+        event: 'fresh_install',
+        visitor_id: fresh.getVisitorId(),
+      }),
+    ]);
+  });
+
+  it.each([
+    ['authority', 'automatic', false, false],
+    ['authority', 'explicit', true, true],
+    ['authority', 'prior-reset', true, true],
+    ['visitor', 'automatic', false, false],
+    ['visitor', 'explicit', true, true],
+    ['visitor', 'prior-reset', true, true],
+  ])(
+    'retains the %s write predecessor from %s after a failed reset',
+    async (failedWrite, source, runtimeMode, restoredMode) => {
+      suspendPeriodicNetworkFlush();
+      const {
+        getVisitorIdKey,
+        getIsManuallySetIdKey,
+      } = require('../javascript/oursprivacy-constants');
+      const values = new Map();
+      let failingKey;
+      const storage = {
+        getItem: async (key) => values.get(key) ?? null,
+        setItem: async (key, value) => {
+          if (key === failingKey)
+            throw new Error(`${failedWrite} write failed`);
+          values.set(key, value);
+        },
+        removeItem: async (key) => values.delete(key),
+      };
+      const token = 'reset-write-failure-token';
+      const { OursPrivacy } = require('@oursprivacy/react-native');
+      const first = new OursPrivacy();
+      await first.init(token, { storage });
+      if (source === 'explicit') await first.setVisitorId('explicit-visitor');
+      if (source === 'prior-reset') await first.reset();
+      const previousVisitor = first.getVisitorId();
+      await first.track('before_failed_reset');
+      failingKey =
+        failedWrite === 'authority'
+          ? getIsManuallySetIdKey(token)
+          : getVisitorIdKey(token);
+
+      await expect(first.reset()).rejects.toThrow(
+        `${failedWrite} write failed`,
+      );
+      const visitorAfterFailure = first.getVisitorId();
+      const persistedVisitorAfterFailure = values.get(getVisitorIdKey(token));
+      await first.track('after_failed_reset');
+      await first.oursprivacyImpl.dispose();
+      failingKey = undefined;
+
+      jest.resetModules();
+      suspendPeriodicNetworkFlush();
+      mockIndexedMobileSuccess();
+      const { OursPrivacy: Reloaded } = require('@oursprivacy/react-native');
+      const reloaded = new Reloaded();
+      await reloaded.init(token, { storage });
+      await reloaded.track('after_relaunch');
+      await reloaded.flush();
+
+      const sent = fetchMock.mock.calls.flatMap(([, options]) => {
+        const body = JSON.parse(options.body);
+        return body.data.map((event) => ({
+          event: event.event,
+          visitor_id: event.visitor_id,
+          is_manually_set_id: body.is_manually_set_id,
+        }));
+      });
+      expect(sent).toEqual([
+        {
+          event: 'before_failed_reset',
+          visitor_id: previousVisitor,
+          is_manually_set_id: runtimeMode,
+        },
+        {
+          event: 'after_failed_reset',
+          visitor_id: previousVisitor,
+          is_manually_set_id: runtimeMode,
+        },
+        {
+          event: 'after_relaunch',
+          visitor_id: previousVisitor,
+          is_manually_set_id: restoredMode,
+        },
+      ]);
+      expect(visitorAfterFailure).toBe(previousVisitor);
+      expect(persistedVisitorAfterFailure).toBe(previousVisitor);
+      expect(reloaded.getVisitorId()).toBe(previousVisitor);
+    },
+  );
+
+  const restartAndTrack = async (token, storage, event) => {
+    jest.resetModules();
+    suspendPeriodicNetworkFlush();
+    mockIndexedMobileSuccess();
+    const { OursPrivacy: Reloaded } = require('@oursprivacy/react-native');
+    const reloaded = new Reloaded();
+    await reloaded.init(token, { storage });
+    await reloaded.track(event);
+    await reloaded.flush();
+    return reloaded;
+  };
+
+  const sentEvents = () =>
+    fetchMock.mock.calls.flatMap(([, options]) => {
+      const body = JSON.parse(options.body);
+      return body.data.map((event) => ({
+        event: event.event,
+        visitor_id: event.visitor_id,
+        is_manually_set_id: body.is_manually_set_id,
+      }));
+    });
+
+  it.each([
+    ['setVisitorId', 'stitched-visitor'],
+    ['init visitorId option', 'option-visitor'],
+    ['deep link', 'deep-link-visitor'],
+    ['reset then setVisitorId', 'post-reset-visitor'],
+  ])(
+    'keeps explicit visitor authority across a cold restart after %s',
+    async (source, explicitVisitor) => {
+      suspendPeriodicNetworkFlush();
+      const values = new Map();
+      const storage = {
+        getItem: async (key) => values.get(key) ?? null,
+        setItem: async (key, value) => values.set(key, value),
+        removeItem: async (key) => values.delete(key),
+      };
+      const token = 'explicit-restart-token';
+      const { OursPrivacy } = require('@oursprivacy/react-native');
+      const first = new OursPrivacy();
+      if (source === 'init visitorId option') {
+        await first.init(token, { storage, visitorId: explicitVisitor });
+      } else {
+        await first.init(token, { storage });
+      }
+      if (source === 'setVisitorId') await first.setVisitorId(explicitVisitor);
+      if (source === 'deep link') {
+        await first.trackDeepLink(
+          `myapp://open?ours_visitor_id=${explicitVisitor}`,
+        );
+      }
+      if (source === 'reset then setVisitorId') {
+        await first.reset();
+        await first.setVisitorId(explicitVisitor);
+      }
+      expect(first.getVisitorId()).toBe(explicitVisitor);
+      await first.oursprivacyImpl.dispose();
+
+      const reloaded = await restartAndTrack(token, storage, 'after_restart');
+
+      expect(reloaded.getVisitorId()).toBe(explicitVisitor);
+      expect(sentEvents()).toContainEqual({
+        event: 'after_restart',
+        visitor_id: explicitVisitor,
+        is_manually_set_id: true,
+      });
+    },
+  );
+
+  it.each([
+    ['authority', 'automatic', false],
+    ['authority', 'explicit', true],
+    ['visitor', 'automatic', false],
+    ['visitor', 'explicit', true],
+  ])(
+    'keeps the %s write predecessor from %s when setVisitorId cannot persist',
+    async (failedWrite, source, restoredMode) => {
+      suspendPeriodicNetworkFlush();
+      const {
+        getVisitorIdKey,
+        getIsManuallySetIdKey,
+      } = require('../javascript/oursprivacy-constants');
+      const values = new Map();
+      let failingKey;
+      const storage = {
+        getItem: async (key) => values.get(key) ?? null,
+        setItem: async (key, value) => {
+          if (key === failingKey)
+            throw new Error(`${failedWrite} write failed`);
+          values.set(key, value);
+        },
+        removeItem: async (key) => values.delete(key),
+      };
+      const token = 'explicit-write-failure-token';
+      const { OursPrivacy } = require('@oursprivacy/react-native');
+      const first = new OursPrivacy();
+      await first.init(token, { storage });
+      if (source === 'explicit') await first.setVisitorId('first-explicit');
+      const previousVisitor = first.getVisitorId();
+      failingKey =
+        failedWrite === 'authority'
+          ? getIsManuallySetIdKey(token)
+          : getVisitorIdKey(token);
+
+      await expect(first.setVisitorId('unsaved-visitor')).resolves.toBe(
+        undefined,
+      );
+      expect(first.getVisitorId()).toBe('unsaved-visitor');
+      await first.track('after_unsaved_set');
+      await first.oursprivacyImpl.dispose();
+      failingKey = undefined;
+
+      const reloaded = await restartAndTrack(token, storage, 'after_restart');
+
+      expect(reloaded.getVisitorId()).toBe(previousVisitor);
+      expect(sentEvents()).toEqual([
+        {
+          event: 'after_unsaved_set',
+          visitor_id: 'unsaved-visitor',
+          is_manually_set_id: true,
+        },
+        {
+          event: 'after_restart',
+          visitor_id: previousVisitor,
+          is_manually_set_id: restoredMode,
+        },
+      ]);
+    },
+  );
+
+  it.each(
+    ['automatic', 'explicit', 'prior-reset'].flatMap((source) =>
+      ['authority', 'visitor'].flatMap((firstFailure) =>
+        ['same-ID setVisitorId', 'new-ID setVisitorId', 'reset'].map(
+          (retry) => [source, firstFailure, retry, source !== 'automatic'],
+        ),
+      ),
+    ),
+  )(
+    'keeps the durable %s predecessor after a failed %s write and a failed %s',
+    async (source, firstFailure, retry, restoredMode) => {
+      suspendPeriodicNetworkFlush();
+      const {
+        getVisitorIdKey,
+        getIsManuallySetIdKey,
+      } = require('../javascript/oursprivacy-constants');
+      const values = new Map();
+      let failingKey;
+      const storage = {
+        getItem: async (key) => values.get(key) ?? null,
+        setItem: async (key, value) => {
+          if (key === failingKey) throw new Error('write failed');
+          values.set(key, value);
+        },
+        removeItem: async (key) => values.delete(key),
+      };
+      const token = 'repeated-write-failure-token';
+      const { OursPrivacy } = require('@oursprivacy/react-native');
+      const first = new OursPrivacy();
+      await first.init(token, { storage });
+      if (source === 'explicit') await first.setVisitorId('first-explicit');
+      if (source === 'prior-reset') await first.reset();
+      const durableVisitor = first.getVisitorId();
+
+      failingKey =
+        firstFailure === 'authority'
+          ? getIsManuallySetIdKey(token)
+          : getVisitorIdKey(token);
+      await first.setVisitorId('unsaved-visitor');
+      failingKey = getVisitorIdKey(token);
+      if (retry === 'same-ID setVisitorId') {
+        await first.setVisitorId('unsaved-visitor');
+      } else if (retry === 'new-ID setVisitorId') {
+        await first.setVisitorId('another-unsaved-visitor');
+      } else {
+        await expect(first.reset()).rejects.toThrow('write failed');
+      }
+      expect(values.get(getVisitorIdKey(token))).toBe(durableVisitor);
+      await first.oursprivacyImpl.dispose();
+      failingKey = undefined;
+
+      const reloaded = await restartAndTrack(token, storage, 'after_restart');
+
+      expect(reloaded.getVisitorId()).toBe(durableVisitor);
+      expect(sentEvents()).toContainEqual({
+        event: 'after_restart',
+        visitor_id: durableVisitor,
+        is_manually_set_id: restoredMode,
+      });
+    },
+  );
+
+  it('retains reset authority when later default-property loading rejects', async () => {
+    suspendPeriodicNetworkFlush();
+    const {
+      getSuperPropertiesKey,
+    } = require('../javascript/oursprivacy-constants');
+    const token = 'reset-default-load-token';
+    const values = new Map();
+    const storage = {
+      getItem: async (key) => values.get(key) ?? null,
+      setItem: async (key, value) => values.set(key, value),
+      removeItem: async (key) => {
+        if (key !== getSuperPropertiesKey(token)) values.delete(key);
+      },
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const first = new OursPrivacy();
+    await first.init(token, { storage });
+    const previousVisitor = first.getVisitorId();
+    await first.track('before_failed_reset');
+    values.set(getSuperPropertiesKey(token), '{');
+
+    await expect(first.reset()).rejects.toThrow(SyntaxError);
+    const resetVisitor = first.getVisitorId();
+    expect(resetVisitor).not.toBe(previousVisitor);
+    await first.track('after_failed_reset');
+    await first.oursprivacyImpl.dispose();
+    values.delete(getSuperPropertiesKey(token));
+
+    jest.resetModules();
+    suspendPeriodicNetworkFlush();
+    mockIndexedMobileSuccess();
+    const { OursPrivacy: Reloaded } = require('@oursprivacy/react-native');
+    const reloaded = new Reloaded();
+    await reloaded.init(token, { storage });
+    expect(reloaded.getVisitorId()).toBe(resetVisitor);
+    await reloaded.track('after_relaunch');
+    await reloaded.flush();
+
+    const sent = fetchMock.mock.calls.flatMap(([, options]) => {
+      const body = JSON.parse(options.body);
+      return body.data.map((event) => ({
+        event: event.event,
+        visitor_id: event.visitor_id,
+        is_manually_set_id: body.is_manually_set_id,
+      }));
+    });
+    expect(sent).toEqual([
+      {
+        event: 'before_failed_reset',
+        visitor_id: previousVisitor,
+        is_manually_set_id: false,
+      },
+      {
+        event: 'after_failed_reset',
+        visitor_id: resetVisitor,
+        is_manually_set_id: true,
+      },
+      {
+        event: 'after_relaunch',
+        visitor_id: resetVisitor,
+        is_manually_set_id: true,
+      },
+    ]);
+  });
+
+  it('rejects initialization when saved reset authority cannot be read', async () => {
+    suspendPeriodicNetworkFlush();
+    const {
+      getIsManuallySetIdKey,
+    } = require('../javascript/oursprivacy-constants');
+    const token = 'reset-authority-read-token';
+    const values = new Map();
+    let failAuthorityRead = false;
+    const storage = {
+      getItem: async (key) => {
+        if (failAuthorityRead && key === getIsManuallySetIdKey(token)) {
+          throw new Error('authority read failed');
+        }
+        return values.get(key) ?? null;
+      },
+      setItem: async (key, value) => values.set(key, value),
+      removeItem: async (key) => values.delete(key),
+    };
+    const { OursPrivacy } = require('@oursprivacy/react-native');
+    const first = new OursPrivacy();
+    await first.init(token, { storage });
+    await first.reset();
+    await first.oursprivacyImpl.dispose();
+    failAuthorityRead = true;
+
+    jest.resetModules();
+    suspendPeriodicNetworkFlush();
+    const { OursPrivacy: Reloaded } = require('@oursprivacy/react-native');
+    const reloaded = new Reloaded();
+    await expect(
+      reloaded.init(token, { storage, trackAutomaticEvents: true }),
+    ).rejects.toThrow('authority read failed');
+    await jest.advanceTimersByTimeAsync(60 * 60 * 1000);
+    expect(fetchMock.mock.calls).toEqual([]);
+  });
+
   it('keeps app-open tied to AppState while rotating identity and reset sessions', async () => {
     const appState = installAppStateCapture();
     suspendPeriodicNetworkFlush();
